@@ -541,6 +541,44 @@ Function for finding the state index of target bit string
 	} // end send configs from a-block
 
 	// WRITE sorted config from sorted a-configs and sorted b-configs (O(N) method)
+	size_t config_size = new_config_a.size() + new_config_b.size();
+	config.resize(config_size);
+	size_t idx_a = 0;
+	size_t idx_b = 0;
+	size_t idx_c = 0;
+
+	while ( idx_a < new_config_a.size() && idx_b < new_config_b.size() ) {
+	  if( new_config_a[idx_a] < new_config_b[idx_b] ) {
+	    config[idx_c] = new_config_a[idx_a];
+	    idx_a++;
+	    idx_c++;
+	  } else if ( new_config_b[idx_b] < new_config_b[idx_b] ) {
+	    config[idx_c] = new_config_b[idx_b];
+	    idx_b++;
+	    idx_c++;
+	  } else {
+	    if( config[idx_c-1] < new_config_a[idx_a] ) {
+	      config[idx_c] = new_config_a[idx_a];
+	      idx_c++;
+	    }
+	    idx_b++;
+	    idx_a++;
+	  }
+	}
+
+	std::vector<size_t> new_config_size(mpi_size,0);
+	std::vector<size_t> send_new_config_size(mpi_size,0);
+	send_new_config_size[mpi_rank] = config.size();
+	MPI_Allreduce(send_new_config_size.data(),new_config_size.data(),mpi_size,QSBD_MPI_SIZE_T,MPI_SUM,comm);
+	index_begin[0] = 0;
+	for(int rank=1; rank < mpi_size; rank++) {
+	  index_begin[rank] = index_begin[rank-1] + new_config_size[rank-1];
+	}
+	for(int rank=0; rank < mpi_size; rank++) {
+	  index_end[rank] = index_begin[rank]+new_config_size[rank];
+	}
+
+	mpi_redistribution(config,config_begin,config_end,index_begin,index_end,comm);
 	
       } // if( config_end_a_end > config_begin_b_begin ) to skip case where it is already sorted.
     }
