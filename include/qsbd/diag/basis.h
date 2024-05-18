@@ -1,0 +1,211 @@
+/// This file is a part of qsbd
+/**
+@file qsbd/qubit/basis.h
+@brief Class to manage the basis for qubit selected configuration diagonalization
+*/
+#ifndef QSBD_DIAG_BASIS_H
+#define QSBD_DIAG_BASIS_H
+
+#include "qsbd/framework/type_def.h"
+#include "qsbd/framework/mpi_utility.h"
+#include "qsbd/framework/bit_manipulation.h"
+
+namespace qsbd {
+
+  class basis {
+  public:
+
+/**
+Default constructor for basis
+ */
+    basis() : config_(), index_begin_(), index_end_(), config_begin_(), config_end_() {}
+
+/**
+Copy constructor for basis
+ */
+    basis(const basis & other) :
+      bit_length_(other.bit_length_),
+      config_(other.config_),
+      index_begin_(other.index_begin_), index_end_(other.index_end_),
+      config_begin_(other.config_begin_), config_end_(other.config_end_) {}
+
+/**
+Copy operator
+*/
+    basis & operator = (const basis & other) {
+      if( this != &other ) {
+	copy(other);
+      }
+      return *this;
+    }
+
+/**
+Adding general configurations
+*/
+    void Append(std::vector<std::vector<size_t>> & config, int mpi_root) {
+      sort_bitarray(config);
+      size_t set_size = config.size();
+      MPI_Bcast(&set_size,1,QSBD_MPI_SIZE_T,mpi_root,comm_);
+      if( mpi_rank_ != mpi_root ) {
+	config.resize(set_size);
+      }
+      MPI_Bcast(config.data(),set_size,QSBD_MPI_SIZE_T,mpi_root,comm_);
+      if( index_end_[mpi_size_-1] == 0 ) {
+	if( mpi_rank_ == mpi_master_ ) {
+	  config_ = config;
+	  index_begin_[mpi_rank_] = 0;
+	  index_end_[mpi_rank_] = config_.size();
+	}
+	else {
+	  index_begin_[mpi_rank_] = config_.size();
+	  index_end_[mpi_rank_] = config_.size();
+	}
+      }
+      else {
+	for(size_t n=0; n < config.size(); n++) {
+	  int target_mpi_rank;
+	  size_t index;
+	  bool mpi_exist;
+	  bool idx_exist;
+	  int do_addition = 0;
+	  mpi_process_search(config[n],config_begin_,config_end_,target_mpi_rank,mpi_exist);
+	  if( mpi_exist ) {
+	    if( mpi_rank_ == target_mpi_rank ) {
+	      bisection_search(config[n],config_,index_begin_[mpi_rank_],index_end_[mpi_rank_],index,idx_exist);
+	      if( !idx_exist ) {
+		config_.insert(config_.begin()+index-index_begin_[mpi_rank_],config[n]);
+		do_addition = 1;
+	      } else {
+		do_addition = 0;
+	      }
+	    }
+	    MPI_Bcast(&do_addition,1,MPI_INT,mpi_rank_,comm_);
+	    if( do_addition == 1 ) {
+	      index_end_[mpi_rank_] += 1;
+	      for(int rank=mpi_rank_+1; rank < mpi_size_; rank++) {
+		index_begin_[rank] += 1;
+		index_end_[rank] += 1;
+	      }
+	      if( index == index_begin_[target_mpi_rank] ) {
+		config_begin_[target_mpi_rank] = config[n];
+	      } else if ( index == index_end_[target_mpi_rank] ) {
+		config_end_[target_mpi_rank] = config[n];
+	      }
+	    }
+	  } else {
+	    if( config[n] < config_begin_[0] ) {
+	      if( mpi_rank_ == 0 ) {
+		config_.insert(config_.begin(),config[n]);
+	      }
+	      config_begin_[0] = config[n];
+	      index_end_[0] += 1;
+	      for(int rank=1; rank < mpi_size_; rank++) {
+		index_begin_[rank] += 1;
+		index_end_[rank] += 1;
+	      }
+	    } else if ( config_end_[mpi_size_-1] < config[n] ) {
+	      if( mpi_rank_ == mpi_size_-1 ) {
+		config_.insert(config_.end(),config[n]);
+	      }
+	      config_end_[mpi_size_-1] = config[n];
+	      index_end_[mpi_size_-1] += 1;
+	    }
+	  }
+	}
+      }
+    }
+    
+/**
+Redistribution to make distribution uniformly
+ */
+    void ReDistribution() {
+      mpi_redistribution(config_,config_begin_,config_end_,index_begin_,index_end_,comm_);
+    } // end ReDistricution()
+
+/**
+Reordering to the lexographical order
+*/
+    void Reordering() {
+      mpi_sort_bitarray(config_,config_begin_,config_end_,index_begin_,index_end_,comm_);
+    }
+
+
+/**
+Initialization of basis
+ */
+    void Init(const std::vector<std::vector<size_t>> & config,
+	      MPI_Comm comm,
+	      bool do_redist = true) {
+      config_ = config;
+      comm_ = comm;
+      mpi_master_ = 0;
+      MPI_Comm_rank(comm,&mpi_rank_);
+      MPI_Comm_size(comm,&mpi_size_);
+      index_begin_.resize(mpi_size_);
+      index_end_.resize(mpi_size_);
+      config_begin_.resize(mpi_size_);
+      config_end_.resize(mpi_size_);
+      std::vector<size_t> config_size_rank(mpi_size_,0);
+      std::vector<size_t> config_size(mpi_size_,0);
+      config_size_rank[mpi_rank_] = config.size();
+      MPI_Allreduce(config_size_rank.data(),
+		    config_size.data(),
+		    mpi_size_,QSBD_MPI_SIZE_T,
+		    MPI_SUM,comm_);
+      for(int rank=0; rank < mpi_size_; rank++) {
+	if( rank == 0 ) {
+	  index_begin_[0] = 0;
+	  index_end_[0] = config_size[0];
+	} else {
+	  index_begin_[rank] = index_end_[rank-1];
+	  index_end_[rank] = index_begin_[rank]+config_size[rank];
+	}
+	config_begin_[rank] = config[0];
+	MPI_Bcast(config_begin_[rank].data(),config_begin_[rank].size(),QSBD_MPI_SIZE_T,rank,comm_);
+      }
+      for(int rank=1; rank < mpi_size_; rank++) {
+	config_end_[rank-1] = config_begin_[rank];
+      }
+      if( mpi_rank_ == mpi_size_-1 ) {
+	config_end_[mpi_size_-1] = config[config.size()-1];
+	bitadvance(config_end_[mpi_size_-1],bit_length_);
+	MPI_Bcast(config_end_[mpi_size_-1].data(),config_end_[mpi_size_-1].size(),QSBD_MPI_SIZE_T,mpi_rank_,comm_);
+      }
+      if( do_redist ) {
+	this->ReDistribution();
+      }
+    }
+
+    
+
+  private:
+    size_t bit_length_;
+    std::vector<std::vector<size_t>> config_;
+
+    // variables for communicator
+    MPI_Comm comm_;
+    int mpi_master_;
+    int mpi_size_;
+    int mpi_rank_;
+    std::vector<size_t> index_begin_;
+    std::vector<size_t> index_end_;
+    std::vector<std::vector<size_t>> config_begin_;
+    std::vector<std::vector<size_t>> config_end_;
+
+    void copy(const basis & other) {
+      bit_length_ = other.bit_length_;
+      config_ = other.config_;
+      comm_ = other.comm_;
+      mpi_master_ = other.mpi_master_;
+      mpi_size_ = other.mpi_size_;
+      mpi_rank_ = other.mpi_rank_;
+      index_begin_ = other.index_begin_;
+      index_end_ = other.index_end_;
+      config_begin_ = other.config_begin_;
+      config_end_ = other.config_end_;
+    }
+  };
+  
+}
+
+#endif

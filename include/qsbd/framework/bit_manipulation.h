@@ -1,0 +1,622 @@
+/// This is a part of qscd
+/**
+@file bit_manipulation.h
+@brief mathematical tools for bit manipulations
+*/
+
+#ifndef QSBD_FRAMEWORK_BIT_MANIPULATION_H
+#define QSBD_FRAMEWORK_BIT_MANIPULATION_H
+
+#include <stdint.h>
+#include <limits.h>
+
+#include "mpi.h"
+
+/*
+std::ostream & operator << (std::ostream & s,
+			    const std::vector<size_t> & a) {
+  for(size_t k=a.size(); k > 0; k--) {
+    std::bitset<QSBD_BIT_SIZE_T> b(a[k-1]);
+    s << b;
+  }
+  return s;
+}
+
+std::ostream & operator << (std::ostream & s,
+			    const std::vector<std::vector<size_t>> & a) {
+  for(size_t i=0; i < a.size(); i++) {
+    for(size_t k=a[i].size(); k > 0; k--) {
+      std::bitset<QSBD_BIT_SIZE_T> b(a[i][k-1]);
+      std::cout << b;
+    }
+  }
+}
+*/
+
+  bool operator < (const std::vector<size_t> & a, const std::vector<size_t> & b) {
+    size_t a_size = a.size();
+    size_t b_size = b.size();
+    if( a_size < b_size ) {
+      return true;
+    } else if ( a_size > b_size ) {
+      return false;
+    }
+
+    bool res = false;
+    for(size_t n = a_size; n > 0; n--) {
+      if( a[n-1] < b[n-1] ) {
+	res = true;
+	break;
+      } else if ( a[n-1] > b[n-1] ) {
+	res = false;
+	break;
+      }
+    }
+    return res;
+  }
+
+  bool operator <= (const std::vector<size_t> & a, const std::vector<size_t> & b) {
+    size_t a_size = a.size();
+    size_t b_size = b.size();
+    if( a_size < b_size ) {
+      return true;
+    } else if ( a_size > b_size ) {
+      return false;
+    }
+
+    bool res = true;
+    for(size_t n = a_size; n > 0; n--) {
+      if( a[n-1] < b[n-1] ) {
+	res = true;
+	break;
+      } else if ( a[n-1] > b[n-1] ) {
+	res = false;
+	break;
+      }
+    }
+    return res;
+  }
+
+  bool operator > (const std::vector<size_t> & a, const std::vector<size_t> & b) {
+    size_t a_size = a.size();
+    size_t b_size = b.size();
+    if( a_size > b_size ) {
+      return true;
+    } else if ( a_size < b_size ) {
+      return false;
+    }
+
+    bool res = false;
+    for(size_t n = a_size; n > 0; n--) {
+      if( a[n-1] > b[n-1] ) {
+	res = true;
+	break;
+      } else if ( a[n-1] < b[n-1] ) {
+	res = false;
+	break;
+      }
+    }
+    return res;
+  }
+
+  bool operator >= (const std::vector<size_t> & a, const std::vector<size_t> & b) {
+    size_t a_size = a.size();
+    size_t b_size = b.size();
+    if( a_size > b_size ) {
+      return true;
+    } else if ( a_size < b_size ) {
+      return false;
+    }
+
+    bool res = true;
+    for(size_t n = a_size; n > 0; n--) {
+      if( a[n-1] > b[n-1] ) {
+	res = true;
+	break;
+      } else if ( a[n-1] < b[n-1] ) {
+	res = false;
+	break;
+      }
+    }
+    return res;
+  }
+
+  bool operator == (const std::vector<size_t> & a, const std::vector<size_t> & b) {
+    size_t a_size = a.size();
+    size_t b_size = b.size();
+    if( a_size != b_size ) {
+      return false;
+    }
+    bool res = true;
+    for(size_t n = a_size; n > 0; n--) {
+      if( a[n-1] != b[n-1] ) {
+	res = false;
+	break;
+      }
+    }
+    return res;
+  }
+
+namespace qsbd {
+
+/**
+Function for finding a mpi process which manages the target bit string
+@param[in] config: target configuration
+@param[in] config_begin: first element for each mpi 
+*/
+  void mpi_process_search(const std::vector<size_t> & target_config,
+			  const std::vector<std::vector<size_t>> & config_begin,
+			  const std::vector<std::vector<size_t>> & config_end,
+			  int & target_mpi_rank, bool & mpi_exist) {
+    size_t mpi_size = config_begin.size();
+    mpi_exist = false;
+    for(int rank=0; rank < mpi_size; rank++) {
+      if( config_begin[rank] <= target_config && target_config < config_end[rank] ) {
+	target_mpi_rank = rank;
+	mpi_exist = true;
+      }
+    }
+  }
+
+/**
+Function for finding the state index of target bit string
+@param[in] target_config: target configuration
+@param[in] config: all configuration managed by target mpi process
+@param[in] index_begin: index of first element managed by target mpi process
+@param[in] index_end: +1 index of last element managed by target mpi process
+*/
+
+  void bisection_search(const std::vector<size_t> & target_config,
+			const std::vector<std::vector<size_t>> & config,
+			const size_t & index_begin,
+			const size_t & index_end,
+			size_t & index, bool & exist) {
+    bool do_bisection = true;
+    std::vector<size_t> config_a = config[index_begin];
+    std::vector<size_t> config_b = config[index_end-1];
+    size_t index_a = index_begin;
+    size_t index_b = index_end-1;
+    while( do_bisection ) {
+      size_t index_c = (index_a + index_b)/2;
+      std::vector<size_t> config_c = config[index_c];
+      if( config_c < target_config ) {
+	config_a = config_c;
+	index_a = index_c;
+      } else if ( config_c > target_config ) {
+	config_b = config_c;
+	index_b = index_c;
+      } else {
+	index = index_c;
+	do_bisection = false;
+	exist = true;
+      }
+      if( index_b - index_a < 2 ) {
+	do_bisection = false;
+	if( config_b == target_config ) {
+	  index = index_b;
+	  exist = true;
+	} else if ( config_a == target_config ) {
+	  index = index_a;
+	  exist = true;
+	} else if ( target_config < config_a ) {
+	  index = index_a;
+	  exist = false;
+	} else if( target_config < config_b ) {
+	  index = index_b;
+	  exist = false;
+	} else {
+	  index = index_b+1;
+	  exist = false;
+	}
+      }
+    }
+  }
+    
+
+/**
+Function for finding the state index of target bit string
+@param[in] target_config: target configuration
+@param[in] config: all configuration managed by target mpi process
+@param[in] index_begin: index of first element managed by target mpi process
+@param[in] index_end: +1 index of last element managed by target mpi process
+*/
+  void bisection_search_mpi(const std::vector<size_t> & target_config,
+			    const std::vector<std::vector<size_t>> & config,
+			    const size_t & index_begin,
+			    const size_t & index_end,
+			    int target_mpi_rank, size_t & index, bool & exist,
+			    MPI_Comm comm) {
+    int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
+    int mpi_size; MPI_Comm_size(comm,&mpi_size);
+    if( mpi_rank == target_mpi_rank ) {
+      bool do_bisection = true;
+      std::vector<size_t> config_a = config[index_begin];
+      std::vector<size_t> config_b = config[index_end-1];
+      size_t index_a = index_begin;
+      size_t index_b = index_end-1;
+      while( do_bisection ) {
+	size_t index_c = (index_a + index_b)/2;
+	std::vector<size_t> config_c = config[index_c-index_begin];
+	if( config_c < target_config ) {
+	  config_a = config_c;
+	  index_a = index_c;
+	} else if ( config_c > target_config ) {
+	  config_b = config_c;
+	  index_b = index_c;
+	} else {
+	  index = index_c;
+	  do_bisection = false;
+	  exist = true;
+	}
+	if( index_b-index_a < 2 ) {
+	  do_bisection = false;
+	  if( config_b == target_config ) {
+	    index = index_b;
+	    exist = true;
+	  } else if ( config_a == target_config ) {
+	    index = index_a;
+	    exist = true;
+	  } else if ( target_config < config_a ) {
+	    index = index_a;
+	    exist = false;
+	  } else if( target_config < config_b ) {
+	    index = index_b;
+	    exist = false;
+	  } else {
+	    index = index_b+1;
+	    exist = false;
+	  }
+	}
+      }
+    } // end if for mpi process
+  } // end void function bisection_search
+
+  void bitadvance(std::vector<size_t> & a, int bit_length) {
+    size_t x;
+    size_t d = (((size_t) 1) >> bit_length);
+    d = d-1;
+    size_t v = (size_t) 1;
+    for(size_t n=0; n < a.size(); n++) {
+      x = a[n]+v;
+      a[n] = (x & d);
+      v = x >> bit_length;
+    }
+  }
+
+  void sort_bitarray(std::vector<std::vector<size_t>> & a) {
+    std::vector<std::vector<size_t>> b;
+    std::move(a.begin(),a.end(),std::back_inserter(b));
+    a = std::vector<std::vector<size_t>>(0);
+    a.push_back(b[0]);
+    bool exist;
+    size_t index, index_a, index_b;
+    for(size_t i=1; i < b.size(); i++) {
+      index_a = static_cast<size_t>(0);
+      index_b = a.size();
+      bisection_search(b[i],a,index_a,index_b,index,exist);
+      if( !exist ) {
+	a.insert(a.begin()+index,b[i]);
+      }
+    }
+  }
+
+  void mpi_redistribution(std::vector<std::vector<size_t>> & config,
+			  std::vector<std::vector<size_t>> & config_begin,
+			  std::vector<std::vector<size_t>> & config_end,
+			  std::vector<size_t> & index_begin,
+			  std::vector<size_t> & index_end,
+			  MPI_Comm & comm) {
+
+    int mpi_master = 0;
+    int mpi_size; MPI_Comm_size(comm,&mpi_size);
+    int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
+    size_t config_size;
+    if( mpi_rank == mpi_master ) {
+      config_size = config[0].size();
+    }
+    MPI_Bcast(&config_size,1,QSBD_MPI_SIZE_T,mpi_master,comm);
+    std::vector<size_t> i_begin(mpi_size,index_begin[0]);
+    std::vector<size_t> i_end(mpi_size,index_end[mpi_size-1]);
+    for(size_t rank=0; rank < mpi_size; rank++) {
+      get_mpi_range(mpi_size,rank,i_begin[rank],i_end[rank]);
+    }
+    std::vector<std::vector<size_t>> new_config(i_end[mpi_rank]-i_begin[mpi_rank],std::vector<size_t>(config_size));
+    for(int rank=0; rank < mpi_size; rank++) {
+      // find i_begin and i_end mpi process
+      int mpi_rank_begin=0;
+      int mpi_rank_end=mpi_size;
+      for(int r=0; r < mpi_size; r++) {
+	if ( index_begin[r] <= i_begin[rank] && i_begin[rank] < index_end[r] ) {
+	  mpi_rank_begin = r;
+	  break;
+	}
+      }
+      for(int r=0; r < mpi_size; r++) {
+	if ( index_begin[r] < i_end[rank] && i_end[r] <= index_end[r] ) {
+	  mpi_rank_end = r;
+	  break;
+	}
+      }
+      for(int send_rank=mpi_rank_begin; send_rank <= mpi_rank_end; send_rank++) {
+	for(size_t i=std::max(i_begin[rank],index_begin[send_rank]); i < std::min(i_end[rank],index_begin[send_rank]); i++) {
+	  if( mpi_rank == send_rank ) {
+	    MPI_Send(config[i-index_begin[send_rank]].data(),
+		     config_size,
+		     QSBD_MPI_SIZE_T,rank,0,comm);
+	  }
+	  if( mpi_rank == rank ) {
+	    MPI_Status status;
+	    MPI_Recv(new_config[i-i_begin[rank]].data(),
+		     config_size,
+		     QSBD_MPI_SIZE_T,send_rank,0,comm,&status);
+	  }
+	}
+      }
+    }
+    config = new_config;
+    for(int rank=0; rank < mpi_size; rank++) {
+      index_begin[rank] = i_begin[rank];
+      index_end[rank] = i_end[rank];
+      if( rank == mpi_rank ) {
+	config_begin[rank] = config[0];
+	config_end[rank] = config[config.size()-1];
+      }
+      MPI_Bcast(config_begin[rank].data(),config_size,QSBD_MPI_SIZE_T,rank,comm);
+      MPI_Bcast(config_end[rank].data(),config_size,QSBD_MPI_SIZE_T,rank,comm);
+    }
+  }
+
+  void mpi_sort_bitarray(std::vector<std::vector<size_t>> & config,
+			 std::vector<std::vector<size_t>> & config_begin,
+			 std::vector<std::vector<size_t>> & config_end,
+			 std::vector<size_t> & index_begin,
+			 std::vector<size_t> & index_end,
+			 MPI_Comm & comm) {
+    int mpi_size; MPI_Comm_size(comm,&mpi_size);
+    int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
+    size_t bitlength = config[0].size();
+    if( mpi_size == 1 ) {
+      sort_bitarray(config);
+      config_begin[mpi_rank] = config[0];
+      config_end[mpi_rank] = config[config.size()-1];
+      index_begin[mpi_rank] = 0;
+      index_begin[mpi_rank] = config.size()-1;
+    } else {
+      // mpi_size = 2 -> mpi_size_half = 1, mpi_rank / mpi_size_half = 0 or 1
+      // mpi_size = 3 -> mpi_size_half = 2, mpi_rank / mpi_size_half = 0 or 1
+      int mpi_ierr;
+      int mpi_size_half = (mpi_size / 2) + ( mpi_size % 2 );
+      int mpi_color = mpi_rank / mpi_size_half;
+      int mpi_key = mpi_rank % mpi_size_half;
+      MPI_Comm new_comm;
+      MPI_Comm_split(comm,mpi_color,mpi_key,&new_comm);
+      mpi_sort_bitarray(config,config_begin,config_end,index_begin,index_end,new_comm);
+      // determine the range to be managed by each node
+      int mpi_size_a;
+      int mpi_size_b;
+      int mpi_master_a = 0;
+      int mpi_master_b = mpi_size_half;
+      if( mpi_rank == mpi_master_a ) {
+	MPI_Comm_size(new_comm,&mpi_size_a);
+      }
+      if( mpi_rank == mpi_master_b ) {
+	MPI_Comm_size(new_comm,&mpi_size_b);
+      }
+      MPI_Bcast(&mpi_size_a,1,QSBD_MPI_SIZE_T,mpi_master_a,comm);
+      MPI_Bcast(&mpi_size_b,1,QSBD_MPI_SIZE_T,mpi_master_b,comm);
+      std::vector<std::vector<size_t>> config_begin_a(mpi_size_a,std::vector<size_t>(bitlength,0));
+      std::vector<std::vector<size_t>> config_middle_a(mpi_size_a,std::vector<size_t>(bitlength,0));
+      std::vector<std::vector<size_t>> config_end_a(mpi_size_a,std::vector<size_t>(bitlength,0));
+      std::vector<std::vector<size_t>> config_begin_b(mpi_size_b,std::vector<size_t>(bitlength));
+      std::vector<std::vector<size_t>> config_end_b(mpi_size_b,std::vector<size_t>(bitlength));
+      std::vector<size_t> config_end_a_end(bitlength,0);
+      std::vector<size_t> config_end_b_end(bitlength,0);
+      if( mpi_color == 0 ) {
+	config_begin_a[mpi_rank] = config[0];
+	config_middle_a[mpi_rank] = config[config.size()/2];
+	if( mpi_rank == mpi_master_b-1 ) {
+	  config_end_a_end = config[config.size()-1];
+	  bitadvance(config_end_a_end,bitlength);
+	}
+      }
+      if( mpi_color == 1 ) {
+	config_begin_b[mpi_rank] = config[0];
+	if( mpi_rank == mpi_size-1 ) {
+	  config_end_b_end = config[config.size()-1];
+	  bitadvance(config_end_b_end,bitlength);
+	}
+      }
+      for(int rank=0; rank < mpi_size_a; rank++) {
+	MPI_Bcast(config_begin_a[rank].data(),config_begin_a[rank].size(),QSBD_MPI_SIZE_T,rank,comm);
+	MPI_Bcast(config_middle_a[rank].data(),config_middle_a[rank].size(),QSBD_MPI_SIZE_T,rank,comm);
+      }
+      for(int rank=0; rank < mpi_size_b; rank++) {
+	MPI_Bcast(config_begin_b[rank].data(),config_begin_b[rank].size(),QSBD_MPI_SIZE_T,rank+mpi_size_a,comm);
+      }
+      MPI_Bcast(config_end_a_end.data(),config_end_a_end.size(),QSBD_MPI_SIZE_T,mpi_master_b-1,comm);
+      MPI_Bcast(config_end_b_end.data(),config_end_b_end.size(),QSBD_MPI_SIZE_T,mpi_size-1,comm);
+
+      for(int rank=0; rank < mpi_size_a-1; rank++) {
+	config_end_a[rank] = config_begin_a[rank+1];
+      }
+      config_end_a[mpi_size_a-1] = config_end_a_end;
+      for(int rank=0; rank < mpi_size_b-1; rank++) {
+	config_end_b[rank] = config_begin_b[rank+1];
+      }
+      config_end_b[mpi_size_b-1] = config_end_b_end;
+      
+      if( config_end_a_end > config_begin_b[0] ) {
+	
+	for(int rank=0; rank < mpi_size_half; rank++) {
+	  if( 2*rank == mpi_size-1 ) {
+	    config_begin[2*rank] = config_begin_a[rank];
+	    config_end[2*rank] = config_end_a[rank];
+	  } else if( 2*rank < mpi_size ) {
+	    config_begin[2*rank] = config_begin_a[rank];
+	    config_end[2*rank] = config_middle_a[rank];
+	  }
+	  if( 2*rank+1 < mpi_size ) {
+	    config_begin[2*rank+1] = config_middle_a[rank];
+	    config_begin[2*rank+1] = config_end_a[rank];
+	  }
+	}
+	if( config_begin_b[0] < config_begin[0] ) {
+	  config_begin[0] = config_begin_b[0];
+	}
+	if( config_end[mpi_size_a-1] < config_end_b_end ) {
+	  config_end[mpi_size-1] = config_end_b_end;
+	}
+
+	std::vector<std::vector<size_t>> new_config_b;
+	std::vector<std::vector<size_t>> config_transfer;
+	for(int r_rank=mpi_size-1; r_rank > 0; r_rank--) {
+	  for(int s_rank=mpi_size_b-1; s_rank > -1; s_rank--) {
+	    if( ( config_begin[r_rank] <= config_end_b[s_rank] ) &&
+		( config_begin_b[s_rank] <= config_end[r_rank]  ) ) {
+	      if( s_rank+mpi_size_a == mpi_rank ) {
+		size_t i_begin=0;
+		size_t i_end=config.size();
+		bool i_exist;
+		size_t idxbuff_begin = 0;
+		size_t idxbuff_end = config.size();
+		if( config_begin_b[s_rank] < config_begin[r_rank] ) {
+		  bisection_search(config_begin[r_rank],config,idxbuff_begin,idxbuff_end,i_begin,i_exist);
+		}
+		if( config_end[r_rank] < config_end_b[s_rank] ) {
+		  bisection_search(config_end[r_rank],config,idxbuff_begin,idxbuff_end,i_end,i_exist);
+		}
+		size_t transfer_size = i_end-i_begin;
+		config_transfer.resize(transfer_size);
+		for(size_t i = i_begin; i < i_end; i++) {
+		  config_transfer[i-i_begin] = config[i];
+		}
+		MpiSend(config_transfer,r_rank,comm);
+	      }
+	      if( r_rank == mpi_rank ) {
+		MpiRecv(config_transfer,s_rank+mpi_size_a,comm);
+		new_config_b.insert(new_config_b.end(),config_transfer.begin(),config_transfer.end());
+	      }
+	    }
+	  }
+	} // end send configs from b-block
+	std::vector<std::vector<size_t>> new_config_a;
+	for(int s_rank=0; s_rank < mpi_size_a; s_rank++) {
+	  int r_rank = 2*s_rank;
+	  if( mpi_rank == s_rank ) {
+	    size_t i_begin = 0;
+	    size_t i_end = config.size();
+	    if( r_rank == mpi_size-1 ) {
+	      i_begin = 0;
+	      i_end = config.size();
+	    } else if ( r_rank < mpi_size ) {
+	      i_begin = 0;
+	      i_end = config.size()/2;
+	    }
+	    config_transfer.resize(i_end-i_begin);
+	    for(size_t i=i_begin; i < i_end; i++) {
+	      config_transfer[i-i_begin] = config[i];
+	    }
+	    MpiSend(config_transfer,r_rank,comm);
+	  }
+	  if( mpi_rank == r_rank ) {
+	    MpiRecv(config_transfer,s_rank,comm);
+	    new_config_a.insert(new_config_a.end(),config_transfer.begin(),config_transfer.end());
+	  }
+	  r_rank = 2*s_rank+1;
+	  if( r_rank < mpi_size ) {
+	    if( mpi_rank == s_rank ) {
+	      size_t i_begin = config.size()/2;
+	      size_t i_end = config.size();
+	      config_transfer.resize(i_end-i_begin);
+	      for(size_t i=i_begin; i < i_end; i++) {
+		config_transfer[i-i_begin] = config[i];
+	      }
+	      MpiSend(config_transfer,r_rank,comm);
+	    }
+	    if( mpi_rank == r_rank ) {
+	      MpiRecv(config_transfer,s_rank,comm);
+	      new_config_a.insert(new_config_a.end(),config_transfer.begin(),config_transfer.end());
+	    }
+	  }
+	} // end send configs from a-block
+
+	// WRITE sorted config from sorted a-configs and sorted b-configs (O(N) method)
+	
+      } // if( config_end_a_end > config_begin_b_begin ) to skip case where it is already sorted.
+    }
+  }
+
+  void change_bitlength(size_t bit_length_a, std::vector<size_t> & b, size_t bit_length_b) {
+    std::vector<size_t> a = b;
+    size_t a_size = a.size();
+    size_t total_bit_length_a = a_size * bit_length_a;
+    size_t b_size = total_bit_length_a / bit_length_b;
+    if( total_bit_length_a % bit_length_b != 0 ) {
+      b_size++;
+    }
+    b.resize(b_size);
+
+    size_t a_max_order = bit_length_a;
+    size_t min_order = 0;
+    size_t b_max_order = bit_length_b;
+    size_t maxbit_b = (((size_t) 1) << bit_length_b) - 1;
+
+    size_t v_a = a[0];
+    size_t i_a = 0;
+    for(size_t i=0; i < b_size; i++) {
+      while ( a_max_order < b_max_order ) {
+	i_a++;
+	if( i_a < a_size ) {
+	  v_a += (a[i_a] << (a_max_order - min_order));
+	}
+	a_max_order += bit_length_a;
+      }
+      b[i] = v_a & maxbit_b;
+      v_a = v_a >> bit_length_b;
+      min_order += bit_length_b;
+      b_max_order += bit_length_b;
+    }
+  }
+
+  void change_bitlength(size_t bit_length_a, std::vector<std::vector<size_t>> & b, size_t bit_length_b) {
+    std::vector<size_t> a = b[0];
+    size_t a_size = a.size();
+    size_t total_bit_length_a = a_size * bit_length_a;
+    size_t b_size = total_bit_length_a / bit_length_b;
+    if( total_bit_length_a % bit_length_b != 0 ) {
+      b_size++;
+    }
+    size_t maxbit_b = (((size_t) 1) << bit_length_b) - 1;
+    
+    for(size_t k=0; k < b.size(); k++) {
+      a = b[k];
+      b[k].resize(b_size);
+      
+      size_t a_max_order = bit_length_a;
+      size_t min_order = 0;
+      size_t b_max_order = bit_length_b;
+      size_t v_a = a[0];
+      size_t i_a = 0;
+      for(size_t i=0; i < b_size; i++) {
+	while ( a_max_order < b_max_order ) {
+	  i_a++;
+	  if( i_a < a_size ) {
+	    v_a += (a[i_a] << (a_max_order - min_order));
+	  }
+	  a_max_order += bit_length_a;
+	}
+	b[k][i] = (v_a & maxbit_b);
+	v_a = (v_a >> bit_length_b);
+	min_order += bit_length_b;
+	b_max_order += bit_length_b;
+      }
+    }
+  }
+
+  
+  
+  
+
+}
+
+#endif
