@@ -126,7 +126,7 @@ Redistribution to make distribution uniformly
 Reordering to the lexographical order
 */
     void Reordering() {
-      mpi_sort_bitarray(config_,config_begin_,config_end_,index_begin_,index_end_,comm_);
+      mpi_sort_bitarray(config_,config_begin_,config_end_,index_begin_,index_end_,bit_length_,comm_);
     }
 
 

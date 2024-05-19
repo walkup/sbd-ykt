@@ -320,7 +320,22 @@ Function for finding the state index of target bit string
     for(size_t rank=0; rank < mpi_size; rank++) {
       get_mpi_range(mpi_size,rank,i_begin[rank],i_end[rank]);
     }
-    std::vector<std::vector<size_t>> new_config(i_end[mpi_rank]-i_begin[mpi_rank],std::vector<size_t>(config_size));
+
+    /*
+    for(int rank=0; rank < mpi_size; rank++) {
+      if( mpi_rank == mpi_master ) {
+	std::cout << " i_begin, i_end in rank " << rank;
+	for(int r=0; r < mpi_size; r++) {
+	  std::cout << "[" << i_begin[r] << "," << i_end[r] << ")";
+	}
+	std::cout << std::endl;
+      }
+    }
+    */
+    
+    size_t new_config_size = i_end[mpi_rank]-i_begin[mpi_rank];
+    // std::vector<std::vector<size_t>> new_config(new_config_size,std::vector<size_t>(config_size));
+    std::vector<std::vector<size_t>> new_config;
     for(int rank=0; rank < mpi_size; rank++) {
       // find i_begin and i_end mpi process
       int mpi_rank_begin=0;
@@ -331,25 +346,28 @@ Function for finding the state index of target bit string
 	  break;
 	}
       }
-      for(int r=0; r < mpi_size; r++) {
-	if ( index_begin[r] < i_end[rank] && i_end[r] <= index_end[r] ) {
+      for(int r=mpi_size-1; r > -1; r--) {
+	if ( index_begin[r] < i_end[rank] && i_end[rank] <= index_end[r] ) {
 	  mpi_rank_end = r;
 	  break;
 	}
       }
+      std::vector<std::vector<size_t>> config_transfer;
+      size_t i_new = 0;
       for(int send_rank=mpi_rank_begin; send_rank <= mpi_rank_end; send_rank++) {
-	for(size_t i=std::max(i_begin[rank],index_begin[send_rank]); i < std::min(i_end[rank],index_begin[send_rank]); i++) {
-	  if( mpi_rank == send_rank ) {
-	    MPI_Send(config[i-index_begin[send_rank]].data(),
-		     config_size,
-		     QSBD_MPI_SIZE_T,rank,0,comm);
+	if( mpi_rank == send_rank ) {
+	  size_t ii_min = std::max(i_begin[rank],index_begin[send_rank]);
+	  size_t ii_max = std::min(i_end[rank],index_end[send_rank]);
+	  config_transfer.resize(ii_max-ii_min);
+	  for(size_t i=ii_min; i < ii_max; i++) {
+	    config_transfer[i-ii_min] = config[i-index_begin[send_rank]];
 	  }
-	  if( mpi_rank == rank ) {
-	    MPI_Status status;
-	    MPI_Recv(new_config[i-i_begin[rank]].data(),
-		     config_size,
-		     QSBD_MPI_SIZE_T,send_rank,0,comm,&status);
-	  }
+	  MpiSend(config_transfer,rank,comm);
+	}
+	if( mpi_rank == rank ) {
+	  MpiRecv(config_transfer,send_rank,comm);
+	  new_config.insert(new_config.begin()+i_new,config_transfer.begin(),config_transfer.end());
+	  i_new += config_transfer.size();
 	}
       }
     }
@@ -371,16 +389,19 @@ Function for finding the state index of target bit string
 			 std::vector<std::vector<size_t>> & config_end,
 			 std::vector<size_t> & index_begin,
 			 std::vector<size_t> & index_end,
-			 MPI_Comm & comm) {
+			 size_t bit_length,
+			 MPI_Comm comm) {
+    int mpi_master = 0;
     int mpi_size; MPI_Comm_size(comm,&mpi_size);
     int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
-    size_t bitlength = config[0].size();
+    size_t bit_size = config[0].size();
     if( mpi_size == 1 ) {
       sort_bitarray(config);
       config_begin[mpi_rank] = config[0];
       config_end[mpi_rank] = config[config.size()-1];
       index_begin[mpi_rank] = 0;
-      index_begin[mpi_rank] = config.size()-1;
+      index_end[mpi_rank] = config.size()-1;
+      
     } else {
       // mpi_size = 2 -> mpi_size_half = 1, mpi_rank / mpi_size_half = 0 or 1
       // mpi_size = 3 -> mpi_size_half = 2, mpi_rank / mpi_size_half = 0 or 1
@@ -390,48 +411,42 @@ Function for finding the state index of target bit string
       int mpi_key = mpi_rank % mpi_size_half;
       MPI_Comm new_comm;
       MPI_Comm_split(comm,mpi_color,mpi_key,&new_comm);
-      mpi_sort_bitarray(config,config_begin,config_end,index_begin,index_end,new_comm);
+      mpi_sort_bitarray(config,config_begin,config_end,index_begin,index_end,bit_length,new_comm);
+
       // determine the range to be managed by each node
-      int mpi_size_a;
-      int mpi_size_b;
+      int mpi_size_a = mpi_size_half;
+      int mpi_size_b = mpi_size - mpi_size_half;
       int mpi_master_a = 0;
       int mpi_master_b = mpi_size_half;
-      if( mpi_rank == mpi_master_a ) {
-	MPI_Comm_size(new_comm,&mpi_size_a);
-      }
-      if( mpi_rank == mpi_master_b ) {
-	MPI_Comm_size(new_comm,&mpi_size_b);
-      }
-      MPI_Bcast(&mpi_size_a,1,QSBD_MPI_SIZE_T,mpi_master_a,comm);
-      MPI_Bcast(&mpi_size_b,1,QSBD_MPI_SIZE_T,mpi_master_b,comm);
-      std::vector<std::vector<size_t>> config_begin_a(mpi_size_a,std::vector<size_t>(bitlength,0));
-      std::vector<std::vector<size_t>> config_middle_a(mpi_size_a,std::vector<size_t>(bitlength,0));
-      std::vector<std::vector<size_t>> config_end_a(mpi_size_a,std::vector<size_t>(bitlength,0));
-      std::vector<std::vector<size_t>> config_begin_b(mpi_size_b,std::vector<size_t>(bitlength));
-      std::vector<std::vector<size_t>> config_end_b(mpi_size_b,std::vector<size_t>(bitlength));
-      std::vector<size_t> config_end_a_end(bitlength,0);
-      std::vector<size_t> config_end_b_end(bitlength,0);
+      std::vector<std::vector<size_t>> config_begin_a(mpi_size_a,std::vector<size_t>(bit_size,0));
+      std::vector<std::vector<size_t>> config_middle_a(mpi_size_a,std::vector<size_t>(bit_size,0));
+      std::vector<std::vector<size_t>> config_end_a(mpi_size_a,std::vector<size_t>(bit_size,0));
+      std::vector<std::vector<size_t>> config_begin_b(mpi_size_b,std::vector<size_t>(bit_size));
+      std::vector<std::vector<size_t>> config_end_b(mpi_size_b,std::vector<size_t>(bit_size));
+      std::vector<size_t> config_end_a_end(bit_size,0);
+      std::vector<size_t> config_end_b_end(bit_size,0);
       if( mpi_color == 0 ) {
-	config_begin_a[mpi_rank] = config[0];
-	config_middle_a[mpi_rank] = config[config.size()/2];
-	if( mpi_rank == mpi_master_b-1 ) {
+	config_begin_a[mpi_key] = config[0];
+	config_middle_a[mpi_key] = config[config.size()/2];
+	if( mpi_key == mpi_size_a - 1 ) {
 	  config_end_a_end = config[config.size()-1];
-	  bitadvance(config_end_a_end,bitlength);
+	  bitadvance(config_end_a_end,bit_length);
 	}
       }
       if( mpi_color == 1 ) {
-	config_begin_b[mpi_rank] = config[0];
-	if( mpi_rank == mpi_size-1 ) {
+	config_begin_b[mpi_key] = config[0];
+	if( mpi_key == mpi_size_b-1 ) {
 	  config_end_b_end = config[config.size()-1];
-	  bitadvance(config_end_b_end,bitlength);
+	  bitadvance(config_end_b_end,bit_length);
 	}
       }
+      MPI_Barrier(comm);
       for(int rank=0; rank < mpi_size_a; rank++) {
-	MPI_Bcast(config_begin_a[rank].data(),config_begin_a[rank].size(),QSBD_MPI_SIZE_T,rank,comm);
-	MPI_Bcast(config_middle_a[rank].data(),config_middle_a[rank].size(),QSBD_MPI_SIZE_T,rank,comm);
+	MPI_Bcast(config_begin_a[rank].data(),bit_size,QSBD_MPI_SIZE_T,rank,comm);
+	MPI_Bcast(config_middle_a[rank].data(),bit_size,QSBD_MPI_SIZE_T,rank,comm);
       }
       for(int rank=0; rank < mpi_size_b; rank++) {
-	MPI_Bcast(config_begin_b[rank].data(),config_begin_b[rank].size(),QSBD_MPI_SIZE_T,rank+mpi_size_a,comm);
+	MPI_Bcast(config_begin_b[rank].data(),bit_size,QSBD_MPI_SIZE_T,mpi_master_b+rank,comm);
       }
       MPI_Bcast(config_end_a_end.data(),config_end_a_end.size(),QSBD_MPI_SIZE_T,mpi_master_b-1,comm);
       MPI_Bcast(config_end_b_end.data(),config_end_b_end.size(),QSBD_MPI_SIZE_T,mpi_size-1,comm);
@@ -444,7 +459,7 @@ Function for finding the state index of target bit string
 	config_end_b[rank] = config_begin_b[rank+1];
       }
       config_end_b[mpi_size_b-1] = config_end_b_end;
-      
+
       if( config_end_a_end > config_begin_b[0] ) {
 	
 	for(int rank=0; rank < mpi_size_half; rank++) {
@@ -457,7 +472,7 @@ Function for finding the state index of target bit string
 	  }
 	  if( 2*rank+1 < mpi_size ) {
 	    config_begin[2*rank+1] = config_middle_a[rank];
-	    config_begin[2*rank+1] = config_end_a[rank];
+	    config_end[2*rank+1] = config_end_a[rank];
 	  }
 	}
 	if( config_begin_b[0] < config_begin[0] ) {
@@ -469,11 +484,11 @@ Function for finding the state index of target bit string
 
 	std::vector<std::vector<size_t>> new_config_b;
 	std::vector<std::vector<size_t>> config_transfer;
-	for(int r_rank=mpi_size-1; r_rank > 0; r_rank--) {
-	  for(int s_rank=mpi_size_b-1; s_rank > -1; s_rank--) {
+	for(int r_rank=0; r_rank < mpi_size; r_rank++) {
+	  for(int s_rank=0; s_rank < mpi_size_b; s_rank++) {
 	    if( ( config_begin[r_rank] <= config_end_b[s_rank] ) &&
 		( config_begin_b[s_rank] <= config_end[r_rank]  ) ) {
-	      if( s_rank+mpi_size_a == mpi_rank ) {
+	      if( s_rank+mpi_master_b == mpi_rank ) {
 		size_t i_begin=0;
 		size_t i_end=config.size();
 		bool i_exist;
@@ -493,41 +508,46 @@ Function for finding the state index of target bit string
 		MpiSend(config_transfer,r_rank,comm);
 	      }
 	      if( r_rank == mpi_rank ) {
-		MpiRecv(config_transfer,s_rank+mpi_size_a,comm);
+		MpiRecv(config_transfer,s_rank+mpi_master_b,comm);
 		new_config_b.insert(new_config_b.end(),config_transfer.begin(),config_transfer.end());
 	      }
 	    }
 	  }
 	} // end send configs from b-block
+	
 	std::vector<std::vector<size_t>> new_config_a;
 	for(int s_rank=0; s_rank < mpi_size_a; s_rank++) {
-	  int r_rank = 2*s_rank;
-	  if( mpi_rank == s_rank ) {
-	    size_t i_begin = 0;
-	    size_t i_end = config.size();
-	    if( r_rank == mpi_size-1 ) {
-	      i_begin = 0;
-	      i_end = config.size();
-	    } else if ( r_rank < mpi_size ) {
-	      i_begin = 0;
-	      i_end = config.size()/2;
+	  int r_rank = 2 * s_rank;
+	  if( r_rank < mpi_size ) {
+	    if( mpi_rank == s_rank ) {
+	      size_t i_begin = 0;
+	      size_t i_end = config.size();
+	      if( r_rank == mpi_size-1 ) {
+		i_begin = 0;
+		i_end = config.size();
+	      } else {
+		i_begin = 0;
+		i_end = config.size()/2;
+	      }
+	      size_t transfer_size = i_end-i_begin;
+	      config_transfer.resize(transfer_size);
+	      for(size_t i=i_begin; i < i_end; i++) {
+		config_transfer[i-i_begin] = config[i];
+	      }
+	      MpiSend(config_transfer,r_rank,comm);
 	    }
-	    config_transfer.resize(i_end-i_begin);
-	    for(size_t i=i_begin; i < i_end; i++) {
-	      config_transfer[i-i_begin] = config[i];
+	    if( mpi_rank == r_rank ) {
+	      MpiRecv(config_transfer,s_rank,comm);
+	      new_config_a.insert(new_config_a.end(),config_transfer.begin(),config_transfer.end());
 	    }
-	    MpiSend(config_transfer,r_rank,comm);
-	  }
-	  if( mpi_rank == r_rank ) {
-	    MpiRecv(config_transfer,s_rank,comm);
-	    new_config_a.insert(new_config_a.end(),config_transfer.begin(),config_transfer.end());
 	  }
 	  r_rank = 2*s_rank+1;
 	  if( r_rank < mpi_size ) {
 	    if( mpi_rank == s_rank ) {
 	      size_t i_begin = config.size()/2;
 	      size_t i_end = config.size();
-	      config_transfer.resize(i_end-i_begin);
+	      size_t transfer_size = i_end-i_begin;
+	      config_transfer.resize(transfer_size);
 	      for(size_t i=i_begin; i < i_end; i++) {
 		config_transfer[i-i_begin] = config[i];
 	      }
@@ -540,30 +560,50 @@ Function for finding the state index of target bit string
 	  }
 	} // end send configs from a-block
 
-	// WRITE sorted config from sorted a-configs and sorted b-configs (O(N) method)
+	// Sorted config from sorted a-configs and sorted b-configs (O(N) method)
 	size_t config_size = new_config_a.size() + new_config_b.size();
 	config.resize(config_size);
 	size_t idx_a = 0;
 	size_t idx_b = 0;
 	size_t idx_c = 0;
 
-	while ( idx_a < new_config_a.size() && idx_b < new_config_b.size() ) {
-	  if( new_config_a[idx_a] < new_config_b[idx_b] ) {
+	while ( ( idx_a < new_config_a.size() ) && ( idx_b < new_config_b.size() ) ) {
+	  
+	  if ( idx_a == new_config_a.size() ) {
+	    config[idx_c] = new_config_b[idx_b];
+	    idx_c++;
+	    idx_b++;
+	  } else if ( new_config_a[idx_a] < new_config_b[idx_b] ) {
 	    config[idx_c] = new_config_a[idx_a];
 	    idx_a++;
 	    idx_c++;
-	  } else if ( new_config_b[idx_b] < new_config_b[idx_b] ) {
+	  } else if ( new_config_b[idx_b] < new_config_a[idx_a] ) {
 	    config[idx_c] = new_config_b[idx_b];
 	    idx_b++;
 	    idx_c++;
 	  } else {
-	    if( config[idx_c-1] < new_config_a[idx_a] ) {
+	    if( idx_c == 0 ) {
+	      config[idx_c] = new_config_a[idx_a];
+	      idx_c++;
+	    } else if( config[idx_c-1] < new_config_a[idx_a] ) {
 	      config[idx_c] = new_config_a[idx_a];
 	      idx_c++;
 	    }
 	    idx_b++;
 	    idx_a++;
 	  }
+	}
+
+	while ( idx_a < new_config_a.size() ) {
+	  config[idx_c] = new_config_a[idx_a];
+	  idx_a++;
+	  idx_c++;
+	}
+
+	while( idx_b < new_config_b.size() ) {
+	  config[idx_c] = new_config_b[idx_b];
+	  idx_b++;
+	  idx_c++;
 	}
 
 	std::vector<size_t> new_config_size(mpi_size,0);
