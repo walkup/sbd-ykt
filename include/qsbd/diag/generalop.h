@@ -1,0 +1,605 @@
+/**
+@file qsbd/diag/basis.h
+@brief Class to manage the operator
+*/
+#ifndef QSBD_DIAG_GENERALOP_H
+#define QSBD_DIAG_GENERALOP_H
+
+namespace qsbd {
+
+  class FieldOp;
+
+  class ProductOp;
+
+  template <typename ElemT>
+  class GeneralOp;
+
+  class FieldOp {
+  public:
+    FieldOp()
+      : d_(false), q_(0) {}
+    FieldOp(bool d, int x)
+      : d_(d), q_(q) {}
+    FieldOp(const FieldOp & other)
+      : d_(other.d_), q_(other.q_) {}
+    ~FieldOp() {}
+
+    FieldOp & operator = (const FieldOp & other) {
+      if( this != &other ) {
+	copy(other);
+      }
+      return *this;
+    }
+
+    bool operator == (const FieldOp & other) const {
+      return ( ( d_ == other.d_ ) && ( q_ == other.q_ ) );
+    }
+
+    bool operator != (const FieldOp & other) const {
+      return ( ( d_ != other.d_ ) || ( q_ != other.q_ ) );
+    }
+
+    bool operator < (const FieldOp & other) const {
+      if( q_ < other.q_ ) {
+	return true;
+      }
+      return false;
+    }
+
+    bool operator > (const FieldOp & other) const {
+      if( q_ > other.q_ ) {
+	return true;
+      }
+      return false;
+    }
+
+    friend class ProductOp;
+    
+    template <typename ElemT_>
+    friend class GeneralOp;
+
+    // out of place functions
+    
+    void dagger() { d_ = !d_; }
+    bool d() const { return d_; }
+    int q() const { return q_; }
+
+    ProductOp operator * (const FieldOp & a, const FieldOp & b) const;
+    friend std::ostream & operator << (std::ostream & s,
+				       const FieldOp & o);
+      
+  private:
+    bool d_;
+    int q_;
+    void copy(const FieldOp & other) {
+      d_ = other.d_;
+      q_ = other.q_;
+    }
+  }; // end FieldOp
+
+  
+
+  class ProductOp {
+  public:
+    ProductOp()
+      : n_dag_(0), fops_(0) {}
+    ProductOp(const ProductOp & other)
+      : n_dag_(other.n_dag_), fops_(other.fops_) {}
+    ProductOp(const FieldOp & other)
+      : fops_(1,other) { if( other.d_ ) n_dag_ = 1; else n_dag_ = 0; }
+    ProductOp(int i)
+      : n_dag_(0), fops_(i) {}
+    ~ProductOp() {}
+
+    ProductOp & operator = (const FieldOp & other) {
+      *this = ProductOp(other);
+      return *this;
+    }
+
+    ProductOp & operator = (const ProductOp & other) {
+      if( this != &other ) {
+	copy(other);
+      }
+      return *this;
+    }
+
+    bool operator == (const ProductOp & other) const {
+      bool res = true;
+      if( fops_.size() != other.fops_.size() ) {
+	return false;
+      } else {
+	for(size_t i=0; i < fops_.size(); i++) {
+	  if( fops_[i] != other.fops_[i] ) {
+	    res = false;
+	    break;
+	  }
+	}
+      }
+      return res;
+    }
+
+    ProductOp operator * (const ProductOp & other) const {
+      ProductOp res(*this);
+      for(size_t i=0; i < other.fops_.size(); i++)
+	{
+	  res.fops_.push_back(other.fops_[i]);
+	  if(other.fops_[i].d_)
+	    {
+	      res.n_dag_ += 1;
+	    }
+	}
+      return res;
+    }
+
+        ProductOp operator * (const FieldOp & other) const
+      {
+	ProductOp res(*this);
+	res.fops_.push_back(other);
+	if( other.d_ )
+	  {
+	    res.n_dag_ += 1;
+	  }
+	return res;
+      }
+    
+    ProductOp & operator *= (const ProductOp & other)
+      {
+	for(size_t i=0; i < other.fops_.size(); i++)
+	  {
+	    fops_.push_back(other.fops_[i]);
+	    if( other.fops_[i].d_ )
+	      {
+		n_dag_ += 1;
+	      }
+	  }
+	return *this;
+      }
+
+    ProductOp & operator *= (const FieldOp & other)
+      {
+	fops_.push_back(other);
+	if( other.d_ )
+	  {
+	    n_dag_ += 1;
+	  }
+	return *this;
+      }
+    
+
+    ProductOp extract(int i1, int i2) const
+    {
+      ProductOp res;
+      res.n_dag_ = 0;
+      for(int i=i1; i < i2; i++)
+	{
+	  res.fops_.push_back(this->fops_[i]);
+	  if( this->fops_[i].d_ )
+	    {
+	      res.n_dag_ += 1;
+	    }
+	}
+      return res;
+    }
+
+    bool check_diagonal() const {
+      int nc=0;
+      int na=0;
+      for(int i=0; i < fops_.size(); i++) {
+	if ( fops_[i].d_ ) {
+	  nc++;
+	} else {
+	  na++;
+	}
+      }
+
+      if( nc != na ) {
+	return false;
+      }
+    
+      for(int i=0; i < fops_.size(); i++) {
+	if( fops_[i].d_ ) {
+	  FieldOp f1 = fops_[i];
+	  f1.dagger();
+	  bool not_find = true;
+	  for(int j=0; j < fops_.size(); j++) {
+	    if( i != j ) {
+	      if( f1 == fops_[j] ) {
+		not_find = false;
+	      }
+	    }
+	  }
+	  if( not_find ) {
+	    return false;
+	  }
+	}
+      }
+      return true;
+    }
+
+    size_t size() const { return fops_.size(); }
+    int n_dag() const { return n_dag_; }
+    
+    void dagger()
+    {
+      std::vector<FieldOp> fops(this->fops_);
+      for(size_t i=0; i < fops.size(); i++) {
+	fops_[i] = fops[fops_.size()-1-i];
+	fops_[i].dagger();
+      }
+    }
+
+    int max_index() const {
+      int int_res=0;
+      for(size_t k=0; k < fops_.size(); k++) {
+	if( int_res < fops_[k].x_ ) {
+	  int_res = fops_[k].x_;
+	}
+      }
+      return int_res;
+    }
+
+    // out of place functions
+    template <typename ElemT_>
+    friend GeneralOp<ElemT_> operator * (const GeneralOp<ElemT_> & G, Real c);
+    
+    template <typename ElemT_>
+    friend GeneralOp<ElemT_> operator * (const GeneralOp<ElemT_> & G, Complex c);
+
+    template <typename ElemT_>
+    friend GeneralOp<ElemT_> operator + (const GeneralOp<ElemT_> & G, const ProductOp & other);
+
+    template <typename ElemT_>
+    friend GeneralOp<ElemT_> operator - (const GeneralOp<ElemT_> & G, const ProductOp & other);
+    
+    template <typename ElemT_>
+    friend void NormalOrdering(const ProductOp & P, const std::vector<basis_type> & type, GeneralOp<ElemT_> & G);
+
+    friend std::ostream & operator << (std::ostream & s, const ProductOp & op);
+    
+    friend class FieldOp;
+    friend class GeneralOp;
+    
+  private:
+    int n_dag_;
+    std::vector<FieldOp> fops_;
+    void copy(const ProductOp & other) {
+      n_dag_ = other.n_dag_;
+      fops_ = other.fops_;
+    }
+    
+  }; // end ProductOp
+
+  template <typename ElemT>
+  class GeneralOp {
+
+  public:
+    GeneralOp()
+      : e_(0), c_(0), d_(0), o_(0) {}
+
+    GeneralOp(const ProductOp & other)
+      : e_(0), c_(1,ElemT(1.0)), d_(0), o_(1,other) {}
+
+    GeneralOp(ElemT c, const ProductOp & other)
+      : e_(0), c_(1,c), d_(0), o_(1,other) {}
+
+    GeneralOp(const GeneralOp & other)
+      : e_(other.e_), c_(other.c_), d_(other.d_), o_(other.o_) {}
+
+    ~GeneralOp() {}
+
+    GeneralOp & operator = (const GeneralOp & other) {
+      if( this != &other ) {
+	copy(other);
+      }
+      return *this;
+    }
+
+    GeneralOp & operator = (const ProductOp & other) {
+      if( other.check_diagonal() ) {
+	e_.resize(1,ElemT(1.0));
+	d_.resize(1,other);
+	c_.resize(0);
+	o_.resize(0);
+      } else {
+	e_.resize(0);
+	d_.resize(0);
+	c_.resize(1,ElemT(1.0));
+	o_.resize(1,other);
+      }
+      return *this;
+    }
+
+    GeneralOp & operator = (const FieldOp & other) {
+      e_.resize(0);
+      d_.resize(0);
+      c_.resize(1,ElemT(1.0));
+      ProductOp f(other);
+      o_.resize(1,f);
+      return *this;
+    }
+
+    GeneralOp operator * (const GeneralOp & other) {
+      GeneralOp res;
+
+      size_t nd = this->d_.size();
+      size_t no = this->o_.size();
+      size_t md = other.d_.size();
+      size_t mo = other.o_.size();
+      
+      res.e_.resize(nd*md);
+      res.d_.resize(nd*md);
+      res.c_.resize(nd*mo+no*md+no*mo);
+      res.o_.resize(nd*mo+no*md+no*mo);
+      
+      for(size_t i=0; i < nd; i++) {
+	for(size_t j=0; j < md; j++) {
+	  res.e_[j+md*i] = this->e_[i] * other.e_[j];
+	  res.d_[j+md*i] = this->d_[i] * other.d_[j];
+	}
+      }
+
+      int nt=0;
+
+      for(size_t i=0; i < nd; i++) {
+	for(size_t j=0; j < mo; j++) {
+	  res.c_[nt+j+mo*i] = this->e_[i] * other.c_[j];
+	  res.o_[nt+j+mo*i] = this->d_[i] * other.o_[j];
+	}
+      }
+      
+      nt += nd*mo;
+      
+      for(size_t i=0; i < no; i++) {
+	for(size_t j=0; j < md; j++) {
+	  res.c_[nt+j+md*i] = this->c_[i] * other.e_[j];
+	  res.o_[nt+j+md*i] = this->o_[i] * other.d_[j];
+	}
+      }
+      
+      nt += no*md;
+	
+      for(size_t i=0; i < no; i++) {
+	for(size_t j=0; j < mo; j++) {
+	  res.c_[nt+j+mo*i] = this->c_[i] * other.c_[j];
+	  res.o_[nt+j+mo*i] = this->o_[i] * other.o_[j];
+	}
+      }
+      
+      return res;
+    }
+
+    GeneralOp operator * (const ProductOp & other) const {
+      GeneralOp res;
+      
+      if( other.check_diagonal() ) {
+	for(size_t i=0; i < d_.size(); i++) {
+	  ProductOp term = this->d_[i];
+	  term *= other;
+	  res.d_.push_back(term);
+	  res.e_.push_back(this->e_[i]);
+	}
+	
+	for(size_t i=0; i < o_.size(); i++) {
+	  ProductOp term = this->o_[i];
+	  term *= other;
+	  res.o_.push_back(term);
+	  res.c_.push_back(this->c_[i]);
+	}
+      } else {
+	for(size_t i=0; i < d_.size(); i++) {
+	  ProductOp term = this->d_[i];
+	  term *= other;
+	  res.o_.push_back(term);
+	  res.c_.push_back(this->e_[i]);
+	}
+	    
+	for(size_t i=0; i < o_.size(); i++) {
+	  ProductOp term = this->o_[i];
+	  term *= other;
+	  res.o_.push_back(term);
+	  res.c_.push_back(this->c_[i]);
+	}
+      }
+      return res;
+    }
+    
+    GeneralOp operator * (const FieldOp & other) const {
+      GeneralOp res;
+      
+      for(size_t i=0; i < d_.size(); i++) {
+	ProductOp term = this->d_[i];
+	term *= other;
+	res.o_.push_back(term);
+	res.c_.push_back(this->e_[i]);
+      }
+	
+      for(size_t i=0; i < o_.size(); i++) {
+	ProductOp term = this->o_[i];
+	term *= other;
+	res.o_.push_back(term);
+	res.c_.push_back(this->c_[i]);
+      }
+
+      return res;
+    }
+
+    GeneralOp & operator *= (const GeneralOp & other) {
+      GeneralOp temp(*this);
+      *this = temp * other;
+      return *this;
+    }
+    
+    GeneralOp & operator *= (const ProductOp & other) {
+      GeneralOp temp(*this);
+      *this = temp * other;
+      return *this;
+    }
+    
+    GeneralOp & operator *= (const FieldOp & other) {
+      GeneralOp temp(*this);
+      *this = temp * other;
+      return *this;
+    }
+
+    GeneralOp & operator += (const GeneralOp & other) {
+      for(size_t i=0; i < other.d_.size(); i++) {
+	this->d_.push_back(other.d_[i]);
+	this->e_.push_back(other.e_[i]);
+      }
+      for(size_t i=0; i < other.o_.size(); i++) {
+	this->o_.push_back(other.o_[i]);
+	this->c_.push_back(other.c_[i]);
+      }
+      return *this;
+    }
+
+    GeneralOp & operator += (const ProductOp & other) {
+      if( other.check_diagonal() ) {
+	this->d_.push_back(other);
+	this->e_.push_back(Complex_1);
+      } else {
+	this->o_.push_back(other);
+	this->c_.push_back(Complex_1);
+      }
+      return *this;
+    }
+
+    GeneralOp & operator -= (const GeneralOp & other) {
+      for(size_t i=0; i < other.d_.size(); i++) {
+	this->d_.push_back(other.d_[i]);
+	this->e_.push_back(-other.e_[i]);
+      }
+      for(size_t i=0; i < other.o_.size(); i++) {
+	this->o_.push_back(other.o_[i]);
+	this->c_.push_back(-other.c_[i]);
+      }
+      return *this;
+    }
+
+    GeneralOp & operator -= (const ProductOp & other) {
+      if( other.check_diagonal() ) {
+	this->d_.push_back(other);
+	this->c_.push_back(-Complex_1);
+      } else {
+	this->o_.push_back(other);
+	this->c_.push_back(-Complex_1);
+      }
+      return *this;
+    }
+
+    GeneralOp operator + (const GeneralOp & other) const {
+      GeneralOp res(*this);
+      res += other;
+      return res;
+    }
+      
+    GeneralOp operator + (const ProductOp & other) const {
+      GeneralOp res(*this);
+      res += other;
+      return res;
+    }
+
+    GeneralOp & operator *= (Complex c) {
+      for(size_t i=0; i < this->d_.size(); i++) {
+	this->e_[i] *= c;
+      }
+      for(size_t i=0; i < this->o_.size(); i++) {
+	this->c_[i] *= c;
+      }
+      return *this;
+    }
+    
+    GeneralOp & operator += (Complex c) {
+      ProductOp one = ProductOp();
+      this->d_.push_back(one);
+      this->e_.push_back(c);
+      return *this;
+    }
+
+    // take Hermitian conjugate
+    void dagger() {
+      for(size_t i=0; i < this->d_.size(); i++) {
+	Complex c = conj(this->e_[i]);
+	this->e_[i] = c;
+      }
+      for(size_t i=0; i < this->o_.size(); i++) {
+	this->o_[i].dagger();
+	Complex c = conj(this->c_[i]);
+	this->c_[i] = c;
+      }
+    }
+
+    size_t size() const { return d_.size()+o_.size(); }
+    int num_terms() const { return d_.size()+o_.size(); }
+
+    ProductOp & NcTerm(int i) { return d_[i]; }
+    ProductOp NcTerm(int i) const { return d_[i]; }
+    ElemT & NcCoef(int i) { return e_[i]; }
+    ElemT NcCoef(int i) const { return e_[i]; }
+
+    ProductOp & OpTerm(int i) { return o_[i]; }
+    ProductOp OpTerm(int i) const { return o_[i]; }
+    ElemT & OpCoef(int i) { return c_[i]; }
+    ElemT OpCoef(int i) const { return c_[i]; }
+
+    // out-of-place function
+    template <typename ElemT_>
+    friend void NormalOrdering(GeneralOp<ElemT_> & G);
+
+    template <typename ElemT_>
+    friend void Simplify(GeneralOp<ElemT_> & G);
+
+    template <typename ElemT_>
+    void mult(const GeneralOp<ElemT_> & H, std::vector<ElemT_> & C, const basis & B);
+    
+    template <typename ElemT_>
+    void mult(const GeneralOp<ElemT_> & H, std::vector<ElemT_> & C, const basis & B, MPI_Comm comm);
+
+    int max_index() const {
+      int int_res = 0;
+      for(int k=0; k < d_.size(); k++) {
+	int int_temp = d_[k].max_index(b);
+	if( int_res < int_temp ) {
+	  int_res = int_temp;
+	}
+      }
+      for(int k=0; k < o_.size(); k++) {
+	int int_temp = o_[k].max_index(b);
+	if( int_res < int_temp ) {
+	  int_res = int_temp;
+	}
+      }
+      return int_res;
+    }
+
+    template <typename ElemT_>
+    friend std::ostream & operator << (std::ostream & s,
+				       const GeneralOp<ElemT_> & gop);
+
+  private:
+    std::vector<ElemT> e_; // coefficient for diagonal part
+    std::vector<ElemT> c_; // coefficient for off-diagonal part
+    std::vector<ProductOp> d_; // diagonal part
+    std::vector<ProductOp> o_; // off-diagonal part
+    void copy(const GeneralOp & other) {
+      e_ = other.e_;
+      c_ = other.c_;
+      d_ = other.d_;
+      o_ = other.o_;
+    }
+
+    void init() {
+      e_.resize(0);
+      c_.resize(0);
+      d_.resize(0);
+      o_.resize(0);
+    }
+    
+  }; // end GeneralOp
+
+  
+  
+}
+
+#endif // QSBD_DIAG_GENERALOP_H
+

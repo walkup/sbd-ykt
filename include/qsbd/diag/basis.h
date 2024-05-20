@@ -12,19 +12,20 @@
 
 namespace qsbd {
 
-  class basis {
+#define QSBD_BIT_LENGTH 30
+  
+  class Basis {
   public:
 
 /**
 Default constructor for basis
  */
-    basis() : config_(), index_begin_(), index_end_(), config_begin_(), config_end_() {}
+    Basis() : config_(), index_begin_(), index_end_(), config_begin_(), config_end_() {}
 
 /**
 Copy constructor for basis
  */
-    basis(const basis & other) :
-      bit_length_(other.bit_length_),
+    Basis(const Basis & other) :
       config_(other.config_),
       index_begin_(other.index_begin_), index_end_(other.index_end_),
       config_begin_(other.config_begin_), config_end_(other.config_end_) {}
@@ -32,7 +33,7 @@ Copy constructor for basis
 /**
 Copy operator
 */
-    basis & operator = (const basis & other) {
+    Basis & operator = (const Basis & other) {
       if( this != &other ) {
 	copy(other);
       }
@@ -126,60 +127,103 @@ Redistribution to make distribution uniformly
 Reordering to the lexographical order
 */
     void Reordering() {
-      mpi_sort_bitarray(config_,config_begin_,config_end_,index_begin_,index_end_,bit_length_,comm_);
+      mpi_sort_bitarray(config_,config_begin_,config_end_,index_begin_,index_end_,QSBD_BIT_LENGTH,comm_);
     }
-
 
 /**
 Initialization of basis
  */
     void Init(const std::vector<std::vector<size_t>> & config,
 	      MPI_Comm comm,
-	      bool do_redist = true) {
+	      bool do_reordering = true) {
       config_ = config;
       comm_ = comm;
       mpi_master_ = 0;
       MPI_Comm_rank(comm,&mpi_rank_);
       MPI_Comm_size(comm,&mpi_size_);
+      if( do_reordering ) {
+	this->Reordering();
+      } else {
+	index_begin_.resize(mpi_size_);
+	index_end_.resize(mpi_size_);
+	config_begin_.resize(mpi_size_);
+	config_end_.resize(mpi_size_);
+	std::vector<size_t> config_size_rank(mpi_size_,0);
+	std::vector<size_t> config_size(mpi_size_,0);
+	config_size_rank[mpi_rank_] = config.size();
+	MPI_Allreduce(config_size_rank.data(),
+		      config_size.data(),
+		      mpi_size_,QSBD_MPI_SIZE_T,
+		      MPI_SUM,comm_);
+	for(int rank=0; rank < mpi_size_; rank++) {
+	  if( rank == 0 ) {
+	    index_begin_[0] = 0;
+	    index_end_[0] = config_size[0];
+	  } else {
+	    index_begin_[rank] = index_end_[rank-1];
+	    index_end_[rank] = index_begin_[rank]+config_size[rank];
+	  }
+	  config_begin_[rank] = config[0];
+	  MPI_Bcast(config_begin_[rank].data(),config_begin_[rank].size(),QSBD_MPI_SIZE_T,rank,comm_);
+	}
+	for(int rank=1; rank < mpi_size_; rank++) {
+	  config_end_[rank-1] = config_begin_[rank];
+	}
+	if( mpi_rank_ == mpi_size_-1 ) {
+	  config_end_[mpi_size_-1] = config[config.size()-1];
+	  bitadvance(config_end_[mpi_size_-1],QSBD_BIT_LENGTH);
+	  MPI_Bcast(config_end_[mpi_size_-1].data(),config_end_[mpi_size_-1].size(),QSBD_MPI_SIZE_T,mpi_rank_,comm_);
+	}
+      }
+    }
+
+    // I/O: StreamWrite and StreamRead
+    void StreamRead(std::istream & is) {
+      mpi_master_ = 0;
+      MPI_Comm_size(comm_,&mpi_size_);
+      MPI_Comm_rank(comm_,&mpi_rank_);
+      size_t size_s;
+      size_t size_c;
+      is.read(reinterpret_cast<char *>(&size_s),sizeof(size_t));
+      is.read(reinterpret_cast<char *>(&size_c),sizeof(size_t));
+      config_.resize(size_s);
+      for(auto & c : config_) {
+	c.resize(size_c);
+	is.read(reinterpret_cast<char *>(c.data()),size_c*sizeof(size_t));
+      }
       index_begin_.resize(mpi_size_);
       index_end_.resize(mpi_size_);
       config_begin_.resize(mpi_size_);
       config_end_.resize(mpi_size_);
-      std::vector<size_t> config_size_rank(mpi_size_,0);
-      std::vector<size_t> config_size(mpi_size_,0);
-      config_size_rank[mpi_rank_] = config.size();
-      MPI_Allreduce(config_size_rank.data(),
-		    config_size.data(),
-		    mpi_size_,QSBD_MPI_SIZE_T,
-		    MPI_SUM,comm_);
-      for(int rank=0; rank < mpi_size_; rank++) {
-	if( rank == 0 ) {
-	  index_begin_[0] = 0;
-	  index_end_[0] = config_size[0];
-	} else {
-	  index_begin_[rank] = index_end_[rank-1];
-	  index_end_[rank] = index_begin_[rank]+config_size[rank];
-	}
-	config_begin_[rank] = config[0];
-	MPI_Bcast(config_begin_[rank].data(),config_begin_[rank].size(),QSBD_MPI_SIZE_T,rank,comm_);
+      is.read(reinterpret_cast<char *>(index_begin_.data()),mpi_size_*sizeof(size_t));
+      is.read(reinterpret_cast<char *>(index_end_.data()),mpi_size_*sizeof(size_t));
+      for(auto & c : config_begin_) {
+	is.read(reinterpret_cast<char *>(c.data()),size_c*sizeof(size_t));
       }
-      for(int rank=1; rank < mpi_size_; rank++) {
-	config_end_[rank-1] = config_begin_[rank];
-      }
-      if( mpi_rank_ == mpi_size_-1 ) {
-	config_end_[mpi_size_-1] = config[config.size()-1];
-	bitadvance(config_end_[mpi_size_-1],bit_length_);
-	MPI_Bcast(config_end_[mpi_size_-1].data(),config_end_[mpi_size_-1].size(),QSBD_MPI_SIZE_T,mpi_rank_,comm_);
-      }
-      if( do_redist ) {
-	this->ReDistribution();
+      for(auto & c : config_end_) {
+	is.read(reinterpret_cast<char *>(c.data()),size_c*sizeof(size_t));
       }
     }
 
-    
+    void StreamWrite(std::ostream & os) {
+      size_t size_s = config_.size();
+      size_t size_c = config_[0].size();
+      os.write(reinterpret_cast<char *>(&size_s),sizeof(size_t));
+      os.write(reinterpret_cast<char *>(&size_c),sizeof(size_t));
+      for(auto & c : config_) {
+	os.write(reinterpret_cast<char *>(c.data()),size_c*sizeof(size_t));
+      }
+      os.write(reinterpret_cast<char *>(index_begin_.data()),mpi_size_*sizeof(size_t));
+      os.write(reinterpret_cast<char *>(index_end_.data()),mpi_size_*sizeof(size_t));
+      for(auto & c : config_begin_) {
+	os.write(reinterpret_cast<char *>(c.data()),size_c*sizeof(size_t));
+      }
+      for(auto & c : config_end_) {
+	os.write(reinterpret_cast<char *>(c.data()),size_c*sizeof(size_t));
+      }
+    }
 
   private:
-    size_t bit_length_;
     std::vector<std::vector<size_t>> config_;
 
     // variables for communicator
@@ -192,8 +236,7 @@ Initialization of basis
     std::vector<std::vector<size_t>> config_begin_;
     std::vector<std::vector<size_t>> config_end_;
 
-    void copy(const basis & other) {
-      bit_length_ = other.bit_length_;
+    void copy(const Basis & other) {
       config_ = other.config_;
       comm_ = other.comm_;
       mpi_master_ = other.mpi_master_;
