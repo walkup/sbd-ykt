@@ -336,19 +336,19 @@ Function for finding the state index of target bit string
     size_t new_config_size = i_end[mpi_rank]-i_begin[mpi_rank];
     // std::vector<std::vector<size_t>> new_config(new_config_size,std::vector<size_t>(config_size));
     std::vector<std::vector<size_t>> new_config;
-    for(int rank=0; rank < mpi_size; rank++) {
+    for(int recv_rank=0; recv_rank < mpi_size; recv_rank++) {
       // find i_begin and i_end mpi process
       int mpi_rank_begin=0;
       int mpi_rank_end=mpi_size;
-      for(int r=0; r < mpi_size; r++) {
-	if ( index_begin[r] <= i_begin[rank] && i_begin[rank] < index_end[r] ) {
-	  mpi_rank_begin = r;
+      for(int rank=0; rank < mpi_size; rank++) {
+	if ( index_begin[rank] <= i_begin[recv_rank] && i_begin[recv_rank] < index_end[rank] ) {
+	  mpi_rank_begin = rank;
 	  break;
 	}
       }
-      for(int r=mpi_size-1; r > -1; r--) {
-	if ( index_begin[r] < i_end[rank] && i_end[rank] <= index_end[r] ) {
-	  mpi_rank_end = r;
+      for(int rank=mpi_size-1; rank > -1; rank--) {
+	if ( index_begin[rank] < i_end[recv_rank] && i_end[recv_rank] <= index_end[rank] ) {
+	  mpi_rank_end = rank;
 	  break;
 	}
       }
@@ -356,21 +356,26 @@ Function for finding the state index of target bit string
       size_t i_new = 0;
       for(int send_rank=mpi_rank_begin; send_rank <= mpi_rank_end; send_rank++) {
 	if( mpi_rank == send_rank ) {
-	  size_t ii_min = std::max(i_begin[rank],index_begin[send_rank]);
-	  size_t ii_max = std::min(i_end[rank],index_end[send_rank]);
+	  size_t ii_min = std::max(i_begin[recv_rank],index_begin[send_rank]);
+	  size_t ii_max = std::min(i_end[recv_rank],index_end[send_rank]);
 	  config_transfer.resize(ii_max-ii_min);
 	  for(size_t i=ii_min; i < ii_max; i++) {
 	    config_transfer[i-ii_min] = config[i-index_begin[send_rank]];
 	  }
-	  MpiSend(config_transfer,rank,comm);
+	  if( send_rank != recv_rank ) {
+	    MpiSend(config_transfer,recv_rank,comm);
+	  } else {
+	    new_config.insert(new_config.begin()+i_new,config_transfer.begin(),config_transfer.end());
+	    i_new += config_transfer.size();
+	  }
 	}
-	if( mpi_rank == rank ) {
+	if( mpi_rank == recv_rank && send_rank != recv_rank ) {
 	  MpiRecv(config_transfer,send_rank,comm);
 	  new_config.insert(new_config.begin()+i_new,config_transfer.begin(),config_transfer.end());
 	  i_new += config_transfer.size();
 	}
-      }
-    }
+      } // end for(int send_rank=mpi_rank_begin; send_rank <= mpi_rank_end; send_rank++)
+    } // end for(int recv_rank=0; recv_rank < mpi_size; recv_rank++)
     config = new_config;
     for(int rank=0; rank < mpi_size; rank++) {
       index_begin[rank] = i_begin[rank];
@@ -448,8 +453,8 @@ Function for finding the state index of target bit string
       for(int rank=0; rank < mpi_size_b; rank++) {
 	MPI_Bcast(config_begin_b[rank].data(),bit_size,QSBD_MPI_SIZE_T,mpi_master_b+rank,comm);
       }
-      MPI_Bcast(config_end_a_end.data(),config_end_a_end.size(),QSBD_MPI_SIZE_T,mpi_master_b-1,comm);
-      MPI_Bcast(config_end_b_end.data(),config_end_b_end.size(),QSBD_MPI_SIZE_T,mpi_size-1,comm);
+      MPI_Bcast(config_end_a_end.data(),bit_size,QSBD_MPI_SIZE_T,mpi_master_b-1,comm);
+      MPI_Bcast(config_end_b_end.data(),bit_size,QSBD_MPI_SIZE_T,mpi_size-1,comm);
 
       for(int rank=0; rank < mpi_size_a-1; rank++) {
 	config_end_a[rank] = config_begin_a[rank+1];
@@ -461,7 +466,7 @@ Function for finding the state index of target bit string
       config_end_b[mpi_size_b-1] = config_end_b_end;
 
       if( config_end_a_end > config_begin_b[0] ) {
-	
+
 	for(int rank=0; rank < mpi_size_half; rank++) {
 	  if( 2*rank == mpi_size-1 ) {
 	    config_begin[2*rank] = config_begin_a[rank];
@@ -478,7 +483,7 @@ Function for finding the state index of target bit string
 	if( config_begin_b[0] < config_begin[0] ) {
 	  config_begin[0] = config_begin_b[0];
 	}
-	if( config_end[mpi_size_a-1] < config_end_b_end ) {
+	if( config_end[mpi_size-1] < config_end_b_end ) {
 	  config_end[mpi_size-1] = config_end_b_end;
 	}
 
@@ -505,15 +510,21 @@ Function for finding the state index of target bit string
 		for(size_t i = i_begin; i < i_end; i++) {
 		  config_transfer[i-i_begin] = config[i];
 		}
-		MpiSend(config_transfer,r_rank,comm);
+		if( s_rank+mpi_master_b != r_rank ) {
+		  MpiSend(config_transfer,r_rank,comm);
+		} else {
+		  new_config_b.insert(new_config_b.end(),config_transfer.begin(),config_transfer.end());
+		}
 	      }
-	      if( r_rank == mpi_rank ) {
+	      if( r_rank == mpi_rank && s_rank+mpi_master_b != r_rank ) {
 		MpiRecv(config_transfer,s_rank+mpi_master_b,comm);
 		new_config_b.insert(new_config_b.end(),config_transfer.begin(),config_transfer.end());
 	      }
 	    }
 	  }
 	} // end send configs from b-block
+
+	MPI_Barrier(comm);
 	
 	std::vector<std::vector<size_t>> new_config_a;
 	for(int s_rank=0; s_rank < mpi_size_a; s_rank++) {
@@ -534,9 +545,13 @@ Function for finding the state index of target bit string
 	      for(size_t i=i_begin; i < i_end; i++) {
 		config_transfer[i-i_begin] = config[i];
 	      }
-	      MpiSend(config_transfer,r_rank,comm);
+	      if( s_rank != r_rank ) {
+		MpiSend(config_transfer,r_rank,comm);
+	      } else {
+		new_config_a.insert(new_config_a.end(),config_transfer.begin(),config_transfer.end());
+	      }
 	    }
-	    if( mpi_rank == r_rank ) {
+	    if( mpi_rank == r_rank && s_rank != r_rank ) {
 	      MpiRecv(config_transfer,s_rank,comm);
 	      new_config_a.insert(new_config_a.end(),config_transfer.begin(),config_transfer.end());
 	    }
@@ -551,9 +566,13 @@ Function for finding the state index of target bit string
 	      for(size_t i=i_begin; i < i_end; i++) {
 		config_transfer[i-i_begin] = config[i];
 	      }
-	      MpiSend(config_transfer,r_rank,comm);
+	      if( s_rank != r_rank ) {
+		MpiSend(config_transfer,r_rank,comm);
+	      } else {
+		new_config_a.insert(new_config_a.end(),config_transfer.begin(),config_transfer.end());
+	      }
 	    }
-	    if( mpi_rank == r_rank ) {
+	    if( mpi_rank == r_rank && s_rank != r_rank ) {
 	      MpiRecv(config_transfer,s_rank,comm);
 	      new_config_a.insert(new_config_a.end(),config_transfer.begin(),config_transfer.end());
 	    }
