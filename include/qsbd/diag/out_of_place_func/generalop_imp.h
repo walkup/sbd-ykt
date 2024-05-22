@@ -1,9 +1,9 @@
 /**
-@file qsbd/diag/out_of_place_func/gop_imp.h
+@file qsbd/diag/out_of_place_func/generalop_imp.h
 @brief out-of-place function for GeneralOp class
  */
-#ifndef QSBD_DIAG_OUT_OF_PLACE_FUNC_GOP_IMP_H
-#define QSBD_DIAG_OUT_OF_PLACE_FUNC_GOP_IMP_H
+#ifndef QSBD_DIAG_OUT_OF_PLACE_FUNC_GENERALOP_IMP_H
+#define QSBD_DIAG_OUT_OF_PLACE_FUNC_GENERALOP_IMP_H
 
 namespace qsbd {
 
