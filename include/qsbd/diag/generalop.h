@@ -53,21 +53,30 @@ namespace qsbd {
       return false;
     }
 
+    void dagger() { d_ = !d_; }
+    bool d() const { return d_; }
+    int q() const { return q_; }
+
+    // out of place functions
+
+    friend void MpiSend(const FieldOp & F,
+			int destination,
+			MPI_Comm comm);
+
+    friend void MpiRecv(FieldOp & F,
+			int source,
+			MPI_Comm comm);
+    
+    
+    friend std::ostream & operator << (std::ostream & s,
+				       const FieldOp & o);
+
+    // friend class
     friend class ProductOp;
     
     template <typename ElemT_>
     friend class GeneralOp;
 
-    // out of place functions
-    
-    void dagger() { d_ = !d_; }
-    bool d() const { return d_; }
-    int q() const { return q_; }
-
-    ProductOp operator * (const FieldOp & a, const FieldOp & b) const;
-    friend std::ostream & operator << (std::ostream & s,
-				       const FieldOp & o);
-      
   private:
     bool d_;
     int q_;
@@ -239,21 +248,32 @@ namespace qsbd {
     }
 
     // out of place functions
-    template <typename ElemT_>
-    friend GeneralOp<ElemT_> operator * (const GeneralOp<ElemT_> & G, Real c);
+    friend ProductOp operator * (const FieldOp & a, const FieldOp & b);
     
     template <typename ElemT_>
-    friend GeneralOp<ElemT_> operator * (const GeneralOp<ElemT_> & G, Complex c);
-
-    template <typename ElemT_>
-    friend GeneralOp<ElemT_> operator + (const GeneralOp<ElemT_> & G, const ProductOp & other);
-
-    template <typename ElemT_>
-    friend GeneralOp<ElemT_> operator - (const GeneralOp<ElemT_> & G, const ProductOp & other);
+    friend GeneralOp<ElemT_> operator * (const ProductOp & G, ElemT c);
     
     template <typename ElemT_>
-    friend void NormalOrdering(const ProductOp & P, const std::vector<basis_type> & type, GeneralOp<ElemT_> & G);
+    friend GeneralOp<ElemT_> operator * (ElemT c, const ProductOp & P);
+    
+    template <typename ElemT_>
+    friend GeneralOp<ElemT_> operator + (const ProductOp & P, const GeneralOp<ElemT_> & G);
 
+    template <typename ElemT_>
+    friend GeneralOp<ElemT_> operator - (const ProductOp & P, const GeneralOp<ElemT_> & G);
+    
+    template <typename ElemT_>
+    friend void NormalOrdering(const ProductOp & P,
+			       GeneralOp<ElemT_> & G);
+
+    friend void MpiSend(const ProductOp & F,
+			int destination,
+			MPI_Comm comm);
+
+    friend void MpiRecv(ProductOp & F,
+			int source,
+			MPI_Comm comm);
+    
     friend std::ostream & operator << (std::ostream & s, const ProductOp & op);
     
     friend class FieldOp;
@@ -441,6 +461,16 @@ namespace qsbd {
       return *this;
     }
 
+    GeneralOp & operator *= (ElemT c) {
+      for(size_t i=0; i < this->d_.size(); i++) {
+	this->e_[i] *= c;
+      }
+      for(size_t i=0; i < this->o_.size(); i++) {
+	this->c_[i] *= c;
+      }
+      return *this;
+    }
+    
     GeneralOp & operator += (const GeneralOp & other) {
       for(size_t i=0; i < other.d_.size(); i++) {
 	this->d_.push_back(other.d_[i]);
@@ -456,11 +486,30 @@ namespace qsbd {
     GeneralOp & operator += (const ProductOp & other) {
       if( other.check_diagonal() ) {
 	this->d_.push_back(other);
-	this->e_.push_back(Complex_1);
+	this->e_.push_back(ElemT(1.0));
       } else {
 	this->o_.push_back(other);
-	this->c_.push_back(Complex_1);
+	this->c_.push_back(ElemT(1.0));
       }
+      return *this;
+    }
+
+    GeneralOp & operator += (const FieldOp & other) {
+      ProductOp temp(other);
+      if( temp.check_diagonal() ) {
+	this->d_.push_back(temp);
+	this->e_.push_back(ElemT(1.0));
+      } else {
+	this->o_.push_back(temp);
+	this->c_.push_back(ElemT(1.0));
+      }
+      return *this;
+    }
+
+    GeneralOp & operator += (ElemT c) {
+      ProductOp one = ProductOp();
+      this->d_.push_back(one);
+      this->e_.push_back(c);
       return *this;
     }
 
@@ -479,14 +528,33 @@ namespace qsbd {
     GeneralOp & operator -= (const ProductOp & other) {
       if( other.check_diagonal() ) {
 	this->d_.push_back(other);
-	this->c_.push_back(-Complex_1);
+	this->c_.push_back(ElemT(-1.0));
       } else {
 	this->o_.push_back(other);
-	this->c_.push_back(-Complex_1);
+	this->c_.push_back(ElemT(-1.0));
       }
       return *this;
     }
 
+    GeneralOp & operator -= (const FieldOp & other) {
+      ProductOp temp(other);
+      if( temp.check_diagonal() ) {
+	this->d_.push_back(temp);
+	this->e_.push_back(ElemT(-1.0));
+      } else {
+	this->o_.push_back(temp);
+	this->c_.push_back(ElemT(-1.0));
+      }
+      return *this;
+    }
+
+    GeneralOp & operator -= (ElemT c) {
+      ProductOp one = ProductOp();
+      this->d_.push_back(one);
+      this->e_.push_back(-c);
+      return *this;
+    }
+    
     GeneralOp operator + (const GeneralOp & other) const {
       GeneralOp res(*this);
       res += other;
@@ -499,21 +567,16 @@ namespace qsbd {
       return res;
     }
 
-    GeneralOp & operator *= (Complex c) {
-      for(size_t i=0; i < this->d_.size(); i++) {
-	this->e_[i] *= c;
-      }
-      for(size_t i=0; i < this->o_.size(); i++) {
-	this->c_[i] *= c;
-      }
-      return *this;
+    GeneralOp operator + (const FieldOp & other) const {
+      GeneralOp res(*this);
+      res += ProductOp(other);
+      return res;
     }
-    
-    GeneralOp & operator += (Complex c) {
-      ProductOp one = ProductOp();
-      this->d_.push_back(one);
-      this->e_.push_back(c);
-      return *this;
+
+    GeneralOp operator + (ElemT c) {
+      GeneralOp res(*this);
+      res += c;
+      return res;
     }
 
     // take Hermitian conjugate
@@ -542,19 +605,6 @@ namespace qsbd {
     ElemT & OpCoef(int i) { return c_[i]; }
     ElemT OpCoef(int i) const { return c_[i]; }
 
-    // out-of-place function
-    template <typename ElemT_>
-    friend void NormalOrdering(GeneralOp<ElemT_> & G);
-
-    template <typename ElemT_>
-    friend void Simplify(GeneralOp<ElemT_> & G);
-
-    template <typename ElemT_>
-    void mult(const GeneralOp<ElemT_> & H, std::vector<ElemT_> & C, const basis & B);
-    
-    template <typename ElemT_>
-    void mult(const GeneralOp<ElemT_> & H, std::vector<ElemT_> & C, const basis & B, MPI_Comm comm);
-
     int max_index() const {
       int int_res = 0;
       for(int k=0; k < d_.size(); k++) {
@@ -571,6 +621,26 @@ namespace qsbd {
       }
       return int_res;
     }
+    
+    // out-of-place function
+    template <typename ElemT_>
+    friend void NormalOrdering(GeneralOp<ElemT_> & G);
+
+    template <typename ElemT_>
+    friend void Simplify(GeneralOp<ElemT_> & G);
+
+    template <typename ElemT_>
+    void mult(const GeneralOp<ElemT_> & H,
+	      const std::vector<ElemT_> & C,
+	      const Basis & B,
+	      std::vector<ElemT_> & W,
+	      MPI_Comm comm);
+
+    template <typename ElemT_>
+    void MpiSend(const GeneralOp<ElemT_> & G, int destination, MPI_Comm comm);
+
+    template <typename ElemT_>
+    void MpiRecv(GeneralOp<ElemT_> & G, int source, MPI_Comm comm);
 
     template <typename ElemT_>
     friend std::ostream & operator << (std::ostream & s,
