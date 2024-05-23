@@ -29,15 +29,93 @@ namespace qsbd {
   }
 
   template <typename ElemT>
+  void mpi_inc_slide_wavefunction(const std::vector<ElemT> & W,
+				  const Basis & B,
+				  std::vector<ElemT> & Wt,
+				  Basis & Bt) {
+    MPI_Comm comm = B.MpiComm();
+    Bt = B.MpiIncSlide();
+    MpiIncSlide(W,Wt,comm);
+  }
+
+  template <typename ElemT>
+  void mpi_dec_slide_wavefunction(const std::vector<ElemT> & W,
+				  const Basis & B,
+				  std::vector<ElemT> & Wt,
+				  Basis & Bt) {
+    MPI_Comm comm = B.MpiComm();
+    Bt = B.MpiDecSlide();
+    MpiDecSlide(W,Wt,comm);
+  }
+
+  template <typename ElemT>
+  void mpi_inc_slide_wavefunction(std::vector<std::vector<ElemT>> & W,
+				  std::vector<Basis> & B,
+				  int slide_width) {
+    size_t num_data = W.size();
+    Basis Bt;
+    std::vector<ElemT> Wt;
+    
+    for(size_t i=0; i < num_data; i++) {
+      for(int s=0; s < slide_width; s++) {
+	mpi_inc_slide_wavefunction(W[i],B[i],Wt,Bt);
+	W[i] = Wt;
+	B[i] = Bt;
+      }
+    }
+  }
+
+  template <typename ElemT>
+  void mpi_dec_slide_wavefunction(std::vector<std::vector<ElemT>> & W,
+				  std::vector<Basis> & B,
+				  int slide_width) {
+    
+    size_t num_data = W.size();
+    Basis Bt;
+    std::vector<ElemT> Wt;
+    for(size_t i=0; i < num_data; i++) {
+      for(int s=0; s < slide_width; s++) {
+	mpi_dec_slide_wavefunction(W[i],B[i],Wt,Bt);
+	W[i] = Wt;
+	B[i] = Bt;
+      }
+    }
+  }
+
+  template <typename ElemT>
   void mult_diagonal(const GeneralOp<ElemT> & H,
-			 const std::vector<ElemT> & C,
-			 const Basis & B,
-			 std::vector<ElemT> & W,
-			 MPI_Comm comm) {
+		     const std::vector<ElemT> & C,
+		     const Basis & B,
+		     std::vector<ElemT> & W,
+		     int bit_length) {
     // No communication is necessary.
 
-    
-    
+#pragma omp parallel
+    {
+      std::vector<size_t> v;
+      size_t size_t_one = 1;
+      size_t js;
+      size_t ns_rank = B.Size();
+      bool check;
+#pragma omp for
+      for(size_t is=0; is < ns_rank; is++) {
+	v = B.Config(is);
+	for(size_t n=0; n < H.d_.size(); n++) {
+	  check = false;
+	  for(int k=0; k < H.d_[n].n_dag_; k++) {
+	    int q = H.d_[n].fops_[k].q_;
+	    size_t r = q / bit_length;
+	    size_t x = q % bit_length;
+	    if( w[r] & ( size_t_one << x ) == 0 ) {
+	      check = true;
+	      break;
+	    }
+	  }
+	  if( check ) continue;
+	  W[is] += H.e_[n] * C[js];
+	}
+      }
+    }
   }
 
   template <typename ElemT>
@@ -45,28 +123,113 @@ namespace qsbd {
 			const std::vector<ElemT> & C,
 			const Basis & B,
 			std::vector<ElemT> & W,
-			MPI_Comm h_comm,
-			int shift_width = 1) {
+			int bit_length,
+			int data_width) {
 
-    MPI_Comm b_comm = B.MpiComm();
     size_t mpi_size_b = B.MpiSize();
     size_t ns_rank = W.size();
+
+    std::vector<Basis> Bp(data_width);
+    std::vector<std::vector<ElemT>> Cp(data_width);
+
     
+    int inc_size = (data_width-1)/2;
+    int dec_size = data_width/2;
+
+    // data_width = 1      | 0 |
+    // data_width = 2      | 0 | 1
+    // data_width = 3    0 | 1 | 2
+    // data_width = 4    0 | 1 | 2 3
+    // data_width = 5  0 1 | 2 | 3 4
+
+    for(int d=0; d < inc_size; d++) {
+      if( d == 0 ) {
+	mpi_inc_slide_wavefunction(C,B,Cp[inc_size-d-1],Bp[inc_size-d-1]);
+      } else {
+	mpi_inc_slide_wavefunction(Cp[inc_size-d],Bp[inc_size-d],Cp[inc_size-d-1],Bp[inc_size-d-1]);
+      }
+    }
+
+    Cp[inc_size] = W;
+    Bp[inc_size] = B;
+    for(int d=0; d < dec_size; d++) {
+      if( d == 0 ) {
+	mpi_dec_slide_wavefunction(C,B,Cp[d+1+inc_size],Bp[d+1+inc_size]);
+      } else {
+	mpi_dec_slide_wavefunction(Cp[d+inc_size],Bp[d+inc_size],Cp[d+1+inc_size],Bp[d+1+inc_size]);
+      }
+    }
     
+    int mpi_round = mpi_size_b / data_width;
+
+    for(int round=0; round < mpi_round; round++) {
+
 #pragma omp parallel
-    {
-      std::vector<size_t> v;
-      std::vector<size_t> w;
-      bool check;
-      size_t size_t_one = 1;
-      size_t is;
+      {
+	std::vector<size_t> v;
+	std::vector<size_t> w;
+	size_t size_t_one = 1;
+	size_t js;
+	size_t ns_rank = B.Size();
+	int target_rank;
+	bool exist_rank;
+	bool check;
 
 #pragma omp for
-      for(size_t is=0; is < ns_rank; is++) {
-	
-      }
-      
-    }
+	for(size_t is=0; is < ns_rank; is++) {
+
+	  v = B.Config(is);
+
+	  for(size_t n=0; n < H.o_.size(); n++) {
+	    w = v;
+	    check = false;
+	    for(int k=0; k < H.o_[n].n_dag_; k++) {
+	      int q = H.o_[n].fops_[k].q_;
+	      size_t r = q / bit_length;
+	      size_t x = q % bit_length;
+	      if( w[r] & ( size_t_one << x ) != 0 ) {
+		w[r] = w[r] ^ ( size_t_one << x );
+	      } else {
+		check = true;
+		break;
+	      }
+	    }
+	    if ( check ) continue;
+	    for(int k = H.o_[n].n_dag_; k < H.o_[n].fops_.size(); k++) {
+	      int q = H.o_[n].fops_[k].q_;
+	      size_t r = q / bit_length;
+	      size_t x = q % bit_length;
+	      if( w[r] & ( size_t_one << x ) == 0 ) {
+		w[r] = w[r] | ( size_t_one << x );
+	      } else {
+		check = true;
+		break;
+	      }
+	    }
+	    if ( check ) continue;
+	    // mpi_process_search(w,B.config_begin_,B.config_end_,target_rank,exist_rank);
+	    B.MpiProcessSearch(w,target_rank,check);
+	    if ( !check ) continue;
+	    check = true;
+	    size_t d_target;
+	    for(int d=0; d < Bp.size(); d++) {
+	      if( Bp[d].MpiRank() == target_rank ) {
+		check = false;
+		d_target = d;
+		break;
+	      }
+	    }
+	    if( check ) continue;
+	    Bp[d_target].IndexSearch(w,index,check);
+	    // bisection_search(w,Bp[d_target].config_,B.index_begin_[target_rank],B.index_end_[target_rank],js,check);
+	    if( check ) {
+	      W[is] += H.c_[n] * Cp[js-B.index_begin_[target_rank]];
+	    }
+	  } // end for(size_t n=0; n < H.o_.size(); n++)
+	} // end for(size_t is=0; is < ns_rank; is++)
+      } // end omp pragma
+      mpi_inc_slide_wavefunction(Cp,Bp,data_width);
+    } // end for(int round=0; round < mpi_round; round++)
     
   }
   
@@ -75,8 +238,10 @@ namespace qsbd {
 	    const std::vector<ElemT> & C,
 	    const Basis & B,
 	    std::vector<ElemT> & W,
-	    MPI_Comm h_comm,
-	    int shift_width = 1) {
+	    int bit_length,
+	    int data_width,
+	    MPI_Comm h_comm) {
+    
     //
     //  basis |    processes for Hamiltonian parallelization 
     //  proc. |     (terms of Hamiltonian are distributed)
@@ -99,7 +264,10 @@ namespace qsbd {
     //  x holizontal communication (---) is necessary to perform c_n = sum_k c_n^k
     //  x The operation of this function is W <- H C + W, i.e., W += H C
     //
-    
+
+    mult_diagonal(H,C,B,W,bit_length);
+    mult_offdiagonal(H,C,B,W,bit_length,data_width);
+    MpiAllreduce(W,MPI_SUM,h_comm);
     
   }
 

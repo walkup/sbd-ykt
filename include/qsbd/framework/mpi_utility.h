@@ -33,7 +33,30 @@ void get_mpi_range(int mpi_size, int mpi_rank, size_t & i_begin, size_t & i_end)
   i_end = j_end;
 }
 
-void MpiSend(std::vector<std::vector<size_t>> & config, int dest, MPI_Comm comm) {
+template <typename ElemT>
+void MpiSend(const std::vector<ElemT> & data, int dest, MPI_Comm comm) {
+  size_t d_size = data.size();
+  MPI_Send(&d_size,1,QSBD_MPI_SIZE_T,dest,0,comm);
+  MPI_Datatype DataT = GetMpiType<ElemT>::MpiT;
+  if( d_size != 0 ) {
+    MPI_Send(data.data(),d_size,DataT,dest,1,comm);
+  }
+}
+
+template <typename ElemT>
+void MpiRecv(std::vector<ElemT> & data, int source, MPI_Comm comm) {
+  MPI_Status status;
+  size_t d_size;
+  MPI_Recv(&d_size,1,QSBD_MPI_SIZE_T,source,0,comm,&status);
+  MPI_Datatype DataT = GetMpiType<ElemT>::MpiT;
+  if( d_size != 0 ) {
+    data.resize(d_size);
+    MPI_Recv(data.data(),d_size,DataT,source,1,comm,&status);
+  }
+}
+
+template <>
+void MpiSend(const std::vector<std::vector<size_t>> & config, int dest, MPI_Comm comm) {
   size_t c_num = config.size();
   MPI_Send(&c_num,1,QSBD_MPI_SIZE_T,dest,0,comm);
   if( c_num != 0 ) {
@@ -50,6 +73,7 @@ void MpiSend(std::vector<std::vector<size_t>> & config, int dest, MPI_Comm comm)
   }
 }
 
+template <>
 void MpiRecv(std::vector<std::vector<size_t>> & config, int source, MPI_Comm comm) {
   MPI_Status status;
   size_t c_num;
@@ -69,6 +93,100 @@ void MpiRecv(std::vector<std::vector<size_t>> & config, int source, MPI_Comm com
   }
 }
 
+template <typename ElemT>
+void MpiIncSlide(const std::vector<ElemT> & A, std::vector<ElemT> & B, MPI_Comm comm) {
+  
+  int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
+  int mpi_size; MPI_Comm_size(comm,&mpi_size);
+  if( mpi_size % 2 == 0 ) {
+    if( mpi_rank % 2 == 0 ) {
+      MpiSend(A,mpi_rank+1,comm);
+    } else {
+      MpiRecv(B,mpi_rank-1,comm);
+    }
+    if( mpi_rank % 2 == 1 ) {
+      if( mpi_rank == mpi_size-1 ) {
+	MpiSend(A,0,comm);
+      } else {
+	MpiSend(A,mpi_rank+1,comm);
+      }
+    } else {
+      if( mpi_rank == 0 ) {
+	MpiRecv(B,mpi_size-1,comm);
+      } else {
+	MpiRecv(B,mpi_rank-1,comm);
+      }
+    }
+  } else {
+    if( mpi_rank % 2 == 0 && mpi_rank != mpi_size-1 ) {
+      MpiSend(A,mpi_rank+1,comm);
+    } else {
+      MpiRecv(B,mpi_rank-1,comm);
+    }
+    if( mpi_rank % 2 == 1 ) {
+      MpiSend(A,mpi_rank+1,comm);
+    } else {
+      MpiRecv(B,mpi_rank-1,comm);
+    }
+    if( mpi_rank == mpi_size-1 ) {
+      MpiSend(A,0,comm);
+    }
+    if( mpi_rank == 0 ) {
+      MpiRecv(B,mpi_size-1,comm);
+    }
+  }
+}
+
+template <typename ElemT>
+void MpiDecSlide(const std::vector<ElemT> & A, std::vector<ElemT> & B, MPI_Comm comm) {
+  int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
+  int mpi_size; MPI_Comm_size(comm,&mpi_size);
+  if( mpi_size % 2 == 0 ) {
+    if( mpi_rank % 2 == 0 ) {
+      MpiRecv(B,mpi_rank+1,comm);
+    } else {
+      MpiSend(A,mpi_rank-1,comm);
+    }
+    if( mpi_rank % 2 == 1 ) {
+      if( mpi_rank == mpi_size-1 ) {
+	MpiRecv(B,0,comm);
+      } else {
+	MpiRecv(B,mpi_rank+1,comm);
+      }
+    } else {
+      if( mpi_rank == 0 ) {
+	MpiSend(A,mpi_size-1,comm);
+      } else {
+	MpiSend(A,mpi_rank-1,comm);
+      }
+    }
+  } else {
+    if( mpi_rank % 2 == 0 && mpi_rank != mpi_size-1 ) {
+      MpiRecv(B,mpi_rank+1,comm);
+    } else {
+      MpiSend(A,mpi_rank-1,comm);
+    }
+    if( mpi_rank % 2 == 1 ) {
+      MpiRecv(B,mpi_rank+1,comm);
+    } else {
+      MpiSend(A,mpi_rank-1,comm);
+    }
+    if( mpi_rank == mpi_size-1 ) {
+      MpiRecv(B,0,comm);
+    }
+    if( mpi_rank == 0 ) {
+      MpiSend(A,mpi_size-1,comm);
+    }
+  }
+  
+}
+
+template <typename ElemT>
+void MpiAllreduce(std::vector<ElemT> & A, MPI_Op op, MPI_Comm comm) {
+  MPI_Datatype DataT = GetMpiType<ElemT>::MpiT;
+  std::vector<ElemT> B(A);
+  MPI_Allgather(B.data(),A.data(),A.size(),DataT,op,comm);
+}
 
 
 #endif

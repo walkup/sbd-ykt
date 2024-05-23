@@ -28,7 +28,9 @@ Copy constructor for basis
     Basis(const Basis & other) :
       config_(other.config_),
       index_begin_(other.index_begin_), index_end_(other.index_end_),
-      config_begin_(other.config_begin_), config_end_(other.config_end_) {}
+      config_begin_(other.config_begin_), config_end_(other.config_end_),
+      comm_(other.comm_), mpi_master_(other.mpi_master_),
+      mpi_size_(other.mpi_size_), mpi_rank_(other.mpi_rank_) {}
 
 /**
 Copy operator
@@ -131,6 +133,49 @@ Reordering to the lexographical order
     }
 
 /**
+Slide data within a node in the increasing direction
+*/
+    Basis MpiIncSlide() {
+      Basis res(*this);
+      MpiIncSlide(this->config_,res.config_,this->comm_);
+      /*
+      for(int rank=0; rank < mpi_size_; rank++) {
+	int new_rank = ( rank + 1 ) % mpi_size_;
+	res.config_begin_[new_rank] = config_begin_[rank];
+	res.config_end_[new_rank] = config_end_[rank];
+	res.index_begin_[new_rank] = index_begin_[rank];
+	res.index_end_[new_rank] = index_end_[rank];
+      }
+      */
+      mpi_rank_ = ( mpi_rank_ + 1 ) % mpi_size_;
+      return res;
+    }
+
+/**
+Slide data within a node in the decreasing direction
+ */
+
+    Basis MpiDecSlide() {
+      Basis res(*this);
+      MpiDecSlide(this->config_,res.config_,comm_);
+      /*
+      for(int rank=0; rank < mpi_size_; rank++) {
+	int old_rank = ( rank + 1 ) % mpi_size_;
+	res.config_begin_[rank] = config_begin_[old_rank];
+	res.config_end_[rank] = config_end_[old_rank];
+	res.index_begin_[rank] = index_begin_[old_rank];
+	res.index_end_[rank] = index_end_[old_rank];
+      }
+      */
+      if( mpi_rank_ == 0 ) {
+	mpi_rank_ = mpi_size_-1;
+      } else {
+	mpi_rank_ = ( mpi_rank_ - 1 ) % mpi_size_;
+      }
+      return res;
+    }
+    
+/**
 Initialization of basis
  */
     void Init(const std::vector<std::vector<size_t>> & config,
@@ -176,6 +221,28 @@ Initialization of basis
 	}
       }
     }
+
+    // Getter
+
+    inline MPI_Comm MpiComm() const { return comm_; }
+    inline int MpiRank() const { return mpi_rank_; }
+    inline int MpiSize() const { return mpi_size_; }
+    inline int MpiMaster() const { return mpi_master_; }
+    inline std::vector<size_t> Config(size_t i) { return config_[i]; }
+    inline size_t Size() { return config_.size(); }
+    inline size_t BeginIndex() { return index_begin_[mpi_rank_]; }
+    inline size_t EndIndex() { return index_end_[mpi_rank_]; }
+    inline std::vector<size_t> BeginConfig() { return config_begin_[mpi_rank_]; }
+    inline std::vector<size_t> EndConfig() { return config_end_[mpi_rank_]; }
+
+    void MpiProcessSearch(const std::vector<size_t> & v, int & target_rank, bool & mpi_exist) {
+      mpi_process_search(v,config_begin_,config_end_,target_rank,mpi_exist);
+    }
+    
+    void IndexSearch(const std::vector<size_t> & v, size_t & index, bool & exist) {
+      bisection_search(v,config_,index_begin_[mpi_rank_],index_end_[mpi_rank_],index,exist);
+    }
+    
 
     // I/O: StreamWrite and StreamRead
     void StreamRead(std::istream & is) {
@@ -224,6 +291,7 @@ Initialization of basis
     }
 
   private:
+
     std::vector<std::vector<size_t>> config_;
 
     // variables for communicator
