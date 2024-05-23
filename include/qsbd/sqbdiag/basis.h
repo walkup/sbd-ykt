@@ -1,10 +1,10 @@
 /// This file is a part of qsbd
 /**
-@file qsbd/qubit/basis.h
+@file qsbd/sqbdiag/basis.h
 @brief Class to manage the basis for qubit selected configuration diagonalization
 */
-#ifndef QSBD_DIAG_BASIS_H
-#define QSBD_DIAG_BASIS_H
+#ifndef QSBD_SQBDIAG_BASIS_H
+#define QSBD_SQBDIAG_BASIS_H
 
 #include "qsbd/framework/type_def.h"
 #include "qsbd/framework/mpi_utility.h"

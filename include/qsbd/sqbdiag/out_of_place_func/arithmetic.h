@@ -1,9 +1,9 @@
 /**
-@file qsbd/diag/out_of_place_func/generalop_imp.h
-@brief out-of-place function for GeneralOp class
- */
-#ifndef QSBD_DIAG_OUT_OF_PLACE_FUNC_GENERALOP_IMP_H
-#define QSBD_DIAG_OUT_OF_PLACE_FUNC_GENERALOP_IMP_H
+@file qsbd/diag/out_of_place_func/arithmetic.h
+@brief out-of-place arithmetic for GeneralOp class
+*/
+#ifndef QSBD_SQBDIAG_OUT_OF_PLACE_FUNC_ARITHMETIC_H
+#define QSBD_SQBDIAG_OUT_OF_PLACE_FUNC_ARITHMETIC_H
 
 namespace qsbd {
 
@@ -322,58 +322,6 @@ namespace qsbd {
     G = res;
   }
 
-  template <typename ElemT>
-  void mult_diagonal(const GeneralOp<ElemT> & H,
-			 const std::vector<ElemT> & C,
-			 const Basis & B,
-			 std::vector<ElemT> & W,
-			 MPI_Comm comm) {
-    // No communication is necessary.
-
-    
-    
-  }
-
-  template <typename ElemT>
-  void mult_offdiagonal(const GeneralOp<ElemT> & H,
-			const std::vector<ElemT> & C,
-			const Basis & B,
-			std::vector<ElemT> & W,
-			MPI_Comm comm) {
-    
-  }
-  
-  template <typename ElemT>
-  void mult(const GeneralOp<ElemT> & H,
-	    const std::vector<ElemT> & C,
-	    const Basis & B,
-	    std::vector<ElemT> & W,
-	    MPI_Comm comm) {
-    //
-    //  basis |    processes for Hamiltonian parallelization 
-    //  proc. |     (terms of Hamiltonian are distributed)
-    //        | h0     h1    h2    h3    h4
-    //
-    //   b0      * --- * --- * --- * --- *
-    //           |     |     |     |     |
-    //   b1      * --- * --- * --- * --- *
-    //           |     |     |     |     |
-    //   b2      * --- * --- * --- * --- *
-    //           |     |     |     |     |
-    //   b3      * --- * --- * --- * --- *
-    //           |     |     |     |     |
-    //   b4      * --- * --- * --- * --- *
-    //           |     |     |     |     |
-    //   b5      * --- * --- * --- * --- *
-    //
-    //  x vertical communication (|) is also necessary to perform c_n^k = sum_m H^k_{nm} c_m | m >,
-    //    where n and m are the state index.
-    //  x holizontal communication (---) is necessary to perform c_n = sum_k c_n^k
-    //  x The operation of this function is W <- H C + W, i.e., W += H C
-    //
-    
-    
-  }
 
 
   void MpiSend(const FieldOp & F,

@@ -8,6 +8,7 @@
 
 #include <complex>
 #include <limits.h>
+#include <cassert>
 
 #include "mpi.h"
 

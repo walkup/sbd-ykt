@@ -1,9 +1,9 @@
 /**
-@file qsbd/diag/basis.h
+@file qsbd/sqbdiag/generalop.h
 @brief Class to manage the operator
 */
-#ifndef QSBD_DIAG_GENERALOP_H
-#define QSBD_DIAG_GENERALOP_H
+#ifndef QSBD_SQBDIAG_GENERALOP_H
+#define QSBD_SQBDIAG_GENERALOP_H
 
 namespace qsbd {
 
