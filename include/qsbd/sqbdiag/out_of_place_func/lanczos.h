@@ -18,7 +18,12 @@ namespace qsbd {
     std::vector<ElemT> C1(W);
 
     ElemT * A = (ElemT *) malloc(sizeof(ElemT)*max_iteration*max_iteration);
+    ElemT * W = (ElemT *) malloc(sizeof(ElemT)*max_iteration*max_iteration);
+
     
+
+    free(A);
+    free(W);
     
   }
 
