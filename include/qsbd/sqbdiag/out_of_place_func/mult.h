@@ -5,10 +5,10 @@
 #ifndef QSBD_SQBDIAG_OUT_OF_PLACE_FUNC_MULT_H
 #define QSBD_SQBDIAG_OUT_OF_PLACE_FUNC_MULT_H
 
-namespace qsbd {
+#include "qsbd/framework/mpi_utility.h"
 
+namespace qsbd {  
 
-  template <typename ElemT>
   void setup_diag_mpi_comm(MPI_Comm comm,
 			   size_t b_size,
 			   size_t h_size,
@@ -17,7 +17,7 @@ namespace qsbd {
     int mpi_size; MPI_Comm_size(comm,&mpi_size);
     int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
 
-    assert( (mpi_size/b_size) == 0 );
+    assert( (mpi_size % b_size) == 0 );
     
     int mpi_color_b = mpi_size / b_size;
     int mpi_key_b   = mpi_rank % b_size;
@@ -87,7 +87,7 @@ namespace qsbd {
 		     const std::vector<ElemT> & C,
 		     const Basis & B,
 		     std::vector<ElemT> & W,
-		     int bit_length) {
+		     size_t bit_length) {
     // No communication is necessary.
 
 #pragma omp parallel
@@ -106,7 +106,7 @@ namespace qsbd {
 	    int q = H.d_[n].fops_[k].q_;
 	    size_t r = q / bit_length;
 	    size_t x = q % bit_length;
-	    if( w[r] & ( size_t_one << x ) == 0 ) {
+	    if( ( v[r] & ( size_t_one << x ) ) == 0 ) {
 	      check = true;
 	      break;
 	    }
@@ -123,7 +123,7 @@ namespace qsbd {
 			const std::vector<ElemT> & C,
 			const Basis & B,
 			std::vector<ElemT> & W,
-			int bit_length,
+			size_t bit_length,
 			int data_width) {
 
     size_t mpi_size_b = B.MpiSize();
@@ -187,7 +187,7 @@ namespace qsbd {
 	      int q = H.o_[n].fops_[k].q_;
 	      size_t r = q / bit_length;
 	      size_t x = q % bit_length;
-	      if( w[r] & ( size_t_one << x ) != 0 ) {
+	      if( ( w[r] & ( size_t_one << x ) ) != 0 ) {
 		w[r] = w[r] ^ ( size_t_one << x );
 	      } else {
 		check = true;
@@ -199,7 +199,7 @@ namespace qsbd {
 	      int q = H.o_[n].fops_[k].q_;
 	      size_t r = q / bit_length;
 	      size_t x = q % bit_length;
-	      if( w[r] & ( size_t_one << x ) == 0 ) {
+	      if( ( w[r] & ( size_t_one << x ) ) == 0 ) {
 		w[r] = w[r] | ( size_t_one << x );
 	      } else {
 		check = true;
@@ -207,8 +207,8 @@ namespace qsbd {
 	      }
 	    }
 	    if ( check ) continue;
-	    // mpi_process_search(w,B.config_begin_,B.config_end_,target_rank,exist_rank);
 	    B.MpiProcessSearch(w,target_rank,check);
+	    std::cout << " target_rank = " << target_rank << std::endl;
 	    if ( !check ) continue;
 	    check = true;
 	    size_t d_target;
@@ -220,15 +220,22 @@ namespace qsbd {
 	      }
 	    }
 	    if( check ) continue;
-	    Bp[d_target].IndexSearch(w,index,check);
+	    
+	    Bp[d_target].IndexSearch(w,js,check);
 	    // bisection_search(w,Bp[d_target].config_,B.index_begin_[target_rank],B.index_end_[target_rank],js,check);
 	    if( check ) {
-	      W[is] += H.c_[n] * Cp[js-B.index_begin_[target_rank]];
+	      std::cout << " d_target, is, js, B.BeginIndex(target_rank), check = "
+			<< d_target << ", " << is << ", " << js << ", "
+			<< B.BeginIndex(target_rank) << ", " << check << std::endl;
+	      W[is] = W[is] + H.c_[n] * Cp[d_target][js-B.BeginIndex(target_rank)];
 	    }
 	  } // end for(size_t n=0; n < H.o_.size(); n++)
 	} // end for(size_t is=0; is < ns_rank; is++)
       } // end omp pragma
-      mpi_inc_slide_wavefunction(Cp,Bp,data_width);
+      std::cout << " End " << round << " round " << std::endl;
+      if( mpi_round != 1 ) {
+	mpi_inc_slide_wavefunction(Cp,Bp,data_width);
+      }
     } // end for(int round=0; round < mpi_round; round++)
     
   }
@@ -238,7 +245,7 @@ namespace qsbd {
 	    const std::vector<ElemT> & C,
 	    const Basis & B,
 	    std::vector<ElemT> & W,
-	    int bit_length,
+	    size_t bit_length,
 	    int data_width,
 	    MPI_Comm h_comm) {
     

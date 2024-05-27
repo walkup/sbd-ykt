@@ -8,26 +8,19 @@
 namespace qsbd {
 
   ProductOp operator * (const FieldOp & a, const FieldOp & b) {
-    ProductOp res;
-    res.fops_.resize(2);
-    res.fops_[0] = a;
-    res.fops_[1] = b;
+    ProductOp res(a);
+    res *= b;
     return res;
   }
 
+  /*
   template <typename ElemT>
   GeneralOp<ElemT> operator * (const ProductOp & P, ElemT c) {
     GeneralOp<ElemT> res(P);
     res *= c;
     return res;
   }
-  
-  template <typename ElemT>
-  GeneralOp<ElemT> operator * (ElemT c, const ProductOp & P) {
-    GeneralOp<ElemT> res(P);
-    res *= c;
-    return res;
-  }
+  */
   
   template <typename ElemT>
   GeneralOp<ElemT> operator + (const ProductOp & P, const GeneralOp<ElemT> & G) {
@@ -53,9 +46,9 @@ namespace qsbd {
     int n_cr = 0;
     int n_an = 0;
     
-    for(int i=0; i < fops_.size(); i++) {
-      if( fops_[i].d_ ) n_cr++;
-      else              n_an++;
+    for(int i=0; i < P.fops_.size(); i++) {
+      if( P.fops_[i].d_ ) n_cr++;
+      else                n_an++;
     }
     
     indcr[0] = 0;
@@ -65,7 +58,6 @@ namespace qsbd {
       int msize = temp.o_.size();
       for(int m=0; m < msize; m++) {
 	m_an = 0;
-	// ProductOp tpop = temp.OpTerm(m);
 	ProductOp tpop = temp.o_[m];
 	for(int k=indcr[m]; k < tpop.size(); k++) {
 	  if( tpop.fops_[k].d_ ) {
@@ -144,7 +136,7 @@ namespace qsbd {
     // eliminating (cdag)^2 and (c)^2 operators
       
     int n_op = 0;
-    GeneralOp bres;
+    GeneralOp<ElemT> bres;
     for(int m=0; m < temp.o_.size(); m++) {
       bool b = true;
       ProductOp tpop = temp.o_[m];
@@ -179,7 +171,7 @@ namespace qsbd {
       
       if( b == true ) {
 	bres.o_.push_back(tpop);
-	bres.c_.push_back(osign[m]*1.0);
+	bres.c_.push_back(1.0);
 	n_op++;
       }
     }
@@ -189,10 +181,10 @@ namespace qsbd {
     // std::cout << bres << std::endl;
 
     // check whether there are same operators
-    GeneralOp res;
+    GeneralOp<ElemT> res;
     std::vector<int> isim(bres.o_.size(),1);
     
-    Complex value;
+    ElemT value;
     int n_dp = 0;
     n_op = 0;
       
@@ -212,7 +204,7 @@ namespace qsbd {
 	  }
 	}
 
-	if( std::abs(value) > Errzero ) {
+	if( std::abs(value) > 1.0e-8 ) {
 	  if( op1.check_diagonal() ) {
 	    res.d_.push_back(op1);
 	    res.e_.push_back(value);
@@ -229,18 +221,21 @@ namespace qsbd {
     // std::cout << " End elimination of Reordering of ProductOp " << std::endl;
     // std::cout << res << std::endl;
 
-    return res;
+    G = res;
+
+    // return res;
     
   }
     
   template <typename ElemT>
   void NormalOrdering(GeneralOp<ElemT> & res) {
-    GeneralOp G(res);
+    GeneralOp<ElemT> G(res);
+    res = GeneralOp<ElemT>();
     int n_d = 0;
     int n_o = 0;
-    for(int m=0; m < d_.size(); m++) {
+    for(int m=0; m < G.d_.size(); m++) {
       ProductOp pop(G.d_[m]);
-      GeneralOp gop;
+      GeneralOp<ElemT> gop;
       NormalOrdering(pop,gop);
 
       int l_d = 0;
@@ -252,10 +247,10 @@ namespace qsbd {
       n_d += l_d;
     }
 
-    for(int m=0; m < o_.size(); m++) {
+    for(int m=0; m < G.o_.size(); m++) {
       ProductOp pop(G.o_[m]);
-      GeneralOp gop;
-      pop.NormalOrdering(pop,gop);
+      GeneralOp<ElemT> gop;
+      NormalOrdering(pop,gop);
 
       for(int k=0; k < gop.d_.size(); k++) {
 	res.d_.push_back(gop.d_[k]);
@@ -274,7 +269,7 @@ namespace qsbd {
 
   template <typename ElemT>
   void Simplify(GeneralOp<ElemT> & G) {
-    GeneralOp res;
+    GeneralOp<ElemT> res;
     ElemT value;
     std::vector<int> identical_d(G.d_.size(),1);
     std::vector<int> identical_o(G.o_.size(),1);
@@ -292,7 +287,7 @@ namespace qsbd {
 	    }
 	  }
 	}
-	if( std::abs(value) > Errzero ) {
+	if( std::abs(value) > 1.0e-8 ) {
 	  res.d_.push_back(op1);
 	  res.e_.push_back(value);
 	}
@@ -313,7 +308,7 @@ namespace qsbd {
 	    }
 	  }
 	}
-	if( std::abs(value) > Errzero ) {
+	if( std::abs(value) > 1.0e-8 ) {
 	  res.o_.push_back(op1);
 	  res.c_.push_back(value);
 	}
@@ -328,19 +323,19 @@ namespace qsbd {
 	       int dest,
 	       MPI_Comm comm) {
     MPI_Send(&F.d_,1,MPI_C_BOOL,dest,0,comm);
-    MPI_Send(&F,q_,1,MPI_INT,dest,0,comm);
+    MPI_Send(&F.q_,1,MPI_INT,dest,0,comm);
   }
   
   void MpiRecv(FieldOp & F,
 	       int source,
 	       MPI_Comm comm) {
     MPI_Status status;
-    MPI_Recv(&F.d_,MPI_C_BOOL,source,0,comm,&status);
-    MPI_Recv(&F.q_,MPI_INT,source,0,comm,&status);
+    MPI_Recv(&F.d_,1,MPI_C_BOOL,source,0,comm,&status);
+    MPI_Recv(&F.q_,1,MPI_INT,source,0,comm,&status);
   }
   
   void MpiSend(const ProductOp & P,
-	       int destination,
+	       int dest,
 	       MPI_Comm comm) {
     MPI_Send(&P.n_dag_,1,MPI_INT,dest,0,comm);
     size_t p_size = P.size();
@@ -354,9 +349,9 @@ namespace qsbd {
 	       int source,
 	       MPI_Comm comm) {
     MPI_Status status;
-    MPI_Recv(&P.n_dag_,1,MPI_INT,source,0,comm,status);
+    MPI_Recv(&P.n_dag_,1,MPI_INT,source,0,comm,&status);
     size_t p_size;
-    MPI_Recv(&p_size,1,QSBD_MPI_SIZE_T,source,0,comm,status);
+    MPI_Recv(&p_size,1,QSBD_MPI_SIZE_T,source,0,comm,&status);
     P.fops_.resize(p_size);
     for(size_t i=0; i < p_size; i++) {
       MpiRecv(P.fops_[i],source,comm);
@@ -368,7 +363,7 @@ namespace qsbd {
   // friend function
   template <typename ElemT>
   void MpiSend(const GeneralOp<ElemT> & G,
-	       int destination,
+	       int dest,
 	       MPI_Comm comm) {
     std::vector<size_t> sizes(4);
     sizes[0] = G.e_.size();
@@ -424,7 +419,7 @@ namespace qsbd {
     if( sizes[3] != 0 ) {
       G.o_.resize(sizes[3]);
       for(size_t i=0; i < sizes[3]; i++) {
-	MpiRecv(G.o_[i],dest,comm);
+	MpiRecv(G.o_[i],source,comm);
       }
     }
   }
@@ -484,7 +479,23 @@ namespace qsbd {
     }
     return s;
   }
-  
+
+
+  FieldOp Sp(int q) {
+    return FieldOp(true,q);
+  }
+
+  FieldOp Sm(int q) {
+    return FieldOp(false,q);
+  }
+
+  template <typename ElemT>
+  GeneralOp<ElemT> Sz(int q) {
+    GeneralOp<ElemT> res;
+    res += Sp(q) * Sm(q);
+    res += ElemT(-0.5);
+    return res;
+  }
 
   
 } // end namespace qsbd

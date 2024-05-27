@@ -9,6 +9,8 @@
 
 #include "mpi.h"
 
+namespace qsbd {
+
 void get_mpi_range(int mpi_size, int mpi_rank, size_t & i_begin, size_t & i_end)
 {
   size_t i_all = i_end - i_begin;
@@ -185,8 +187,9 @@ template <typename ElemT>
 void MpiAllreduce(std::vector<ElemT> & A, MPI_Op op, MPI_Comm comm) {
   MPI_Datatype DataT = GetMpiType<ElemT>::MpiT;
   std::vector<ElemT> B(A);
-  MPI_Allgather(B.data(),A.data(),A.size(),DataT,op,comm);
+  MPI_Allreduce(B.data(),A.data(),A.size(),DataT,op,comm);
 }
 
+}
 
 #endif

@@ -21,7 +21,7 @@ namespace qsbd {
 
     inline void MatGemm(char trans_a, char trans_b,
 			int m, int n, int k,
-			float lapha, float * pa, float * pb,
+			float alpha, float * pa, float * pb,
 			float beta, float *pc) {
       int lda;
       if ((trans_a == 'N') || (trans_a == 'n')) {
@@ -45,7 +45,7 @@ namespace qsbd {
 
     inline void MatGemm(char trans_a, char trans_b,
 			int m, int n, int k,
-			double lapha, double * pa, double * pb,
+			double alpha, double * pa, double * pb,
 			double beta, double *pc) {
       int lda;
       if ((trans_a == 'N') || (trans_a == 'n')) {

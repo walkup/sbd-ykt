@@ -5,8 +5,10 @@
 #ifndef QSBD_SQBDIAG_OUT_OF_PLACE_FUNC_LANCZOS_H
 #define QSBD_SQBDIAG_OUT_OF_PLACE_FUNC_LANCZOS_H
 
-namespace qsbd {
+#include "qsbd/framework/hp_numeric.h"
 
+namespace qsbd {
+  
   template <typename ElemT>
   void Swap(ElemT a, std::vector<ElemT> & A,
 	    ElemT b, std::vector<ElemT> & B) {
@@ -54,7 +56,7 @@ namespace qsbd {
     }
   }
 
-  template <typename ElemT>
+  template <typename ElemT, typename RealT>
   void Lanczos(const GeneralOp<ElemT> & H,
 	       const Basis & B,
 	       std::vector<ElemT> & W,
@@ -64,7 +66,7 @@ namespace qsbd {
 	       int data_width,
 	       RealT eps) {
 
-    using RealT = qsbd::GetRealType<ElemT>::RealT;
+    // using RealT = qsbd::GetRealType<ElemT>::RealT;
 
     MPI_Comm b_comm = B.MpiComm();
     std::vector<ElemT> C0(W);
@@ -83,11 +85,11 @@ namespace qsbd {
     int it_stop;
     RealT E_old = 1.0e+8;
     ElemT Aii;
-    for(int iteration=0; iteration < max_iteration; iteration++) {
+    for(int it=0; it < max_iteration; it++) {
       n++;
-      int ii = iteration + lda * iteration;
-      int ij = iteration + lda * (iteration + 1);
-      int ji = iteration + 1 + lda * iteration;
+      int ii = it + lda * it;
+      int ij = it + lda * (it + 1);
+      int ji = it + 1 + lda * it;
       
       mult(H,C0,B,C1,bit_length,data_width,h_comm);
       InnerProduct(C0,C1,Aii,b_comm);
@@ -99,12 +101,12 @@ namespace qsbd {
       }
       MatHeev(jobz,uplo,n,U,lda,E);
       if( std::abs(E[0]-E_old) < eps ) {
-	it_stop = iteration;
+	it_stop = it;
 	break;
       }
       E_old = E[0];
-      if( iteration+1 == max_iteration ) {
-	it_stop = iteration;
+      if( it+1 == max_iteration ) {
+	it_stop = it;
 	break;
       }
 
@@ -116,7 +118,7 @@ namespace qsbd {
       Normalize(C1,A[ij],b_comm);
       
       if( std::abs(A[ij]) < eps ) {
-	it_stop = iteration;
+	it_stop = it;
 	break;
       }
 
@@ -141,9 +143,9 @@ namespace qsbd {
     }
 
     for(int it=0; it < it_stop; it++) {
-      int ii = iteration + lda * iteration;
-      int ij = iteration + lda * (iteration + 1);
-      int ji = iteration + 1 + lda * iteration;
+      int ii = it + lda * it;
+      int ij = it + lda * (it + 1);
+      int ji = it + 1 + lda * it;
       
       mult(H,C0,B,C1,bit_length,data_width,h_comm);
 #pragma omp parallel for

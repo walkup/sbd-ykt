@@ -135,9 +135,9 @@ Reordering to the lexographical order
 /**
 Slide data within a node in the increasing direction
 */
-    Basis MpiIncSlide() {
+    Basis MpiIncSlide() const {
       Basis res(*this);
-      MpiIncSlide(this->config_,res.config_,this->comm_);
+      qsbd::MpiIncSlide(this->config_,res.config_,this->comm_);
       /*
       for(int rank=0; rank < mpi_size_; rank++) {
 	int new_rank = ( rank + 1 ) % mpi_size_;
@@ -147,7 +147,7 @@ Slide data within a node in the increasing direction
 	res.index_end_[new_rank] = index_end_[rank];
       }
       */
-      mpi_rank_ = ( mpi_rank_ + 1 ) % mpi_size_;
+      res.mpi_rank_ = ( mpi_rank_ + 1 ) % mpi_size_;
       return res;
     }
 
@@ -155,9 +155,9 @@ Slide data within a node in the increasing direction
 Slide data within a node in the decreasing direction
  */
 
-    Basis MpiDecSlide() {
+    Basis MpiDecSlide() const {
       Basis res(*this);
-      MpiDecSlide(this->config_,res.config_,comm_);
+      qsbd::MpiDecSlide(this->config_,res.config_,comm_);
       /*
       for(int rank=0; rank < mpi_size_; rank++) {
 	int old_rank = ( rank + 1 ) % mpi_size_;
@@ -168,9 +168,9 @@ Slide data within a node in the decreasing direction
       }
       */
       if( mpi_rank_ == 0 ) {
-	mpi_rank_ = mpi_size_-1;
+	res.mpi_rank_ = mpi_size_-1;
       } else {
-	mpi_rank_ = ( mpi_rank_ - 1 ) % mpi_size_;
+	res.mpi_rank_ = ( mpi_rank_ - 1 ) % mpi_size_;
       }
       return res;
     }
@@ -187,6 +187,11 @@ Initialization of basis
       MPI_Comm_rank(comm,&mpi_rank_);
       MPI_Comm_size(comm,&mpi_size_);
       if( do_reordering ) {
+	std::cout << " Do Reordering " << std::endl;
+	index_begin_.resize(mpi_size_);
+	index_end_.resize(mpi_size_);
+	config_begin_.resize(mpi_size_);
+	config_end_.resize(mpi_size_);
 	this->Reordering();
       } else {
 	index_begin_.resize(mpi_size_);
@@ -228,14 +233,18 @@ Initialization of basis
     inline int MpiRank() const { return mpi_rank_; }
     inline int MpiSize() const { return mpi_size_; }
     inline int MpiMaster() const { return mpi_master_; }
-    inline std::vector<size_t> Config(size_t i) { return config_[i]; }
-    inline size_t Size() { return config_.size(); }
-    inline size_t BeginIndex() { return index_begin_[mpi_rank_]; }
-    inline size_t EndIndex() { return index_end_[mpi_rank_]; }
-    inline std::vector<size_t> BeginConfig() { return config_begin_[mpi_rank_]; }
-    inline std::vector<size_t> EndConfig() { return config_end_[mpi_rank_]; }
+    inline std::vector<size_t> Config(size_t i) const { return config_[i]; }
+    inline size_t Size() const { return config_.size(); }
+    inline size_t BeginIndex() const { return index_begin_[mpi_rank_]; }
+    inline size_t BeginIndex(int i) const { return index_begin_[i]; }
+    inline size_t EndIndex() const { return index_end_[mpi_rank_]; }
+    inline size_t EndIndex(int i) const { return index_end_[i]; }
+    inline std::vector<size_t> BeginConfig() const { return config_begin_[mpi_rank_]; }
+    inline std::vector<size_t> EndConfig() const { return config_end_[mpi_rank_]; }
 
-    void MpiProcessSearch(const std::vector<size_t> & v, int & target_rank, bool & mpi_exist) {
+    void MpiProcessSearch(const std::vector<size_t> & v,
+			  int & target_rank,
+			  bool & mpi_exist) const {
       mpi_process_search(v,config_begin_,config_end_,target_rank,mpi_exist);
     }
     
