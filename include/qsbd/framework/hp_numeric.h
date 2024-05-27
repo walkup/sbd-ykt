@@ -477,18 +477,18 @@ inline void MatQr(int m, int n, int k, std::complex<double> *pa, std::complex<do
     extern "C" void ssyev_(char *, char *, int *,
 			   float *, int *, float *, float *, int *, int *);
 
-    inline void MatHeev(char jobz, char uplo, int n, float *pa, float *pw) {
+    inline void MatHeev(char jobz, char uplo, int n, float *pa, int lda, float *pw) {
       int info;
       // Set workspace
       int lwork = -1;
       float *work = (float *) malloc(sizeof(float));
-      ssyev_(&jobz, &uplo, &n, pa, &n, pw, work, &lwork, &info);    // query workspace
+      ssyev_(&jobz, &uplo, &n, pa, &lda, pw, work, &lwork, &info);    // query workspace
       assert(info == 0);
       lwork = work[0];
       free(work);
       work = (float *) malloc(lwork * sizeof(float));
       // Actual calculation
-      ssyev_(&jobz, &uplo, &n, pa, &n, pw, work, &lwork, &info);
+      ssyev_(&jobz, &uplo, &n, pa, &lda, pw, work, &lwork, &info);
       assert(info == 0);
       free(work);
     }
@@ -497,18 +497,18 @@ inline void MatQr(int m, int n, int k, std::complex<double> *pa, std::complex<do
     extern "C" void dsyev_(
 			   char *, char *, int *, double *, int *, double *, double *, int *, int *);
     
-    inline void MatHeev(char jobz, char uplo, int n, double *pa, double *pw) {
+    inline void MatHeev(char jobz, char uplo, int n, double *pa, int lda, double *pw) {
       int info;
       // Set workspace
       int lwork = -1;
       double *work = (double *) malloc(sizeof(double));
-      dsyev_(&jobz, &uplo, &n, pa, &n, pw, work, &lwork, &info);    // query workspace
+      dsyev_(&jobz, &uplo, &n, pa, &lda, pw, work, &lwork, &info);    // query workspace
       assert(info == 0);
       lwork = work[0];
       free(work);
       work = (double *) malloc(lwork * sizeof(double));
       // Actual calculation
-      dsyev_(&jobz, &uplo, &n, pa, &n, pw, work, &lwork, &info);
+      dsyev_(&jobz, &uplo, &n, pa, &lda, pw, work, &lwork, &info);
       assert(info == 0);
       free(work);
     }
@@ -517,20 +517,20 @@ inline void MatQr(int m, int n, int k, std::complex<double> *pa, std::complex<do
     extern "C" void cheev_(
 			   char *, char *, int *, std::complex<float> *, int *, float *, std::complex<float> *, int *, float *, int *);
     
-    inline void MatHeev(char jobz, char uplo, int n, std::complex<float> *pa, float *pw) {
+    inline void MatHeev(char jobz, char uplo, int n, std::complex<float> *pa, int lda, float *pw) {
       int info;
       // Set workspace
       int lwork = -1;
       std::complex<float> *work = (std::complex<float> *) malloc(sizeof(std::complex<float>));
       int lrwork = ((1 > (3 * n - 2)) ? 1 : (3 * n - 2));
       float *rwork = (float *) malloc(lrwork * sizeof(float));
-      cheev_(&jobz, &uplo, &n, pa, &n, pw, work, &lwork, rwork, &info);    // query workspace
+      cheev_(&jobz, &uplo, &n, pa, &lda, pw, work, &lwork, rwork, &info);    // query workspace
       assert(info == 0);
       lwork = work[0].real();
       free(work);
       work = (std::complex<float> *) malloc(lwork * sizeof(std::complex<float>));
       // Actual calculation
-      cheev_(&jobz, &uplo, &n, pa, &n, pw, work, &lwork, rwork, &info);
+      cheev_(&jobz, &uplo, &n, pa, &lda, pw, work, &lwork, rwork, &info);
       assert(info == 0);
       free(work);
       free(rwork);
@@ -540,20 +540,20 @@ inline void MatQr(int m, int n, int k, std::complex<double> *pa, std::complex<do
     extern "C" void zheev_(
 			   char *, char *, int *, std::complex<double> *, int *, double *, std::complex<double> *, int *, double *, int *);
     
-    inline void MatHeev(char jobz, char uplo, int n, std::complex<double> *pa, double *pw) {
+    inline void MatHeev(char jobz, char uplo, int n, std::complex<double> *pa, int lda, double *pw) {
       int info;
       // Set workspace
       int lwork = -1;
       std::complex<double> *work = (std::complex<double> *) malloc(sizeof(std::complex<double>));
       int lrwork = ((1 > (3 * n - 2)) ? 1 : (3 * n - 2));
       double *rwork = (double *) malloc(lrwork * sizeof(double));
-      zheev_(&jobz, &uplo, &n, pa, &n, pw, work, &lwork, rwork, &info);    // query workspace
+      zheev_(&jobz, &uplo, &n, pa, &lda, pw, work, &lwork, rwork, &info);    // query workspace
       assert(info == 0);
       lwork = work[0].real();
       free(work);
       work = (std::complex<double> *) malloc(lwork * sizeof(std::complex<double>));
       // Actual calculation
-      zheev_(&jobz, &uplo, &n, pa, &n, pw, work, &lwork, rwork, &info);
+      zheev_(&jobz, &uplo, &n, pa, &lda, pw, work, &lwork, rwork, &info);
       assert(info == 0);
       free(work);
       free(rwork);

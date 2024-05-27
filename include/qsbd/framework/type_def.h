@@ -14,8 +14,22 @@
 
 namespace qsbd {
 
-  template <typename T> struct GetMpiType { static MPI_Datatype MpiT; };
+  template <typename T> struct GetRealType;
+  template <> struct GetRealType<float> { using RealT = float; };
+  template <> struct GetRealType<double> { using RealT = double; };
+  template <> struct GetRealType<std::complex<float>> { using RealT = float; };
+  template <> struct GetRealType<std::complex<double>> { using RealT = double; };
 
+  inline float GetReal(const float a) { return a; }
+  inline double GetReal(const double a) { return a; }
+  inline float GetReal(const std::complex<float> a) { return a.real(); }
+  inline double GetReal(const std::complex<double> a) { return a.real(); }
+  
+  template <typename T> inline T Conjugate(T a) { return a; }
+  template<> inline std::complex<float> Conjugate(std::complex<float> a) { return std::conj(a); }
+  template<> inline std::complex<double> Conjugate(std::complex<double> a) { return std::conj(a); }
+  
+  template <typename T> struct GetMpiType { static MPI_Datatype MpiT; };
   template<> inline MPI_Datatype GetMpiType<float>::MpiT = MPI_FLOAT;
   template<> inline MPI_Datatype GetMpiType<double>::MpiT = MPI_DOUBLE;
   template<> inline MPI_Datatype GetMpiType<std::complex<float>>::MpiT = MPI_CXX_FLOAT_COMPLEX;
