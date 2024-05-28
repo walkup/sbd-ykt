@@ -12,11 +12,12 @@
 
 #include "mpi.h"
 
-/*
+#define QSBD_BIT_LENGTH 8
+  
 std::ostream & operator << (std::ostream & s,
 			    const std::vector<size_t> & a) {
   for(size_t k=a.size(); k > 0; k--) {
-    std::bitset<QSBD_BIT_SIZE_T> b(a[k-1]);
+    std::bitset<QSBD_BIT_LENGTH> b(a[k-1]);
     s << b;
   }
   return s;
@@ -26,12 +27,14 @@ std::ostream & operator << (std::ostream & s,
 			    const std::vector<std::vector<size_t>> & a) {
   for(size_t i=0; i < a.size(); i++) {
     for(size_t k=a[i].size(); k > 0; k--) {
-      std::bitset<QSBD_BIT_SIZE_T> b(a[i][k-1]);
-      std::cout << b;
+      std::bitset<QSBD_BIT_LENGTH> b(a[i][k-1]);
+      s << b;
     }
+    s << std::endl;
   }
+  return s;
 }
-*/
+
 
   bool operator < (const std::vector<size_t> & a, const std::vector<size_t> & b) {
     size_t a_size = a.size();
@@ -307,6 +310,7 @@ Function for finding the state index of target bit string
 			  std::vector<std::vector<size_t>> & config_end,
 			  std::vector<size_t> & index_begin,
 			  std::vector<size_t> & index_end,
+			  size_t bit_length,
 			  MPI_Comm & comm) {
 
     int mpi_master = 0;
@@ -378,17 +382,24 @@ Function for finding the state index of target bit string
 	}
       } // end for(int send_rank=mpi_rank_begin; send_rank <= mpi_rank_end; send_rank++)
     } // end for(int recv_rank=0; recv_rank < mpi_size; recv_rank++)
+    
     config = new_config;
     for(int rank=0; rank < mpi_size; rank++) {
       index_begin[rank] = i_begin[rank];
       index_end[rank] = i_end[rank];
       if( rank == mpi_rank ) {
 	config_begin[rank] = config[0];
-	config_end[rank] = config[config.size()-1];
       }
       MPI_Bcast(config_begin[rank].data(),config_size,QSBD_MPI_SIZE_T,rank,comm);
-      MPI_Bcast(config_end[rank].data(),config_size,QSBD_MPI_SIZE_T,rank,comm);
     }
+    for(int rank=0; rank < mpi_size-1; rank++) {
+      config_end[rank] = config_begin[rank+1];
+    }
+    if( mpi_rank == mpi_size-1 ) {
+      config_end[mpi_rank] = config[config.size()-1];
+      bitadvance(config_end[mpi_rank],bit_length);
+    }
+    MPI_Bcast(config_end[mpi_size-1].data(),config_size,QSBD_MPI_SIZE_T,mpi_size-1,comm);
   }
 
   void mpi_sort_bitarray(std::vector<std::vector<size_t>> & config,
@@ -584,7 +595,7 @@ Function for finding the state index of target bit string
 	// Sorted config from sorted a-configs and sorted b-configs (O(N) method)
 	size_t config_size = new_config_a.size() + new_config_b.size();
 	config.resize(0);
-	config.reserve(config_size);
+	// config.reserve(config_size);
 	size_t idx_a = 0;
 	size_t idx_b = 0;
 	size_t idx_c = 0;
@@ -625,7 +636,7 @@ Function for finding the state index of target bit string
 
 	while( idx_b < new_config_b.size() ) {
 	  config.push_back(new_config_b[idx_b]);
-	  config[idx_c] = new_config_b[idx_b];
+	  // config[idx_c] = new_config_b[idx_b];
 	  idx_b++;
 	  idx_c++;
 	}
@@ -657,7 +668,7 @@ Function for finding the state index of target bit string
 	}
 	*/
 
-	mpi_redistribution(config,config_begin,config_end,index_begin,index_end,comm);
+	// mpi_redistribution(config,config_begin,config_end,index_begin,index_end,bit_length,comm);
 
 	for(int rank=0; rank < mpi_size; rank++) {
 	  if( mpi_rank == rank ) {
@@ -668,6 +679,7 @@ Function for finding the state index of target bit string
 	    }
 	    std::cout << std::endl;
 	  }
+	  MPI_Barrier(comm);
 	}
 	
 	

@@ -12,8 +12,6 @@
 
 namespace qsbd {
 
-#define QSBD_BIT_LENGTH 8
-  
   class Basis {
   public:
 
@@ -122,7 +120,7 @@ Adding general configurations
 Redistribution to make distribution uniformly
  */
     void ReDistribution() {
-      mpi_redistribution(config_,config_begin_,config_end_,index_begin_,index_end_,comm_);
+      mpi_redistribution(config_,config_begin_,config_end_,index_begin_,index_end_,QSBD_BIT_LENGTH,comm_);
     } // end ReDistricution()
 
 /**
