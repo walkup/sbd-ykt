@@ -147,7 +147,14 @@ Slide data within a node in the increasing direction
 	res.index_end_[new_rank] = index_end_[rank];
       }
       */
-      res.mpi_rank_ = ( mpi_rank_ + 1 ) % mpi_size_;
+      // res.mpi_rank_ = ( mpi_rank_ + 1 ) % mpi_size_;
+      
+      if( mpi_rank_ == 0 ) {
+	res.mpi_rank_ = mpi_size_-1;
+      } else {
+	res.mpi_rank_ = ( mpi_rank_ - 1 ) % mpi_size_;
+      }
+      
       return res;
     }
 
@@ -167,11 +174,15 @@ Slide data within a node in the decreasing direction
 	res.index_end_[rank] = index_end_[old_rank];
       }
       */
+      /*
       if( mpi_rank_ == 0 ) {
 	res.mpi_rank_ = mpi_size_-1;
       } else {
 	res.mpi_rank_ = ( mpi_rank_ - 1 ) % mpi_size_;
       }
+      */
+
+      res.mpi_rank_ = ( mpi_rank_ + 1 ) % mpi_size_;
       return res;
     }
     
