@@ -504,8 +504,8 @@ Function for finding the state index of target bit string
 	std::vector<std::vector<size_t>> config_transfer;
 	for(int r_rank=0; r_rank < mpi_size; r_rank++) {
 	  for(int s_rank=0; s_rank < mpi_size_b; s_rank++) {
-	    if( ( config_begin[r_rank] <= config_end_b[s_rank] ) &&
-		( config_begin_b[s_rank] <= config_end[r_rank]  ) ) {
+	    if( ( config_begin[r_rank] < config_end_b[s_rank] ) &&
+		( config_begin_b[s_rank] < config_end[r_rank]  ) ) {
 	      if( s_rank+mpi_master_b == mpi_rank ) {
 		size_t i_begin=0;
 		size_t i_end=config.size();
@@ -668,7 +668,7 @@ Function for finding the state index of target bit string
 	}
 	*/
 
-	// mpi_redistribution(config,config_begin,config_end,index_begin,index_end,bit_length,comm);
+	mpi_redistribution(config,config_begin,config_end,index_begin,index_end,bit_length,comm);
 
 	for(int rank=0; rank < mpi_size; rank++) {
 	  if( mpi_rank == rank ) {

@@ -497,7 +497,9 @@ inline void MatQr(int m, int n, int k, std::complex<double> *pa, std::complex<do
     extern "C" void dsyev_(
 			   char *, char *, int *, double *, int *, double *, double *, int *, int *);
     
-    inline void MatHeev(char jobz, char uplo, int n, double *pa, int lda, double *pw) {
+    inline void MatHeev(char jobz, char uplo,
+			int n, double *pa, int lda,
+			double *pw) {
       int info;
       // Set workspace
       int lwork = -1;

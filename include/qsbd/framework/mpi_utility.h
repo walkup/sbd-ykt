@@ -96,7 +96,9 @@ void MpiRecv(std::vector<std::vector<size_t>> & config, int source, MPI_Comm com
 }
 
 template <typename ElemT>
-void MpiIncSlide(const std::vector<ElemT> & A, std::vector<ElemT> & B, MPI_Comm comm) {
+void MpiIncSlide(const std::vector<ElemT> & A,
+		 std::vector<ElemT> & B,
+		 MPI_Comm comm) {
   
   int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
   int mpi_size; MPI_Comm_size(comm,&mpi_size);

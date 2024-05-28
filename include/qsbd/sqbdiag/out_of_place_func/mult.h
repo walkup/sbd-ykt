@@ -150,7 +150,7 @@ namespace qsbd {
       }
     }
 
-    Cp[inc_size] = W;
+    Cp[inc_size] = C;
     Bp[inc_size] = B;
     for(int d=0; d < dec_size; d++) {
       if( d == 0 ) {
@@ -223,11 +223,12 @@ namespace qsbd {
 	    
 	    Bp[d_target].IndexSearch(w,js,check);
 	    if( check ) {
-	      
+	      /*
 	      std::cout << " mpi rank, is, js  = "
 			<< B.MpiRank() << ", "
 			<< is + B.BeginIndex(B.MpiRank()) << ", "
 			<< js << std::endl;
+	      */
 	      
 	      W[is] = W[is] + H.c_[n] * Cp[d_target][js-B.BeginIndex(target_rank)];
 	    }
