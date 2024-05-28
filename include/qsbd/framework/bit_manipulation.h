@@ -154,6 +154,7 @@ Function for finding a mpi process which manages the target bit string
       if( config_begin[rank] <= target_config && target_config < config_end[rank] ) {
 	target_mpi_rank = rank;
 	mpi_exist = true;
+	break;
       }
     }
   }
@@ -172,10 +173,11 @@ Function for finding the state index of target bit string
 			const size_t & index_end,
 			size_t & index, bool & exist) {
     bool do_bisection = true;
-    std::vector<size_t> config_a = config[index_begin];
-    std::vector<size_t> config_b = config[index_end-1];
     size_t index_a = index_begin;
     size_t index_b = index_end-1;
+    std::vector<size_t> config_a = config[index_a];
+    std::vector<size_t> config_b = config[index_b];
+    exist = false;
     while( do_bisection ) {
       size_t index_c = (index_a + index_b)/2;
       std::vector<size_t> config_c = config[index_c];
@@ -190,7 +192,7 @@ Function for finding the state index of target bit string
 	do_bisection = false;
 	exist = true;
       }
-      if( index_b - index_a < 2 ) {
+      if( (index_b - index_a) < 2 && do_bisection ) {
 	do_bisection = false;
 	if( config_b == target_config ) {
 	  index = index_b;
@@ -581,31 +583,32 @@ Function for finding the state index of target bit string
 
 	// Sorted config from sorted a-configs and sorted b-configs (O(N) method)
 	size_t config_size = new_config_a.size() + new_config_b.size();
-	config.resize(config_size);
+	config.resize(0);
+	config.reserve(config_size);
 	size_t idx_a = 0;
 	size_t idx_b = 0;
 	size_t idx_c = 0;
 
 	while ( ( idx_a < new_config_a.size() ) && ( idx_b < new_config_b.size() ) ) {
 	  
-	  if ( idx_a == new_config_a.size() ) {
-	    config[idx_c] = new_config_b[idx_b];
-	    idx_c++;
-	    idx_b++;
-	  } else if ( new_config_a[idx_a] < new_config_b[idx_b] ) {
-	    config[idx_c] = new_config_a[idx_a];
+	  if ( new_config_a[idx_a] < new_config_b[idx_b] ) {
+	    // config[idx_c] = new_config_a[idx_a];
+	    config.push_back(new_config_a[idx_a]);
 	    idx_a++;
 	    idx_c++;
 	  } else if ( new_config_b[idx_b] < new_config_a[idx_a] ) {
-	    config[idx_c] = new_config_b[idx_b];
+	    // config[idx_c] = new_config_b[idx_b];
+	    config.push_back(new_config_b[idx_b]);
 	    idx_b++;
 	    idx_c++;
 	  } else {
 	    if( idx_c == 0 ) {
-	      config[idx_c] = new_config_a[idx_a];
+	      config.push_back(new_config_a[idx_a]);
+	      // config[idx_c] = new_config_a[idx_a];
 	      idx_c++;
 	    } else if( config[idx_c-1] < new_config_a[idx_a] ) {
-	      config[idx_c] = new_config_a[idx_a];
+	      config.push_back(new_config_a[idx_a]);
+	      // config[idx_c] = new_config_a[idx_a];
 	      idx_c++;
 	    }
 	    idx_b++;
@@ -614,12 +617,14 @@ Function for finding the state index of target bit string
 	}
 
 	while ( idx_a < new_config_a.size() ) {
-	  config[idx_c] = new_config_a[idx_a];
+	  config.push_back(new_config_a[idx_a]);
+	  // config[idx_c] = new_config_a[idx_a];
 	  idx_a++;
 	  idx_c++;
 	}
 
 	while( idx_b < new_config_b.size() ) {
+	  config.push_back(new_config_b[idx_b]);
 	  config[idx_c] = new_config_b[idx_b];
 	  idx_b++;
 	  idx_c++;
@@ -637,7 +642,34 @@ Function for finding the state index of target bit string
 	  index_end[rank] = index_begin[rank]+new_config_size[rank];
 	}
 
+	MPI_Barrier(comm);
+
+	/*
+	for(int rank=0; rank < mpi_size; rank++) {
+	  if( mpi_rank == rank ) {
+	    std::cout << " (index_begin, index_end) at rank " << rank;
+	    for(int p_rank=0; p_rank < mpi_size; p_rank++) {
+	      std::cout << " (" << index_begin[p_rank] << ","
+			<< index_end[p_rank] << ")";
+	    }
+	    std::cout << std::endl;
+	  }
+	}
+	*/
+
 	mpi_redistribution(config,config_begin,config_end,index_begin,index_end,comm);
+
+	for(int rank=0; rank < mpi_size; rank++) {
+	  if( mpi_rank == rank ) {
+	    std::cout << " (index_begin, index_end) at rank " << rank;
+	    for(int p_rank=0; p_rank < mpi_size; p_rank++) {
+	      std::cout << " (" << index_begin[p_rank] << ","
+			<< index_end[p_rank] << ")";
+	    }
+	    std::cout << std::endl;
+	  }
+	}
+	
 	
       } // if( config_end_a_end > config_begin_b_begin ) to skip case where it is already sorted.
     }

@@ -12,7 +12,7 @@
 
 namespace qsbd {
 
-#define QSBD_BIT_LENGTH 30
+#define QSBD_BIT_LENGTH 8
   
   class Basis {
   public:
@@ -186,12 +186,13 @@ Initialization of basis
       mpi_master_ = 0;
       MPI_Comm_rank(comm,&mpi_rank_);
       MPI_Comm_size(comm,&mpi_size_);
+      size_t config_length = config_[0].size();
       if( do_reordering ) {
 	std::cout << " Do Reordering " << std::endl;
 	index_begin_.resize(mpi_size_);
 	index_end_.resize(mpi_size_);
-	config_begin_.resize(mpi_size_);
-	config_end_.resize(mpi_size_);
+	config_begin_.resize(mpi_size_,std::vector<size_t>(config_length));
+	config_end_.resize(mpi_size_,std::vector<size_t>(config_length));
 	this->Reordering();
       } else {
 	index_begin_.resize(mpi_size_);
@@ -249,7 +250,11 @@ Initialization of basis
     }
     
     void IndexSearch(const std::vector<size_t> & v, size_t & index, bool & exist) {
-      bisection_search(v,config_,index_begin_[mpi_rank_],index_end_[mpi_rank_],index,exist);
+      config_.size();
+      size_t index_begin=0;
+      size_t index_end=config_.size();
+      bisection_search(v,config_,index_begin,index_end,index,exist);
+      index += index_begin_[mpi_rank_];
     }
     
 

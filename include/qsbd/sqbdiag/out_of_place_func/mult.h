@@ -94,7 +94,6 @@ namespace qsbd {
     {
       std::vector<size_t> v;
       size_t size_t_one = 1;
-      size_t js;
       size_t ns_rank = B.Size();
       bool check;
 #pragma omp for
@@ -103,7 +102,7 @@ namespace qsbd {
 	for(size_t n=0; n < H.d_.size(); n++) {
 	  check = false;
 	  for(int k=0; k < H.d_[n].n_dag_; k++) {
-	    int q = H.d_[n].fops_[k].q_;
+	    size_t q = static_cast<size_t>(H.d_[n].fops_[k].q_);
 	    size_t r = q / bit_length;
 	    size_t x = q % bit_length;
 	    if( ( v[r] & ( size_t_one << x ) ) == 0 ) {
@@ -112,7 +111,7 @@ namespace qsbd {
 	    }
 	  }
 	  if( check ) continue;
-	  W[is] += H.e_[n] * C[js];
+	  W[is] += H.e_[n] * C[is];
 	}
       }
     }
@@ -127,6 +126,7 @@ namespace qsbd {
 			int data_width) {
 
     size_t mpi_size_b = B.MpiSize();
+    size_t mpi_rank_b = B.MpiRank();
     size_t ns_rank = W.size();
 
     std::vector<Basis> Bp(data_width);
@@ -159,6 +159,14 @@ namespace qsbd {
 	mpi_dec_slide_wavefunction(Cp[d+inc_size],Bp[d+inc_size],Cp[d+1+inc_size],Bp[d+1+inc_size]);
       }
     }
+
+    for(int rank=0; rank < mpi_size_b; rank++) {
+      if( mpi_rank_b == rank ) {
+	for(int d=0; d < Bp.size(); d++) {
+	  std::cout << " Bp[" << d << "].MpiRank() = " << Bp[d].MpiRank() << " at MPI Rank = " << mpi_rank_b << std::endl;
+	}
+      }
+    }
     
     int mpi_round = mpi_size_b / data_width;
 
@@ -184,7 +192,7 @@ namespace qsbd {
 	    w = v;
 	    check = false;
 	    for(int k=0; k < H.o_[n].n_dag_; k++) {
-	      int q = H.o_[n].fops_[k].q_;
+	      size_t q = static_cast<size_t>(H.o_[n].fops_[k].q_);
 	      size_t r = q / bit_length;
 	      size_t x = q % bit_length;
 	      if( ( w[r] & ( size_t_one << x ) ) != 0 ) {
@@ -196,7 +204,7 @@ namespace qsbd {
 	    }
 	    if ( check ) continue;
 	    for(int k = H.o_[n].n_dag_; k < H.o_[n].fops_.size(); k++) {
-	      int q = H.o_[n].fops_[k].q_;
+	      size_t q = static_cast<size_t>(H.o_[n].fops_[k].q_);
 	      size_t r = q / bit_length;
 	      size_t x = q % bit_length;
 	      if( ( w[r] & ( size_t_one << x ) ) == 0 ) {
@@ -208,10 +216,11 @@ namespace qsbd {
 	    }
 	    if ( check ) continue;
 	    B.MpiProcessSearch(w,target_rank,check);
-	    std::cout << " target_rank = " << target_rank << std::endl;
 	    if ( !check ) continue;
+
+	    std::cout << " target rank " << target_rank << " in rank " << B.MpiRank() << std::endl;
 	    check = true;
-	    size_t d_target;
+	    int d_target;
 	    for(int d=0; d < Bp.size(); d++) {
 	      if( Bp[d].MpiRank() == target_rank ) {
 		check = false;
@@ -224,8 +233,9 @@ namespace qsbd {
 	    Bp[d_target].IndexSearch(w,js,check);
 	    // bisection_search(w,Bp[d_target].config_,B.index_begin_[target_rank],B.index_end_[target_rank],js,check);
 	    if( check ) {
-	      std::cout << " d_target, is, js, B.BeginIndex(target_rank), check = "
-			<< d_target << ", " << is << ", " << js << ", "
+	      std::cout << " mpi_rank, target_rank, d_target, is, js, B.BeginIndex(target_rank), check = "
+			<< B.MpiRank() << ", "
+			<< target_rank << ", " << d_target << ", " << is + B.BeginIndex(B.MpiRank()) << ", " << js << ", "
 			<< B.BeginIndex(target_rank) << ", " << check << std::endl;
 	      W[is] = W[is] + H.c_[n] * Cp[d_target][js-B.BeginIndex(target_rank)];
 	    }
