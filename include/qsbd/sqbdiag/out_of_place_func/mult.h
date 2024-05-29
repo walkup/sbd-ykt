@@ -250,6 +250,7 @@ namespace qsbd {
 	} // end for(size_t is=0; is < ns_rank; is++)
       } // end omp pragma
       if( mpi_round != 1 ) {
+	// std::cout << " slide for next round! " << std::endl;
 	mpi_inc_slide_wavefunction(Cp,Bp,data_width);
       }
     } // end for(int round=0; round < mpi_round; round++)
