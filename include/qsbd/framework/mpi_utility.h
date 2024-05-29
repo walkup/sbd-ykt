@@ -57,6 +57,22 @@ void MpiRecv(std::vector<ElemT> & data, int source, MPI_Comm comm) {
   }
 }
 
+template <typename ElemT>
+void MpiBcast(std::vector<ElemT> & data, int root, MPI_Comm comm) {
+  size_t d_size;
+  int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
+  int mpi_size; MPI_Comm_size(comm,&mpi_size);
+  if( mpi_rank == root ) {
+    d_size = data.size();
+  }
+  MPI_Bcast(&d_size,1,QSBD_MPI_SIZE_T,root,comm);
+  if( mpi_rank != root ) {
+    data.resize(d_size);
+  }
+  MPI_Datatype DataT = GetMpiType<ElemT>::MpiT;
+  MPI_Bcast(data.data(),d_size,DataT,root,comm);
+}
+
 template <>
 void MpiSend(const std::vector<std::vector<size_t>> & config, int dest, MPI_Comm comm) {
   size_t c_num = config.size();
@@ -90,6 +106,44 @@ void MpiRecv(std::vector<std::vector<size_t>> & config, int source, MPI_Comm com
     for(size_t n=0; n < c_num; n++) {
       for(size_t i=0; i < c_len; i++) {
 	config[n][i] = config_recv[i+c_len*n];
+      }
+    }
+  }
+}
+
+template <>
+void MpiBcast(std::vector<std::vector<size_t>> & config,
+	      int root,
+	      MPI_Comm comm) {
+  size_t c_num;
+  int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
+  int mpi_size; MPI_Comm_size(comm,&mpi_size);
+  if( mpi_rank == root ) {
+    c_num = config.size();
+  }
+  MPI_Bcast(&c_num,1,QSBD_MPI_SIZE_T,root,comm);
+  if( c_num != 0 ) {
+    size_t c_len;
+    if( mpi_rank == root ) {
+      c_len = config[0].size();
+    }
+    MPI_Bcast(&c_len,1,QSBD_MPI_SIZE_T,root,comm);
+    size_t total_size = c_num*c_len;
+    std::vector<size_t> config_transfer(total_size);
+    if( mpi_rank == root ) {
+      for(size_t n=0; n < c_num; n++) {
+	for(size_t i=0; i < c_len; i++) {
+	  config_transfer[i+c_len*n] = config[n][i];
+	}
+      }
+    }
+    MPI_Bcast(config_transfer.data(),total_size,QSBD_MPI_SIZE_T,root,comm);
+    if( mpi_rank != root ) {
+      config = std::vector<std::vector<size_t>>(c_num,std::vector<size_t>(c_len));
+      for(size_t n=0; n < c_num; n++) {
+	for(size_t i=0; i < c_len; i++) {
+	  config[n][i] = config_transfer[i+c_len*n];
+	}
       }
     }
   }

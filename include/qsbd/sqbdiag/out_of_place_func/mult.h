@@ -17,12 +17,13 @@ namespace qsbd {
     int mpi_size; MPI_Comm_size(comm,&mpi_size);
     int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
 
-    assert( (mpi_size % b_size) == 0 );
+    // assert( (mpi_size % b_size) == 0 );
+    assert( mpi_size == b_size * h_size );
     
-    int mpi_color_b = mpi_size / b_size;
-    int mpi_key_b   = mpi_rank % b_size;
+    int mpi_color_b = mpi_rank / b_size; // mpi_rank == 0 or 1 -> mpi_color_b = 0, mpi_rank == 2 or 3 -> mpi_color_b = 1
+    int mpi_key_b   = mpi_rank % b_size; // mpi_rank == 0 or 2 -> mpi_key_b = 0, mpi_rank == 1 or 3 -> mpi_key_b = 1
     int mpi_color_h = mpi_rank % b_size;
-    int mpi_key_h   = mpi_size / b_size;
+    int mpi_key_h   = mpi_rank / b_size;
     MPI_Comm_split(comm,mpi_color_b,mpi_key_b,&b_comm);
     MPI_Comm_split(comm,mpi_color_h,mpi_key_h,&h_comm);
     
@@ -79,6 +80,19 @@ namespace qsbd {
 	W[i] = Wt;
 	B[i] = Bt;
       }
+    }
+  }
+
+  template <typename ElemT>
+  void mult_prep(std::vector<ElemT> & W,
+		 MPI_Comm h_comm) {
+    // Since we will perform Allreduce at the end of multiplication
+    // we should divide the value with the number of mpi process.
+    int mpi_size_h; MPI_Comm_size(h_comm,&mpi_size_h);
+    ElemT factor = ElemT(1.0/mpi_size_h);
+#pragma omp parallel for
+    for(size_t i=0; i < W.size(); i++) {
+      W[i] *= factor;
     }
   }
 
@@ -274,6 +288,7 @@ namespace qsbd {
     //  x The operation of this function is W <- H C + W, i.e., W += H C
     //
 
+    mult_prep(W,h_comm);
     mult_diagonal(H,C,B,W,bit_length);
     mult_offdiagonal(H,C,B,W,bit_length,data_width);
     MpiAllreduce(W,MPI_SUM,h_comm);

@@ -100,7 +100,6 @@ namespace qsbd {
 
     // using RealT = qsbd::GetRealType<ElemT>::RealT;
 
-    MPI_Comm b_comm = B.MpiComm();
     std::vector<ElemT> C0(W);
     std::vector<ElemT> C1(W);
 
@@ -108,8 +107,11 @@ namespace qsbd {
     char uplo = 'U';
     int lda   = max_iteration;
 
+    MPI_Comm b_comm = B.MpiComm();
     int mpi_rank_h; MPI_Comm_rank(h_comm,&mpi_rank_h);
+    int mpi_size_h; MPI_Comm_size(h_comm,&mpi_size_h);
     int mpi_rank_b; MPI_Comm_rank(b_comm,&mpi_rank_b);
+    int mpi_size_b; MPI_Comm_size(b_comm,&mpi_size_h);
     
     RealT * A = (RealT *) calloc(max_iteration*max_iteration,sizeof(RealT));
     RealT * U = (RealT *) calloc(max_iteration*max_iteration,sizeof(RealT));
@@ -158,22 +160,17 @@ namespace qsbd {
       Normalize(C1,A[ij],b_comm);
       A[ji] = A[ij];
 
-      if( mpi_rank_b == 0 && mpi_rank_h == 0 ) {
-	std::cout << " Lanczos iteration " << it
-		  << ": (A,B)=(" << A[ii] << "," << A[ij] << "):";
-	for(int p=0; p < std::min(n,6); p++) {
-	  std::cout << " " << E[p];
+      for(int rank=0; rank < mpi_size_h; rank++) {
+	if( mpi_rank_b == 0 && mpi_rank_h == rank ) {
+	  std::cout << " Lanczos iteration " << it
+		    << " at h_comm rank " << mpi_rank_h
+		    << ": (A,B)=(" << A[ii] << "," << A[ij] << "):";
+	  for(int p=0; p < std::min(n,6); p++) {
+	    std::cout << " " << E[p];
+	  }
+	  std::cout << std::endl;
 	}
-	std::cout << std::endl;
       }
-
-      // debug
-      RealT Tes;
-      Normalize(C1,Tes,b_comm);
-      if( mpi_rank_b == 0 && mpi_rank_h == 0 ) {
-	std::cout << " test norm = " << Tes << std::endl;
-      }
-      // end debug
 
       if( std::abs(A[ij]) < eps ) {
 	it_stop = it;
@@ -200,6 +197,7 @@ namespace qsbd {
       W[is] *= U[0];
     }
 
+    // obtain ground state by restart Lanczos
     for(int it=0; it < it_stop; it++) {
       int ii = it + lda * it;
       int ij = it + lda * (it + 1);
