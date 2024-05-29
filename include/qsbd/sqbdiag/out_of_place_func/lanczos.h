@@ -70,7 +70,7 @@ namespace qsbd {
     std::mt19937 gen(seed);
     std::uniform_real_distribution<RealT> dist(-1,1);
     RealT sum;
-#pragma omp parallel for reduction(+:sum);
+#pragma omp parallel for reduction(+:sum)
     for(size_t is=0; is < X.size(); is++) {
       X[is] = ElemT(dist(gen));
       sum += GetReal( Conjugate(X[is]) * X[is] );
