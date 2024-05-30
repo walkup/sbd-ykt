@@ -13,7 +13,7 @@
 
 #include "mpi.h"
 
-#define QSBD_BIT_LENGTH 8
+#define QSBD_BIT_LENGTH 20
   
 std::ostream & operator << (std::ostream & s,
 			    const std::vector<size_t> & a) {
@@ -294,6 +294,11 @@ Function for finding the state index of target bit string
   }
 
   void sort_bitarray(std::vector<std::vector<size_t>> & a) {
+    std::sort(a.begin(),a.end(),
+	      [](const std::vector<size_t> & x,
+		 const std::vector<size_t> & y)
+	      { return x < y; });
+    /*
     std::vector<std::vector<size_t>> b;
     std::move(a.begin(),a.end(),std::back_inserter(b));
     a = std::vector<std::vector<size_t>>(0);
@@ -308,6 +313,7 @@ Function for finding the state index of target bit string
 	a.insert(a.begin()+index,b[i]);
       }
     }
+    */
   }
 
   void mpi_redistribution(std::vector<std::vector<size_t>> & config,
