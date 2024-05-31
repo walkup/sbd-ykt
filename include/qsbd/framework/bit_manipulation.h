@@ -13,7 +13,7 @@
 
 #include "mpi.h"
 
-#define QSBD_BIT_LENGTH 20
+#define QSBD_BIT_LENGTH 8
   
 std::ostream & operator << (std::ostream & s,
 			    const std::vector<size_t> & a) {
@@ -298,6 +298,7 @@ Function for finding the state index of target bit string
 	      [](const std::vector<size_t> & x,
 		 const std::vector<size_t> & y)
 	      { return x < y; });
+    a.erase(std::unique(a.begin(),a.end()),a.end());
     /*
     std::vector<std::vector<size_t>> b;
     std::move(a.begin(),a.end(),std::back_inserter(b));
@@ -622,7 +623,7 @@ Function for finding the state index of target bit string
 	// Sorted config from sorted a-configs and sorted b-configs (O(N) method)
 	size_t config_size = new_config_a.size() + new_config_b.size();
 	config.resize(0);
-	// config.reserve(config_size);
+	config.reserve(config_size);
 	size_t idx_a = 0;
 	size_t idx_b = 0;
 	size_t idx_c = 0;
