@@ -13,7 +13,7 @@
 
 #include "mpi.h"
 
-#define QSBD_BIT_LENGTH 8
+#define QSBD_BIT_LENGTH 20
   
 std::ostream & operator << (std::ostream & s,
 			    const std::vector<size_t> & a) {
