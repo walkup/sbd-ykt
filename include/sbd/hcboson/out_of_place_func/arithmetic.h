@@ -1,11 +1,11 @@
 /**
-@file qsbd/diag/out_of_place_func/arithmetic.h
+@file sbd/hcboson/out_of_place_func/arithmetic.h
 @brief out-of-place arithmetic for GeneralOp class
 */
-#ifndef QSBD_SQBDIAG_OUT_OF_PLACE_FUNC_ARITHMETIC_H
-#define QSBD_SQBDIAG_OUT_OF_PLACE_FUNC_ARITHMETIC_H
+#ifndef SBD_HCBOSON_OUT_OF_PLACE_FUNC_ARITHMETIC_H
+#define SBD_HCBOSON_OUT_OF_PLACE_FUNC_ARITHMETIC_H
 
-namespace qsbd {
+namespace sbd {
 
   ProductOp operator * (const FieldOp & a, const FieldOp & b) {
     ProductOp res(a);
@@ -339,7 +339,7 @@ namespace qsbd {
 	       MPI_Comm comm) {
     MPI_Send(&P.n_dag_,1,MPI_INT,dest,0,comm);
     size_t p_size = P.size();
-    MPI_Send(&p_size,1,QSBD_MPI_SIZE_T,dest,0,comm);
+    MPI_Send(&p_size,1,SBD_MPI_SIZE_T,dest,0,comm);
     for(size_t i=0; i < p_size; i++) {
       MpiSend(P.fops_[i],dest,comm);
     }
@@ -351,7 +351,7 @@ namespace qsbd {
     MPI_Status status;
     MPI_Recv(&P.n_dag_,1,MPI_INT,source,0,comm,&status);
     size_t p_size;
-    MPI_Recv(&p_size,1,QSBD_MPI_SIZE_T,source,0,comm,&status);
+    MPI_Recv(&p_size,1,SBD_MPI_SIZE_T,source,0,comm,&status);
     P.fops_.resize(p_size);
     for(size_t i=0; i < p_size; i++) {
       MpiRecv(P.fops_[i],source,comm);
@@ -370,7 +370,7 @@ namespace qsbd {
     sizes[1] = G.d_.size();
     sizes[2] = G.c_.size();
     sizes[3] = G.o_.size();
-    MPI_Send(sizes.data(),4,QSBD_MPI_SIZE_T,dest,0,comm);
+    MPI_Send(sizes.data(),4,SBD_MPI_SIZE_T,dest,0,comm);
     MPI_Datatype DataT = GetMpiType<ElemT>::MpiT;
     if( sizes[0] != 0 ) {
       MPI_Send(G.e_.data(),sizes[0],DataT,dest,0,comm);
@@ -400,7 +400,7 @@ namespace qsbd {
     sizes[1] = G.d_.size();
     sizes[2] = G.c_.size();
     sizes[3] = G.o_.size();
-    MPI_Recv(sizes.data(),4,QSBD_MPI_SIZE_T,source,0,comm,&status);
+    MPI_Recv(sizes.data(),4,SBD_MPI_SIZE_T,source,0,comm,&status);
     MPI_Datatype DataT = GetMpiType<ElemT>::MpiT;
     if( sizes[0] != 0 ) {
       G.e_.resize(sizes[0]);
@@ -498,6 +498,6 @@ namespace qsbd {
   }
 
   
-} // end namespace qsbd
+} // end namespace sbd
 
-#endif // end #ifndef QSBD_DIAG_OUT_OF_PLACE_FUNC_GOP_IMP_H
+#endif // end #ifndef SBD_HCBOSON_OUT_OF_PLACE_FUNC_ARITHMETIC_H

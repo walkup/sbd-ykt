@@ -1,6 +1,6 @@
-#ifndef QSBD_QSBD_H
-#define QSBD_QSBD_H
+#ifndef SBD_SBD_H
+#define SBD_SBD_H
 
-#include "qsbd/sqbdiag/inc_all.h"
+#include "sbd/hcboson/inc_all.h"
 
 #endif

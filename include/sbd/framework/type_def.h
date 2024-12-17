@@ -1,10 +1,10 @@
-//// This file is a part of qsbd
+//// This file is a part of sbd
 /**
 @file type_def.h
 @brief Definitions of common types and related helper functions
 */
-#ifndef QSBD_FRAMEWORK_TYPE_DEF_H
-#define QSBD_FRAMEWORK_TYPE_DEF_H
+#ifndef SBD_FRAMEWORK_TYPE_DEF_H
+#define SBD_FRAMEWORK_TYPE_DEF_H
 
 #include <complex>
 #include <limits.h>
@@ -12,7 +12,7 @@
 
 #include "mpi.h"
 
-namespace qsbd {
+namespace sbd {
 
   template <typename T> struct GetRealType;
   template <> struct GetRealType<float> { using RealT = float; };
@@ -36,23 +36,23 @@ namespace qsbd {
   template<> inline MPI_Datatype GetMpiType<std::complex<double>>::MpiT = MPI_CXX_DOUBLE_COMPLEX;
 
 #if SIZE_MAX == UCHAR_MAX
-  #define QSBD_MPI_SIZE_T MPI_UNSIGNED_CHAR
-  #define QSBD_BIT_SIZE_T UCHAR_WIDTH
+  #define SBD_MPI_SIZE_T MPI_UNSIGNED_CHAR
+  #define SBD_BIT_SIZE_T UCHAR_WIDTH
 #elif SIZE_MAX == USHRT_MAX
-  #define QSBD_MPI_SIZE_T MPI_UNSIGNED_SHORT
-  #define QSBD_BIT_SIZE_T USHRT_WIDTH
+  #define SBD_MPI_SIZE_T MPI_UNSIGNED_SHORT
+  #define SBD_BIT_SIZE_T USHRT_WIDTH
 #elif SIZE_MAX == UINT_MAX
-  #define QSBD_MPI_SIZE_T MPI_UNSIGNED
-  #define QSBD_BIT_SIZE_T UINT_WIDTH
+  #define SBD_MPI_SIZE_T MPI_UNSIGNED
+  #define SBD_BIT_SIZE_T UINT_WIDTH
 #elif SIZE_MAX == ULONG_MAX
-  #define QSBD_MPI_SIZE_T MPI_UNSIGNED_LONG
-  #define QSBD_BIT_SIZE_T ULONG_WIDTH
+  #define SBD_MPI_SIZE_T MPI_UNSIGNED_LONG
+  #define SBD_BIT_SIZE_T ULONG_WIDTH
 #elif SIZE_MAX == ULLONG_MAX
-  #define QSBD_MPI_SIZE_T MPI_UNSIGNED_LONG_LONG
-  #define QSBD_BIT_SIZE_T ULLONG_WIDTH
+  #define SBD_MPI_SIZE_T MPI_UNSIGNED_LONG_LONG
+  #define SBD_BIT_SIZE_T ULLONG_WIDTH
 #else
    #error SIZE_MAX
 #endif
   
-} // end namespace sqcd
-#endif // end QSBD_FRAMEWORK_TYPE_DEF_H
+} // end namespace sbd
+#endif // end SBD_FRAMEWORK_TYPE_DEF_H

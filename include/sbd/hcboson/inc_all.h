@@ -1,8 +1,8 @@
-#ifndef QSBD_SQBDIAG_INC_ALL_H
-#define QSBD_SQBDIAG_INC_ALL_H
+#ifndef SBD_HCBOSON_INC_ALL_H
+#define SBD_HCBOSON_INC_ALL_H
 
-#include "qsbd/sqbdiag/basis.h"
-#include "qsbd/sqbdiag/generalop.h"
-#include "qsbd/sqbdiag/out_of_place_func/inc_all.h"
+#include "sbd/hcboson/basis.h"
+#include "sbd/hcboson/generalop.h"
+#include "sbd/hcboson/out_of_place_func/inc_all.h"
 
 #endif

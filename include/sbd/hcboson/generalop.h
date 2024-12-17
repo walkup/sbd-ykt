@@ -1,11 +1,11 @@
 /**
-@file qsbd/sqbdiag/generalop.h
+@file sbd/hcboson/generalop.h
 @brief Class to manage the operator
 */
-#ifndef QSBD_SQBDIAG_GENERALOP_H
-#define QSBD_SQBDIAG_GENERALOP_H
+#ifndef SBD_HCBOSON_GENERALOP_H
+#define SBD_HCBOSON_GENERALOP_H
 
-namespace qsbd {
+namespace sbd {
 
   class FieldOp;
 
@@ -747,5 +747,5 @@ namespace qsbd {
   
 }
 
-#endif // QSBD_DIAG_GENERALOP_H
+#endif // SBD_HCBOSON_GENERALOP_H
 

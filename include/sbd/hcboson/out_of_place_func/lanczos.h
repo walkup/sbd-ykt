@@ -1,16 +1,16 @@
 /**
-@file qsbd/sqbdiag/out_of_place_func/lanczos.h
+@file sbd/hcboson/out_of_place_func/lanczos.h
 @brief lanczos diagonalization for ground state
 */
-#ifndef QSBD_SQBDIAG_OUT_OF_PLACE_FUNC_LANCZOS_H
-#define QSBD_SQBDIAG_OUT_OF_PLACE_FUNC_LANCZOS_H
+#ifndef SBD_HCBOSON_OUT_OF_PLACE_FUNC_LANCZOS_H
+#define SBD_HCBOSON_OUT_OF_PLACE_FUNC_LANCZOS_H
 
 #include <chrono>
 #include <random>
 
-#include "qsbd/framework/hp_numeric.h"
+#include "sbd/framework/hp_numeric.h"
 
-namespace qsbd {
+namespace sbd {
   
   template <typename ElemT>
   void Swap(ElemT a, std::vector<ElemT> & X,
@@ -223,6 +223,6 @@ namespace qsbd {
     
   }
 
-} // end namespace qsbd
-#endif // endif for QSBD_SQBDIAG_OUT_OF_PLACE_FUNC_LANCZOS_H
+} // end namespace sbd
+#endif // endif for SBD_HCBOSON_OUT_OF_PLACE_FUNC_LANCZOS_H
 

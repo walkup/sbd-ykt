@@ -1,16 +1,16 @@
 /// This file is a part of qsbd
 /**
-@file qsbd/sqbdiag/basis.h
+@file sbd/hcboson/basis.h
 @brief Class to manage the basis for qubit selected configuration diagonalization
 */
-#ifndef QSBD_SQBDIAG_BASIS_H
-#define QSBD_SQBDIAG_BASIS_H
+#ifndef SBD_HCBOSON_BASIS_H
+#define SBD_HCBOSON_BASIS_H
 
-#include "qsbd/framework/type_def.h"
-#include "qsbd/framework/mpi_utility.h"
-#include "qsbd/framework/bit_manipulation.h"
+#include "sbd/framework/type_def.h"
+#include "sbd/framework/mpi_utility.h"
+#include "sbd/framework/bit_manipulation.h"
 
-namespace qsbd {
+namespace sbd {
 
   class Basis {
   public:
@@ -46,11 +46,11 @@ Adding general configurations
     void Append(std::vector<std::vector<size_t>> & config, int mpi_root) {
       sort_bitarray(config);
       size_t set_size = config.size();
-      MPI_Bcast(&set_size,1,QSBD_MPI_SIZE_T,mpi_root,comm_);
+      MPI_Bcast(&set_size,1,SBD_MPI_SIZE_T,mpi_root,comm_);
       if( mpi_rank_ != mpi_root ) {
 	config.resize(set_size);
       }
-      MPI_Bcast(config.data(),set_size,QSBD_MPI_SIZE_T,mpi_root,comm_);
+      MPI_Bcast(config.data(),set_size,SBD_MPI_SIZE_T,mpi_root,comm_);
       if( index_end_[mpi_size_-1] == 0 ) {
 	if( mpi_rank_ == mpi_master_ ) {
 	  config_ = config;
@@ -120,14 +120,14 @@ Adding general configurations
 Redistribution to make distribution uniformly
  */
     void ReDistribution() {
-      mpi_redistribution(config_,config_begin_,config_end_,index_begin_,index_end_,QSBD_BIT_LENGTH,comm_);
+      mpi_redistribution(config_,config_begin_,config_end_,index_begin_,index_end_,SBD_BIT_LENGTH,comm_);
     } // end ReDistricution()
 
 /**
 Reordering to the lexographical order
 */
     void Reordering() {
-      mpi_sort_bitarray(config_,config_begin_,config_end_,index_begin_,index_end_,QSBD_BIT_LENGTH,comm_);
+      mpi_sort_bitarray(config_,config_begin_,config_end_,index_begin_,index_end_,SBD_BIT_LENGTH,comm_);
     }
 
 /**
@@ -213,7 +213,7 @@ Initialization of basis
 	config_size_rank[mpi_rank_] = config.size();
 	MPI_Allreduce(config_size_rank.data(),
 		      config_size.data(),
-		      mpi_size_,QSBD_MPI_SIZE_T,
+		      mpi_size_,SBD_MPI_SIZE_T,
 		      MPI_SUM,comm_);
 	for(int rank=0; rank < mpi_size_; rank++) {
 	  if( rank == 0 ) {
@@ -224,15 +224,15 @@ Initialization of basis
 	    index_end_[rank] = index_begin_[rank]+config_size[rank];
 	  }
 	  config_begin_[rank] = config[0];
-	  MPI_Bcast(config_begin_[rank].data(),config_begin_[rank].size(),QSBD_MPI_SIZE_T,rank,comm_);
+	  MPI_Bcast(config_begin_[rank].data(),config_begin_[rank].size(),SBD_MPI_SIZE_T,rank,comm_);
 	}
 	for(int rank=1; rank < mpi_size_; rank++) {
 	  config_end_[rank-1] = config_begin_[rank];
 	}
 	if( mpi_rank_ == mpi_size_-1 ) {
 	  config_end_[mpi_size_-1] = config[config.size()-1];
-	  bitadvance(config_end_[mpi_size_-1],QSBD_BIT_LENGTH);
-	  MPI_Bcast(config_end_[mpi_size_-1].data(),config_end_[mpi_size_-1].size(),QSBD_MPI_SIZE_T,mpi_rank_,comm_);
+	  bitadvance(config_end_[mpi_size_-1],SBD_BIT_LENGTH);
+	  MPI_Bcast(config_end_[mpi_size_-1].data(),config_end_[mpi_size_-1].size(),SBD_MPI_SIZE_T,mpi_rank_,comm_);
 	}
       }
     }

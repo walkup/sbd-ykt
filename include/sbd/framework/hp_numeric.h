@@ -1,18 +1,18 @@
-//// This file is a part of QSBD
+//// This file is a part of SBD
 /**
 @file hp_numeric.h
 @brief Wrappers for high performance numerical function
 */
-#ifndef QSBD_FRAMEWORK_HP_NUMERIC_H
-#define QSBD_FRAMEWORK_HP_NUMERIC_H
+#ifndef SBD_FRAMEWORK_HP_NUMERIC_H
+#define SBD_FRAMEWORK_HP_NUMERIC_H
 
-#include "qsbd/framework/type_def.h"
+#include "sbd/framework/type_def.h"
 
 #include <array>
 #include <string>
 #include <string.h>
 
-namespace qsbd {
+namespace sbd {
   namespace hp_numeric {
 
     extern "C" void sgemm_(char *, char *, int *, int *, int *,
@@ -567,6 +567,6 @@ inline void MatQr(int m, int n, int k, std::complex<double> *pa, std::complex<do
 			
     
   } // end namespace hp_numeric
-} // end namespace qsbd
+} // end namespace sbd
 
 #endif

@@ -1,13 +1,13 @@
 /**
-@file qsbd/sqbdiag/out_of_place_func/mult.h
+@file sbd/hcboson/out_of_place_func/mult.h
 @brief multiplication of operator to the wave vector
 */
-#ifndef QSBD_SQBDIAG_OUT_OF_PLACE_FUNC_MULT_H
-#define QSBD_SQBDIAG_OUT_OF_PLACE_FUNC_MULT_H
+#ifndef SBD_HCBOSON_OUT_OF_PLACE_FUNC_MULT_H
+#define SBD_HCBOSON_OUT_OF_PLACE_FUNC_MULT_H
 
-#include "qsbd/framework/mpi_utility.h"
+#include "sbd/framework/mpi_utility.h"
 
-namespace qsbd {  
+namespace sbd {
 
   void setup_diag_mpi_comm(MPI_Comm comm,
 			   size_t b_size,
@@ -297,5 +297,5 @@ namespace qsbd {
   }
 
 
-} // end for namespace qsbd
-#endif // endif for #ifndef QSBD_DIAG_OUT_OF_PLACE_FUNC_MULT_H
+} // end for namespace sbd
+#endif // endif for #ifndef SBD_HCBOSON_OUT_OF_PLACE_FUNC_MULT_H

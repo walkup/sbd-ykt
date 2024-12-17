@@ -1,11 +1,11 @@
-/// This is a part of qscd
+/// This is a part of sbd
 /**
 @file bit_manipulation.h
 @brief mathematical tools for bit manipulations
 */
 
-#ifndef QSBD_FRAMEWORK_BIT_MANIPULATION_H
-#define QSBD_FRAMEWORK_BIT_MANIPULATION_H
+#ifndef SBD_FRAMEWORK_BIT_MANIPULATION_H
+#define SBD_FRAMEWORK_BIT_MANIPULATION_H
 
 #include <stdint.h>
 #include <limits.h>
@@ -13,12 +13,12 @@
 
 #include "mpi.h"
 
-#define QSBD_BIT_LENGTH 20
+#define SBD_BIT_LENGTH 20
   
 std::ostream & operator << (std::ostream & s,
 			    const std::vector<size_t> & a) {
   for(size_t k=a.size(); k > 0; k--) {
-    std::bitset<QSBD_BIT_LENGTH> b(a[k-1]);
+    std::bitset<SBD_BIT_LENGTH> b(a[k-1]);
     s << b;
   }
   return s;
@@ -28,7 +28,7 @@ std::ostream & operator << (std::ostream & s,
 			    const std::vector<std::vector<size_t>> & a) {
   for(size_t i=0; i < a.size(); i++) {
     for(size_t k=a[i].size(); k > 0; k--) {
-      std::bitset<QSBD_BIT_LENGTH> b(a[i][k-1]);
+      std::bitset<SBD_BIT_LENGTH> b(a[i][k-1]);
       s << b;
     }
     s << std::endl;
@@ -145,7 +145,7 @@ std::ostream & operator << (std::ostream & s,
     return res;
   }
 
-namespace qsbd {
+namespace sbd {
 
 /**
 Function for finding a mpi process which manages the target bit string
@@ -332,7 +332,7 @@ Function for finding the state index of target bit string
     if( mpi_rank == mpi_master ) {
       config_size = config[0].size();
     }
-    MPI_Bcast(&config_size,1,QSBD_MPI_SIZE_T,mpi_master,comm);
+    MPI_Bcast(&config_size,1,SBD_MPI_SIZE_T,mpi_master,comm);
     std::vector<size_t> i_begin(mpi_size,index_begin[0]);
     std::vector<size_t> i_end(mpi_size,index_end[mpi_size-1]);
     for(size_t rank=0; rank < mpi_size; rank++) {
@@ -402,7 +402,7 @@ Function for finding the state index of target bit string
       if( rank == mpi_rank ) {
 	config_begin[rank] = config[0];
       }
-      MPI_Bcast(config_begin[rank].data(),config_size,QSBD_MPI_SIZE_T,rank,comm);
+      MPI_Bcast(config_begin[rank].data(),config_size,SBD_MPI_SIZE_T,rank,comm);
     }
     for(int rank=0; rank < mpi_size-1; rank++) {
       config_end[rank] = config_begin[rank+1];
@@ -411,7 +411,7 @@ Function for finding the state index of target bit string
       config_end[mpi_rank] = config[config.size()-1];
       bitadvance(config_end[mpi_rank],bit_length);
     }
-    MPI_Bcast(config_end[mpi_size-1].data(),config_size,QSBD_MPI_SIZE_T,mpi_size-1,comm);
+    MPI_Bcast(config_end[mpi_size-1].data(),config_size,SBD_MPI_SIZE_T,mpi_size-1,comm);
   }
 
   void mpi_sort_bitarray(std::vector<std::vector<size_t>> & config,
@@ -472,14 +472,14 @@ Function for finding the state index of target bit string
       }
       MPI_Barrier(comm);
       for(int rank=0; rank < mpi_size_a; rank++) {
-	MPI_Bcast(config_begin_a[rank].data(),bit_size,QSBD_MPI_SIZE_T,rank,comm);
-	MPI_Bcast(config_middle_a[rank].data(),bit_size,QSBD_MPI_SIZE_T,rank,comm);
+	MPI_Bcast(config_begin_a[rank].data(),bit_size,SBD_MPI_SIZE_T,rank,comm);
+	MPI_Bcast(config_middle_a[rank].data(),bit_size,SBD_MPI_SIZE_T,rank,comm);
       }
       for(int rank=0; rank < mpi_size_b; rank++) {
-	MPI_Bcast(config_begin_b[rank].data(),bit_size,QSBD_MPI_SIZE_T,mpi_master_b+rank,comm);
+	MPI_Bcast(config_begin_b[rank].data(),bit_size,SBD_MPI_SIZE_T,mpi_master_b+rank,comm);
       }
-      MPI_Bcast(config_end_a_end.data(),bit_size,QSBD_MPI_SIZE_T,mpi_master_b-1,comm);
-      MPI_Bcast(config_end_b_end.data(),bit_size,QSBD_MPI_SIZE_T,mpi_size-1,comm);
+      MPI_Bcast(config_end_a_end.data(),bit_size,SBD_MPI_SIZE_T,mpi_master_b-1,comm);
+      MPI_Bcast(config_end_b_end.data(),bit_size,SBD_MPI_SIZE_T,mpi_size-1,comm);
 
       for(int rank=0; rank < mpi_size_a-1; rank++) {
 	config_end_a[rank] = config_begin_a[rank+1];
@@ -672,7 +672,7 @@ Function for finding the state index of target bit string
 	std::vector<size_t> new_config_size(mpi_size,0);
 	std::vector<size_t> send_new_config_size(mpi_size,0);
 	send_new_config_size[mpi_rank] = config.size();
-	MPI_Allreduce(send_new_config_size.data(),new_config_size.data(),mpi_size,QSBD_MPI_SIZE_T,MPI_SUM,comm);
+	MPI_Allreduce(send_new_config_size.data(),new_config_size.data(),mpi_size,SBD_MPI_SIZE_T,MPI_SUM,comm);
 	index_begin[0] = 0;
 	for(int rank=1; rank < mpi_size; rank++) {
 	  index_begin[rank] = index_begin[rank-1] + new_config_size[rank-1];
@@ -725,7 +725,7 @@ Function for finding the state index of target bit string
 	std::vector<size_t> new_config_size(mpi_size,0);
 	std::vector<size_t> send_new_config_size(mpi_size,0);
 	send_new_config_size[mpi_rank] = config.size();
-	MPI_Allreduce(send_new_config_size.data(),new_config_size.data(),mpi_size,QSBD_MPI_SIZE_T,MPI_SUM,comm);
+	MPI_Allreduce(send_new_config_size.data(),new_config_size.data(),mpi_size,SBD_MPI_SIZE_T,MPI_SUM,comm);
 	index_begin[0] = 0;
 	index_begin[0] = 0;
 	for(int rank=1; rank < mpi_size; rank++) {
