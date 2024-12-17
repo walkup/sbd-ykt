@@ -56,6 +56,29 @@ namespace sbd {
       MPI_Recv(data.data(),d_size,DataT,source,1,comm,&status);
     }
   }
+
+  template <typename ElemT>
+  void MpiIsend(const std::vector<ElemT> & data, int dest, MPI_Comm comm) {
+    size_t d_size = data.size();
+    MPI_Request req;
+    MPI_Isend(&d_size,1,SBD_MPI_SIZE_T,dest,0,comm,&req);
+    MPI_Datatype DataT = GetMpiType<ElemT>::MpiT;
+    if( d_size != 0 ) {
+      MPI_Isend(data.data(),d_size,DataT,dest,1,comm,&req);
+    }
+  }
+
+  template <typename ElemT>
+  void MpiIrecv(std::vector<ElemT> & data, int source, MPI_Comm comm) {
+    size_t d_size;
+    MPI_Request req;
+    MPI_Irecv(&d_size,1,SBD_MPI_SIZE_T,source,0,comm,&req);
+    MPI_Datatype DataT = GetMpiType<ElemT>::MpiT;
+    if( d_size != 0 ) {
+      data.resize(d_size);
+      MPI_Irecv(data.data(),d_size,DataT,source,1,comm,&req);
+    }
+  }
   
   template <typename ElemT>
   void MpiBcast(std::vector<ElemT> & data, int root, MPI_Comm comm) {
@@ -110,6 +133,46 @@ namespace sbd {
       }
     }
   }
+
+  template <>
+  void MpiIsend(const std::vector<std::vector<size_t>> & config, int dest, MPI_Comm comm) {
+    MPI_Request req;
+    size_t c_num = config.size();
+    MPI_Isend(&c_num,1,SBD_MPI_SIZE_T,dest,0,comm,&req);
+    if( c_num != 0 ) {
+      size_t c_len = config[0].size();
+      MPI_Isend(&c_len,1,SBD_MPI_SIZE_T,dest,1,comm,&req);
+      size_t total_size = c_num*c_len;
+      std::vector<size_t> config_send(total_size);
+      for(size_t n=0; n < c_num; n++) {
+	for(size_t i=0; i < c_len; i++) {
+	  config_send[i+c_len*n] = config[n][i];
+	}
+      }
+      MPI_Isend(config_send.data(),total_size,SBD_MPI_SIZE_T,dest,2,comm,&req);
+    }
+  }
+
+  template <>
+  void MpiIrecv(std::vector<std::vector<size_t>> & config, int source, MPI_Comm comm) {
+    MPI_Request req;
+    size_t c_num;
+    MPI_Irecv(&c_num,1,SBD_MPI_SIZE_T,source,0,comm,&req);
+    if( c_num != 0 ) {
+      size_t c_len;
+      MPI_Irecv(&c_len,1,SBD_MPI_SIZE_T,source,1,comm,&req);
+      size_t total_size = c_num*c_len;
+      std::vector<size_t> config_recv(total_size);
+      MPI_Irecv(config_recv.data(),total_size,SBD_MPI_SIZE_T,source,2,comm,&req);
+      config = std::vector<std::vector<size_t>>(c_num,std::vector<size_t>(c_len));
+      for(size_t n=0; n < c_num; n++) {
+	for(size_t i=0; i < c_len; i++) {
+	  config[n][i] = config_recv[i+c_len*n];
+	}
+      }
+    }
+  }
+  
   
   template <>
   void MpiBcast(std::vector<std::vector<size_t>> & config,
@@ -156,6 +219,7 @@ namespace sbd {
     
     int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
     int mpi_size; MPI_Comm_size(comm,&mpi_size);
+    
     if( mpi_size % 2 == 0 ) {
       if( mpi_rank % 2 == 0 ) {
 	MpiSend(A,mpi_rank+1,comm);
@@ -238,6 +302,69 @@ namespace sbd {
     }
     
   }
+
+  template <typename ElemT>
+  void MpiSlide(const std::vector<ElemT> & A,
+		std::vector<ElemT> & B,
+		int slide,
+		MPI_Comm comm) {
+    
+    int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
+    int mpi_size; MPI_Comm_size(comm,&mpi_size);
+
+    int mpi_dest = (mpi_rank+slide) % mpi_size;
+    int mpi_source = (mpi_rank-slide) % mpi_size;
+
+    MpiIsend(A,mpi_dest,comm);
+    MpiIrecv(B,mpi_source,comm);
+    
+  }
+  
+  template <typename ElemT>
+  void MpiDecSlide(const std::vector<ElemT> & A, std::vector<ElemT> & B, MPI_Comm comm) {
+    int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
+    int mpi_size; MPI_Comm_size(comm,&mpi_size);
+    if( mpi_size % 2 == 0 ) {
+      if( mpi_rank % 2 == 0 ) {
+	MpiRecv(B,mpi_rank+1,comm);
+      } else {
+	MpiSend(A,mpi_rank-1,comm);
+      }
+      if( mpi_rank % 2 == 1 ) {
+	if( mpi_rank == mpi_size-1 ) {
+	  MpiRecv(B,0,comm);
+	} else {
+	  MpiRecv(B,mpi_rank+1,comm);
+	}
+      } else {
+	if( mpi_rank == 0 ) {
+	  MpiSend(A,mpi_size-1,comm);
+	} else {
+	  MpiSend(A,mpi_rank-1,comm);
+	}
+      }
+    } else {
+      if( mpi_rank % 2 == 0 && mpi_rank != mpi_size-1 ) {
+	MpiRecv(B,mpi_rank+1,comm);
+      } else {
+	MpiSend(A,mpi_rank-1,comm);
+      }
+      if( mpi_rank % 2 == 1 ) {
+	MpiRecv(B,mpi_rank+1,comm);
+      } else {
+	MpiSend(A,mpi_rank-1,comm);
+      }
+      if( mpi_rank == mpi_size-1 ) {
+	MpiRecv(B,0,comm);
+      }
+      if( mpi_rank == 0 ) {
+	MpiSend(A,mpi_size-1,comm);
+      }
+    }
+    
+  }
+  
+  
   
   template <typename ElemT>
   void MpiAllreduce(std::vector<ElemT> & A, MPI_Op op, MPI_Comm comm) {
