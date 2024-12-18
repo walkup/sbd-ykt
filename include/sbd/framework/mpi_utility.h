@@ -321,52 +321,6 @@ namespace sbd {
   }
   
   template <typename ElemT>
-  void MpiDecSlide(const std::vector<ElemT> & A, std::vector<ElemT> & B, MPI_Comm comm) {
-    int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
-    int mpi_size; MPI_Comm_size(comm,&mpi_size);
-    if( mpi_size % 2 == 0 ) {
-      if( mpi_rank % 2 == 0 ) {
-	MpiRecv(B,mpi_rank+1,comm);
-      } else {
-	MpiSend(A,mpi_rank-1,comm);
-      }
-      if( mpi_rank % 2 == 1 ) {
-	if( mpi_rank == mpi_size-1 ) {
-	  MpiRecv(B,0,comm);
-	} else {
-	  MpiRecv(B,mpi_rank+1,comm);
-	}
-      } else {
-	if( mpi_rank == 0 ) {
-	  MpiSend(A,mpi_size-1,comm);
-	} else {
-	  MpiSend(A,mpi_rank-1,comm);
-	}
-      }
-    } else {
-      if( mpi_rank % 2 == 0 && mpi_rank != mpi_size-1 ) {
-	MpiRecv(B,mpi_rank+1,comm);
-      } else {
-	MpiSend(A,mpi_rank-1,comm);
-      }
-      if( mpi_rank % 2 == 1 ) {
-	MpiRecv(B,mpi_rank+1,comm);
-      } else {
-	MpiSend(A,mpi_rank-1,comm);
-      }
-      if( mpi_rank == mpi_size-1 ) {
-	MpiRecv(B,0,comm);
-      }
-      if( mpi_rank == 0 ) {
-	MpiSend(A,mpi_size-1,comm);
-      }
-    }
-    
-  }
-  
-  
-  
-  template <typename ElemT>
   void MpiAllreduce(std::vector<ElemT> & A, MPI_Op op, MPI_Comm comm) {
     MPI_Datatype DataT = GetMpiType<ElemT>::MpiT;
     std::vector<ElemT> B(A);

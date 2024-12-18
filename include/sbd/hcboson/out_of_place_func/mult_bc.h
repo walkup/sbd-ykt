@@ -84,31 +84,6 @@ namespace sbd {
   }
 
   template <typename ElemT>
-  void mpi_slide_wavefunction(const std::vector<ElemT> & W,
-			      const Basis & B,
-			      std::vector<ElemT> & Wt,
-			      Basis & Bt,
-			      int slide_width) {
-    MPI_Comm comm = B.MpiComm();
-    Bt = B.MpiSlide(slide_width);
-    MpiSlide(W,Wt,slide_width,comm);
-  }
-
-  template <typename ElemT>
-  void mpi_slide_wavefunction(std::vector<std::vector<ElemT>> & W,
-			      std::vector<Basis> & B,
-			      int slide_width) {
-    size_t num_data = W.size();
-    Basis Bt;
-    std::vector<ElemT> Wt;
-    for(size_t i=0; i < num_data; i++) {
-      mpi_slide_wavefunction(W[i],B[i],Wt,Bt,slide_width);
-      W[i] = Wt;
-      B[i] = Bt;
-    }
-  }
-
-  template <typename ElemT>
   void mult_prep(std::vector<ElemT> & W,
 		 MPI_Comm h_comm) {
     // Since we will perform Allreduce at the end of multiplication
