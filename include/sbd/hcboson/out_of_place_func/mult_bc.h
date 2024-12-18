@@ -1,9 +1,9 @@
 /**
-@file sbd/hcboson/out_of_place_func/mult.h
-@brief multiplication of operator to the wave vector
+@file sbd/hcboson/out_of_place_func/mult_bc.h
+@brief multiplication of operator to the wave vector using blocking communication
 */
-#ifndef SBD_HCBOSON_OUT_OF_PLACE_FUNC_MULT_H
-#define SBD_HCBOSON_OUT_OF_PLACE_FUNC_MULT_H
+#ifndef SBD_HCBOSON_OUT_OF_PLACE_FUNC_MULT_BC_H
+#define SBD_HCBOSON_OUT_OF_PLACE_FUNC_MULT_BC_H
 
 #include "sbd/framework/mpi_utility.h"
 
@@ -80,6 +80,31 @@ namespace sbd {
 	W[i] = Wt;
 	B[i] = Bt;
       }
+    }
+  }
+
+  template <typename ElemT>
+  void mpi_slide_wavefunction(const std::vector<ElemT> & W,
+			      const Basis & B,
+			      std::vector<ElemT> & Wt,
+			      Basis & Bt,
+			      int slide_width) {
+    MPI_Comm comm = B.MpiComm();
+    Bt = B.MpiSlide(slide_width);
+    MpiSlide(W,Wt,slide_width,comm);
+  }
+
+  template <typename ElemT>
+  void mpi_slide_wavefunction(std::vector<std::vector<ElemT>> & W,
+			      std::vector<Basis> & B,
+			      int slide_width) {
+    size_t num_data = W.size();
+    Basis Bt;
+    std::vector<ElemT> Wt;
+    for(size_t i=0; i < num_data; i++) {
+      mpi_slide_wavefunction(W[i],B[i],Wt,Bt,slide_width);
+      W[i] = Wt;
+      B[i] = Bt;
     }
   }
 
@@ -252,6 +277,7 @@ namespace sbd {
       if( mpi_round != 1 ) {
 	// std::cout << " slide for next round! " << std::endl;
 	mpi_inc_slide_wavefunction(Cp,Bp,data_width);
+	
       }
     } // end for(int round=0; round < mpi_round; round++)
     

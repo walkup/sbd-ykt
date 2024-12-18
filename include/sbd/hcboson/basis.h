@@ -1,4 +1,4 @@
-/// This file is a part of qsbd
+/// This file is a part of sbd
 /**
 @file sbd/hcboson/basis.h
 @brief Class to manage the basis for qubit selected configuration diagonalization
@@ -135,7 +135,7 @@ Slide data within a node in the increasing direction
 */
     Basis MpiIncSlide() const {
       Basis res(*this);
-      qsbd::MpiIncSlide(this->config_,res.config_,this->comm_);
+      sbd::MpiIncSlide(this->config_,res.config_,this->comm_);
       /*
       for(int rank=0; rank < mpi_size_; rank++) {
 	int new_rank = ( rank + 1 ) % mpi_size_;
@@ -162,7 +162,7 @@ Slide data within a node in the decreasing direction
 
     Basis MpiDecSlide() const {
       Basis res(*this);
-      qsbd::MpiDecSlide(this->config_,res.config_,comm_);
+      sbd::MpiDecSlide(this->config_,res.config_,comm_);
       /*
       for(int rank=0; rank < mpi_size_; rank++) {
 	int old_rank = ( rank + 1 ) % mpi_size_;
@@ -181,6 +181,17 @@ Slide data within a node in the decreasing direction
       */
 
       res.mpi_rank_ = ( mpi_rank_ + 1 ) % mpi_size_;
+      return res;
+    }
+
+/**
+   Slide data within a node in a given slide distance.
+   This operation is performed using non-blocking communication
+ */
+    Basis MpiSlide(int slide) const {
+      Basis res(*this);
+      sbd::MpiSlide(this->config_,res.config_,slide,comm_);
+      res.mpi_rank_ = ( mpi_rank_ - slide + mpi_size_ ) % mpi_size_;
       return res;
     }
     
