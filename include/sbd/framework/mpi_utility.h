@@ -336,7 +336,7 @@ namespace sbd {
 
     size_t send_size = size_send[0];
     size_t recv_size = size_recv[0];
-    B.resize(total_recv_size);
+    B.resize(recv_size);
     std::vector<MPI_Request> req_data(2);
     std::vector<MPI_Status> sta_data(2);
 
