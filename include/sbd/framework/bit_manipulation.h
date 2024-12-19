@@ -742,6 +742,7 @@ Function for finding the state index of target bit string
     }
   }
 
+  
   void change_bitlength(size_t bit_length_a, std::vector<size_t> & b, size_t bit_length_b) {
     std::vector<size_t> a = b;
     size_t a_size = a.size();

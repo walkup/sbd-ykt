@@ -656,11 +656,13 @@ namespace sbd {
     ProductOp NcTerm(int i) const { return d_[i]; }
     ElemT & NcCoef(int i) { return e_[i]; }
     ElemT NcCoef(int i) const { return e_[i]; }
+    size_t NumNcTerms() const { return d_.size(); }
 
     ProductOp & OpTerm(int i) { return o_[i]; }
     ProductOp OpTerm(int i) const { return o_[i]; }
     ElemT & OpCoef(int i) { return c_[i]; }
     ElemT OpCoef(int i) const { return c_[i]; }
+    size_t NumOpTerms() const { return o_.size(); }
 
     int max_index() const {
       int int_res = 0;
