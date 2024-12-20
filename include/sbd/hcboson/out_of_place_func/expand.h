@@ -117,16 +117,12 @@ namespace sbd {
 	    }
 	  }
 	  if ( check ) continue;
-	  
-	  // now w is the configuration after the Hamiltonian operation
 	  local_config.push_back(w);
 	  local_weight.push_back(H.c_[n] * W[is]);
 	} // end loop for generating new configurations
       } // end omp parallel for
 #pragma omp critical
       {
-	// config.push_back(std::move(local_config));
-	// weight.push_back(std::move(local_weight));
 	config.insert(config.end(),
 		      std::make_move_iterator(local_config.begin()),
 		      std::make_move_iterator(local_config.end()));
@@ -140,7 +136,7 @@ namespace sbd {
     // perform full sort for all process
     std::vector<std::vector<size_t>> new_config(config);
     std::vector<std::vector<size_t>> config_begin(mpi_size,std::vector<size_t>(c_len));
-    std::vector<std::vector<size_t>> config_end(mpi_size,std::vector<size_t>(c_len));
+    std::vector<std::vector<size_t>> config_end(mpi_size,  std::vector<size_t>(c_len));
     std::vector<size_t> index_begin(mpi_size);
     std::vector<size_t> index_end(mpi_size);
     mpi_sort_bitarray(new_config,config_begin,config_end,index_begin,index_end,bit_length,comm);

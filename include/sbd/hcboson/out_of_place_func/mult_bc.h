@@ -237,13 +237,10 @@ namespace sbd {
 	    
 	    Bp[d_target].IndexSearch(w,js,check);
 	    if( check ) {
-	      /*
 	      std::cout << " mpi rank, is, js  = "
 			<< B.MpiRank() << ", "
 			<< is + B.BeginIndex(B.MpiRank()) << ", "
 			<< js << std::endl;
-	      */
-	      
 	      W[is] = W[is] + H.c_[n] * Cp[d_target][js-B.BeginIndex(target_rank)];
 	    }
 	  } // end for(size_t n=0; n < H.o_.size(); n++)
@@ -291,9 +288,21 @@ namespace sbd {
     //
 
     mult_prep(W,h_comm);
+
+    std::cout << " end prep " << std::endl;
+    
     mult_diagonal(H,C,B,W,bit_length);
+
+    std::cout << " end diagonal " << std::endl;
+    
     mult_offdiagonal(H,C,B,W,bit_length,data_width);
+
+    std::cout << " end offdiagonal " << std::endl;
+    
     MpiAllreduce(W,MPI_SUM,h_comm);
+
+    std::cout << " end allreduce " << std::endl;
+    
     
   }
 

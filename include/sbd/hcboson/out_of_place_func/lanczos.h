@@ -66,10 +66,13 @@ namespace sbd {
 		 MPI_Comm b_comm,
 		 MPI_Comm h_comm) {
     using RealT = typename GetRealType<ElemT>::RealT;
+    
     unsigned int seed = static_cast<unsigned int>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
     std::mt19937 gen(seed);
     std::uniform_real_distribution<RealT> dist(-1,1);
-    RealT sum;
+    RealT sum=0.0;
+    int mpi_size_h; MPI_Comm_size(h_comm,&mpi_size_h);
+    int mpi_size_b; MPI_Comm_size(b_comm,&mpi_size_b);
 #pragma omp parallel for reduction(+:sum)
     for(size_t is=0; is < X.size(); is++) {
       X[is] = ElemT(dist(gen));
@@ -77,7 +80,11 @@ namespace sbd {
     }
     RealT res;
     MPI_Datatype DataT = GetMpiType<RealT>::MpiT;
-    MPI_Allreduce(&sum,&res,1,DataT,MPI_SUM,b_comm);
+    if( mpi_size_b != 1 ) {
+      MPI_Allreduce(&sum,&res,1,DataT,MPI_SUM,b_comm);
+    } else {
+      res = sum;
+    }
     res = std::sqrt(res);
     ElemT factor = ElemT(1.0/res);
 #pragma omp parallel for
@@ -85,7 +92,9 @@ namespace sbd {
       X[is] *= factor;
     }
     MPI_Datatype MpiDataT = GetMpiType<ElemT>::MpiT;
-    MPI_Bcast(X.data(),X.size(),MpiDataT,0,h_comm);
+    if( mpi_size_h != 1 ) {
+      MPI_Bcast(X.data(),X.size(),MpiDataT,0,h_comm);
+    }
   }
 
   template <typename ElemT, typename RealT>
