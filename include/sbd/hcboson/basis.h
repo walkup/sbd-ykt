@@ -254,6 +254,7 @@ Initialization of basis
     inline int MpiRank() const { return mpi_rank_; }
     inline int MpiSize() const { return mpi_size_; }
     inline int MpiMaster() const { return mpi_master_; }
+    inline std::vector<std::vector<size_t>> Config() const { return config_; }
     inline std::vector<size_t> Config(size_t i) const { return config_[i]; }
     inline size_t Size() const { return config_.size(); }
     inline size_t BeginIndex() const { return index_begin_[mpi_rank_]; }

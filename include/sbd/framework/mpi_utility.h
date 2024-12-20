@@ -340,9 +340,20 @@ namespace sbd {
     std::vector<MPI_Request> req_data(2);
     std::vector<MPI_Status> sta_data(2);
 
-    MPI_Isend(A.data(),send_size,SBD_MPI_SIZE_T,mpi_dest,1,comm,&req_data[0]);
-    MPI_Irecv(B.data(),recv_size,SBD_MPI_SIZE_T,mpi_source,1,comm,&req_data[1]);
-    MPI_Waitall(2,req_data.data(),sta_data.data());
+    if( send_size != 0 ) {
+      MPI_Isend(A.data(),send_size,SBD_MPI_SIZE_T,mpi_dest,1,comm,&req_data[0]);
+    }
+    if( recv_size != 0 ) {
+      MPI_Irecv(B.data(),recv_size,SBD_MPI_SIZE_T,mpi_source,1,comm,&req_data[1]);
+    }
+
+    if( send_size != 0 && recv_size != 0 ) {
+      MPI_Waitall(2,req_data.data(),sta_data.data());
+    } else if ( send_size != 0 && recv_size == 0 ) {
+      MPI_Waitall(1,&req_data[0],&sta_data[0]);
+    } else if ( send_size == 0 && recv_size != 0 ) {
+      MPI_Waitall(1,&req_data[1],&sta_data[1]);
+    }
 
   }
 
@@ -363,7 +374,11 @@ namespace sbd {
     std::vector<size_t> size_send(2);
     std::vector<size_t> size_recv(2);
     size_send[0] = A.size();
-    size_send[1] = A[0].size();
+    if( A.size() != 0 ) {
+      size_send[1] = A[0].size();
+    } else {
+      size_send[1] = static_cast<size_t>(0);
+    }
     MPI_Isend(size_send.data(),2,SBD_MPI_SIZE_T,mpi_dest,0,comm,&req_size[0]);
     MPI_Irecv(size_recv.data(),2,SBD_MPI_SIZE_T,mpi_source,0,comm,&req_size[1]);
     MPI_Waitall(2,req_size.data(),sta_size.data());
@@ -384,9 +399,20 @@ namespace sbd {
       }
     }
 
-    MPI_Isend(data_send.data(),total_send_size,SBD_MPI_SIZE_T,mpi_dest,1,comm,&req_data[0]);
-    MPI_Irecv(data_recv.data(),total_recv_size,SBD_MPI_SIZE_T,mpi_source,1,comm,&req_data[1]);
-    MPI_Waitall(2,req_data.data(),sta_data.data());
+    if( total_send_size != 0 ) {
+      MPI_Isend(data_send.data(),total_send_size,SBD_MPI_SIZE_T,mpi_dest,1,comm,&req_data[0]);
+    }
+    if( total_recv_size != 0 ) {
+      MPI_Irecv(data_recv.data(),total_recv_size,SBD_MPI_SIZE_T,mpi_source,1,comm,&req_data[1]);
+    }
+    
+    if( total_send_size != 0 && total_recv_size != 0 ) {
+      MPI_Waitall(2,req_data.data(),sta_data.data());
+    } else if ( total_send_size != 0 && total_recv_size == 0 ) {
+      MPI_Waitall(1,&req_data[0],&sta_data[0]);
+    } else if ( total_send_size == 0 && total_recv_size != 0 ) {
+      MPI_Waitall(1,&req_data[1],&sta_data[1]);
+    }
 
     for(size_t n=0; n < size_recv[0]; n++) {
       for(size_t k=0; k < size_recv[1]; k++) {

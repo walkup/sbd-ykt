@@ -92,6 +92,15 @@ namespace sbd {
 		     const Basis & B,
 		     std::vector<ElemT_> & W,
 		     MPI_Comm comm);
+
+    template <typename ElemT_>
+    friend void MeasHamSquare(const GeneralOp<ElemT_> & H,
+			      const Basis & B,
+			      const std::vector<ElemT_> & W,
+			      size_t bit_length,
+			      MPI_Comm & h_comm,
+			      MPI_Comm & comm,
+			      ElemT_ & res);
     
     friend std::ostream & operator << (std::ostream & s,
 				       const FieldOp & o);
@@ -319,6 +328,15 @@ namespace sbd {
 		     const Basis & B,
 		     std::vector<ElemT_> & W,
 		     MPI_Comm comm);
+
+    template <typename ElemT_>
+    friend void MeasHamSquare(const GeneralOp<ElemT_> & H,
+			      const Basis & B,
+			      const std::vector<ElemT_> & W,
+			      size_t bit_length,
+			      MPI_Comm & h_comm,
+			      MPI_Comm & comm,
+			      ElemT_ & res);
     
     friend void MpiSend(const ProductOp & F,
 			int destination,
@@ -714,6 +732,15 @@ namespace sbd {
 		     std::vector<ElemT_> & W,
 		     MPI_Comm comm);
 
+    template <typename ElemT_>
+    friend void MeasHamSquare(const GeneralOp<ElemT_> & H,
+			      const Basis & B,
+			      const std::vector<ElemT_> & W,
+			      size_t bit_length,
+			      MPI_Comm & h_comm,
+			      MPI_Comm & comm,
+			      ElemT_ & res);
+    
     template <typename ElemT_>
     friend void MpiSend(const GeneralOp<ElemT_> & G, int destination, MPI_Comm comm);
 

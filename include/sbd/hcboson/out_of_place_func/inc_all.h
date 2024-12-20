@@ -8,5 +8,6 @@
 #include "sbd/hcboson/out_of_place_func/mult_bc.h"
 #endif
 #include "sbd/hcboson/out_of_place_func/lanczos.h"
+#include "sbd/hcboson/out_of_place_func/expand.h"
 
 #endif

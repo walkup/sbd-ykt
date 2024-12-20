@@ -7,10 +7,11 @@
 
 namespace sbd {
 
-  template <typename ElemT, typename RealT>
+  template <typename ElemT>
   void MeasHamSquare(const GeneralOp<ElemT> & H,
 		     const Basis & B,
 		     const std::vector<ElemT> & W,
+		     size_t bit_length,
 		     MPI_Comm & h_comm,
 		     MPI_Comm & comm,
 		     ElemT & res) {
@@ -19,6 +20,7 @@ namespace sbd {
     int mpi_h_rank; MPI_Comm_rank(h_comm,&mpi_h_rank);
     int mpi_h_size; MPI_Comm_size(h_comm,&mpi_h_size);
 
+    int mpi_master = 0;
     int mpi_size; MPI_Comm_size(comm,&mpi_size);
     int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
 
@@ -31,31 +33,31 @@ namespace sbd {
     std::vector<ElemT> weight;
 
     if( mpi_h_rank == mpi_h_master ) {
-      config.reserve(num_b*(num_h+1),std::vector<size_t>(c_len));
-      weight.reserve(num_b*(num_h+1),std::vector<size_t>(c_len));
+      config.reserve(num_b*(num_h+1));
+      weight.reserve(num_b*(num_h+1));
     } else {
-      config.reserve(num_b*num_h,std::vector<size_t>(c_len));
-      weight.reserve(num_b*num_h,std::vector<size_t>(c_len));
+      config.reserve(num_b*num_h);
+      weight.reserve(num_b*num_h);
     }
 
     size_t nc = 0;
     if( mpi_h_rank == mpi_h_master ) {
       config.resize(num_b);
       weight.resize(num_b);
-      std::copy(B.config_.begin(),B.config_.end(),config.begin());
-      nc = num_b;
+      std::vector<std::vector<size_t>> B_config = B.Config();
+      std::copy(B_config.begin(),B_config.end(),config.begin());
     // diagonal terms
 #pragma omp parallel
       {
 	std::vector<size_t> v;
 	size_t size_t_one = 1;
 	bool check;
-	ElemT w;
+	ElemT val;
 #pragma omp for
 	for(size_t is=0; is < num_b; is++) {
 	  v = B.Config(is);
-	  w = ElemT(0.0);
-	  for(size_t n=0; n < H.d_size(); n++) {
+	  val = ElemT(0.0);
+	  for(size_t n=0; n < H.d_.size(); n++) {
 	    check = false;
 	    for(int k=0; k < H.d_[n].n_dag_; k++) {
 	      size_t q = static_cast<size_t>(H.d_[n].fops_[k].q_);
@@ -67,16 +69,20 @@ namespace sbd {
 	      }
 	    }
 	    if( check ) continue;
-	    w += H.e_[n] * W[is];
+	    val += H.e_[n] * W[is];
 	  }
-	  weight[is] = w;
+	  weight[is] = val;
 	}
       } // end omp parallel scope
     } // end if ( mpi_h_rank == mpi_h_master )
 
+    
     // generate all configurations
 #pragma omp parallel
     {
+      std::vector<std::vector<size_t>> local_config;
+      std::vector<ElemT> local_weight;
+      
       std::vector<size_t> v;
       std::vector<size_t> w;
       size_t size_t_one = 1;
@@ -113,12 +119,23 @@ namespace sbd {
 	  if ( check ) continue;
 	  
 	  // now w is the configuration after the Hamiltonian operation
-	  config.push_back(w);
-	  weight.push_back(H.c_[n] * W[is]);
-	  nc++;
+	  local_config.push_back(w);
+	  local_weight.push_back(H.c_[n] * W[is]);
 	} // end loop for generating new configurations
       } // end omp parallel for
+#pragma omp critical
+      {
+	// config.push_back(std::move(local_config));
+	// weight.push_back(std::move(local_weight));
+	config.insert(config.end(),
+		      std::make_move_iterator(local_config.begin()),
+		      std::make_move_iterator(local_config.end()));
+	weight.insert(weight.end(),
+		      std::make_move_iterator(local_weight.begin()),
+		      std::make_move_iterator(local_weight.end()));
+      }
     } // end omp parallel scope
+    nc = config.size();
     
     // perform full sort for all process
     std::vector<std::vector<size_t>> new_config(config);
@@ -129,18 +146,43 @@ namespace sbd {
     mpi_sort_bitarray(new_config,config_begin,config_end,index_begin,index_end,bit_length,comm);
 
     // determine the node to be send
+#ifdef SBD_DEBUG
+    for(int rank=0; rank < mpi_size; rank++) {
+      if( mpi_rank == rank ) {
+	std::cout << " Start send data preparation: ";
+	std::cout << " Sizes: config.size() = " << config.size();
+	std::cout << " while nc = " << nc;
+	std::cout << " config_begin.size() = " << config_begin.size() << std::endl;
+      }
+      MPI_Barrier(comm);
+    }
+#endif
 
     std::vector<std::vector<std::vector<size_t>>> config_send(mpi_size);
     std::vector<std::vector<ElemT>> weight_send(mpi_size);
 
     int target_mpi;
     bool mpi_exist;
-    for(int n=0; n < nc; n++) {
+    for(size_t n=0; n < nc; n++) {
       mpi_process_search(config[n],config_begin,config_end,target_mpi,mpi_exist);
       config_send[target_mpi].push_back(config[n]);
       weight_send[target_mpi].push_back(weight[n]);
     }
 
+#ifdef SBD_DEBUG
+    for(int rank=0; rank < mpi_size; rank++) {
+      if( mpi_rank == rank ) {
+	std::cout << " End send data prepration:";
+	for(int target=0; target < mpi_size; target++) {
+	  std::cout << " config_send[" << target << "] = " << config_send[target].size();
+	}
+	std::cout << std::endl;
+      }
+      MPI_Barrier(comm);
+      sleep(5);
+    }
+#endif
+    
     std::vector<std::vector<std::vector<size_t>>> config_recv(mpi_size);
     std::vector<std::vector<ElemT>> weight_recv(mpi_size);
 
@@ -148,18 +190,21 @@ namespace sbd {
     weight_recv[mpi_rank] = weight_send[mpi_rank];
 
     for(size_t slide=1; slide < mpi_size; slide++) {
-      int mpi_send_rank = (mpi_rank+slide) % mpi_size;
+      int mpi_send_rank = (mpi_size+mpi_rank+slide) % mpi_size;
       int mpi_recv_rank = (mpi_size+mpi_rank-slide) % mpi_size;
       MpiSlide(config_send[mpi_send_rank],config_recv[mpi_recv_rank],slide,comm);
+      MpiSlide(weight_send[mpi_send_rank],weight_recv[mpi_recv_rank],slide,comm);
     }
 
     std::vector<ElemT> new_weight(new_config.size(),ElemT(0.0));
-    size_t index_begin = 0;
-    size_t index_end = new_config.size();
-    for(size_t rank=0; rank < mpi_rank; rank++) {
+    size_t idx_begin_this = 0;
+    size_t idx_end_this = new_config.size();
+    bool exist;
+    size_t idx;
+    for(size_t rank=0; rank < mpi_size; rank++) {
       for(size_t n=0; n < config_recv[rank].size(); n++) {
-	bisection_search(config_recv[rank][n],new_config,index_begin,index_end,index,exist);
-	new_weight[index] += wegith_recv[rank][n];
+	bisection_search(config_recv[rank][n],new_config,idx_begin_this,idx_end_this,idx,exist);
+	new_weight[idx] += weight_recv[rank][n];
       }
     }
 
