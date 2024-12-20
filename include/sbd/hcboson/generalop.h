@@ -98,7 +98,6 @@ namespace sbd {
 			      const Basis & B,
 			      const std::vector<ElemT_> & W,
 			      size_t bit_length,
-			      MPI_Comm & h_comm,
 			      MPI_Comm & comm,
 			      ElemT_ & res);
     
@@ -334,7 +333,6 @@ namespace sbd {
 			      const Basis & B,
 			      const std::vector<ElemT_> & W,
 			      size_t bit_length,
-			      MPI_Comm & h_comm,
 			      MPI_Comm & comm,
 			      ElemT_ & res);
     
@@ -737,7 +735,6 @@ namespace sbd {
 			      const Basis & B,
 			      const std::vector<ElemT_> & W,
 			      size_t bit_length,
-			      MPI_Comm & h_comm,
 			      MPI_Comm & comm,
 			      ElemT_ & res);
     

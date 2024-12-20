@@ -156,6 +156,7 @@ namespace sbd {
     // data_width = 4    0 | 1 | 2 3
     // data_width = 5  0 1 | 2 | 3 4
 
+    
     for(int d=0; d < inc_size; d++) {
       if( d == 0 ) {
 	mpi_inc_slide_wavefunction(C,B,Cp[inc_size-d-1],Bp[inc_size-d-1]);
@@ -166,6 +167,7 @@ namespace sbd {
 
     Cp[inc_size] = C;
     Bp[inc_size] = B;
+    
     for(int d=0; d < dec_size; d++) {
       if( d == 0 ) {
 	mpi_dec_slide_wavefunction(C,B,Cp[d+1+inc_size],Bp[d+1+inc_size]);
@@ -237,10 +239,12 @@ namespace sbd {
 	    
 	    Bp[d_target].IndexSearch(w,js,check);
 	    if( check ) {
+	      /*
 	      std::cout << " mpi rank, is, js  = "
 			<< B.MpiRank() << ", "
 			<< is + B.BeginIndex(B.MpiRank()) << ", "
 			<< js << std::endl;
+	      */
 	      W[is] = W[is] + H.c_[n] * Cp[d_target][js-B.BeginIndex(target_rank)];
 	    }
 	  } // end for(size_t n=0; n < H.o_.size(); n++)
@@ -288,21 +292,9 @@ namespace sbd {
     //
 
     mult_prep(W,h_comm);
-
-    std::cout << " end prep " << std::endl;
-    
     mult_diagonal(H,C,B,W,bit_length);
-
-    std::cout << " end diagonal " << std::endl;
-    
     mult_offdiagonal(H,C,B,W,bit_length,data_width);
-
-    std::cout << " end offdiagonal " << std::endl;
-    
     MpiAllreduce(W,MPI_SUM,h_comm);
-
-    std::cout << " end allreduce " << std::endl;
-    
     
   }
 

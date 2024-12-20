@@ -12,13 +12,8 @@ namespace sbd {
 		     const Basis & B,
 		     const std::vector<ElemT> & W,
 		     size_t bit_length,
-		     MPI_Comm & h_comm,
 		     MPI_Comm & comm,
 		     ElemT & res) {
-
-    int mpi_h_master = 0;
-    int mpi_h_rank; MPI_Comm_rank(h_comm,&mpi_h_rank);
-    int mpi_h_size; MPI_Comm_size(h_comm,&mpi_h_size);
 
     int mpi_master = 0;
     int mpi_size; MPI_Comm_size(comm,&mpi_size);
@@ -32,49 +27,42 @@ namespace sbd {
     std::vector<std::vector<size_t>> config;
     std::vector<ElemT> weight;
 
-    if( mpi_h_rank == mpi_h_master ) {
-      config.reserve(num_b*(num_h+1));
-      weight.reserve(num_b*(num_h+1));
-    } else {
-      config.reserve(num_b*num_h);
-      weight.reserve(num_b*num_h);
-    }
+    config.reserve(num_b*(num_h+1));
+    weight.reserve(num_b*(num_h+1));
 
     size_t nc = 0;
-    if( mpi_h_rank == mpi_h_master ) {
-      config.resize(num_b);
-      weight.resize(num_b);
-      std::vector<std::vector<size_t>> B_config = B.Config();
-      std::copy(B_config.begin(),B_config.end(),config.begin());
+    config.resize(num_b);
+    weight.resize(num_b);
+    std::vector<std::vector<size_t>> B_config = B.Config();
+    std::copy(B_config.begin(),B_config.end(),config.begin());
     // diagonal terms
 #pragma omp parallel
-      {
-	std::vector<size_t> v;
-	size_t size_t_one = 1;
-	bool check;
-	ElemT val;
+    {
+      std::vector<size_t> v;
+      size_t size_t_one = 1;
+      bool check;
+      ElemT val;
 #pragma omp for
-	for(size_t is=0; is < num_b; is++) {
-	  v = B.Config(is);
-	  val = ElemT(0.0);
-	  for(size_t n=0; n < H.d_.size(); n++) {
-	    check = false;
-	    for(int k=0; k < H.d_[n].n_dag_; k++) {
-	      size_t q = static_cast<size_t>(H.d_[n].fops_[k].q_);
-	      size_t r = q / bit_length;
-	      size_t x = q % bit_length;
-	      if( ( v[r] & ( size_t_one << x ) ) == 0 ) {
-		check = true;
-		break;
-	      }
+      for(size_t is=0; is < num_b; is++) {
+	v = B.Config(is);
+	val = ElemT(0.0);
+	for(size_t n=0; n < H.d_.size(); n++) {
+	  check = false;
+	  for(int k=0; k < H.d_[n].n_dag_; k++) {
+	    size_t q = static_cast<size_t>(H.d_[n].fops_[k].q_);
+	    size_t r = q / bit_length;
+	    size_t x = q % bit_length;
+	    if( ( v[r] & ( size_t_one << x ) ) == 0 ) {
+	      check = true;
+	      break;
 	    }
-	    if( check ) continue;
-	    val += H.e_[n] * W[is];
 	  }
-	  weight[is] = val;
+	  if( check ) continue;
+	  val += H.e_[n] * W[is];
 	}
-      } // end omp parallel scope
-    } // end if ( mpi_h_rank == mpi_h_master )
+	weight[is] = val;
+      }
+    } // end omp parallel scope
 
     
     // generate all configurations
