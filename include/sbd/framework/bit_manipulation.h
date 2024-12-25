@@ -181,45 +181,39 @@ Function for finding the state index of target bit string
 			const size_t & index_end,
 			size_t & index, bool & exist) {
     bool do_bisection = true;
-    size_t index_a = index_begin;
-    size_t index_b = index_end-1;
-    std::vector<size_t> config_a = config[index_a];
-    std::vector<size_t> config_b = config[index_b];
-    exist = false;
-    while( do_bisection ) {
-      size_t index_c = (index_a + index_b)/2;
-      std::vector<size_t> config_c = config[index_c];
-      if( config_c < target_config ) {
-	config_a = config_c;
-	index_a = index_c;
-      } else if ( config_c > target_config ) {
-	config_b = config_c;
-	index_b = index_c;
-      } else {
-	index = index_c;
-	do_bisection = false;
-	exist = true;
-      }
-      if( (index_b - index_a) < 2 && do_bisection ) {
-	do_bisection = false;
-	if( config_b == target_config ) {
-	  index = index_b;
-	  exist = true;
-	} else if ( config_a == target_config ) {
-	  index = index_a;
-	  exist = true;
-	} else if ( target_config < config_a ) {
-	  index = index_a;
-	  exist = false;
-	} else if( target_config < config_b ) {
-	  index = index_b;
-	  exist = false;
-	} else {
-	  index = index_b+1;
-	  exist = false;
-	}
-      }
-    }
+   	size_t index_a = index_begin;
+   	size_t index_b = index_end-1;
+	exist = false;
+   	while( do_bisection ) {
+     	size_t index_c = (index_a + index_b)/2;
+     	if( config[index_c] < target_config ) {
+	       index_a = index_c;
+     	} else if ( config[index_c]> target_config ) {
+	       index_b = index_c;
+     	} else {
+	       index = index_c;
+    	   do_bisection = false;
+	       exist = true;
+     }
+     if( (index_b - index_a) < 2 && do_bisection ) {
+       do_bisection = false;
+       if( config[index_b] == target_config ) {
+         index = index_b;
+         exist = true;
+       } else if ( config[index_a] == target_config ) {
+         index = index_a;
+         exist = true;
+       } else if ( target_config < config[index_a] ) {
+         index = index_a;
+         exist = false;
+       } else if( target_config < config[index_b] ) {
+         index = index_b;
+         exist = false;
+       } else {
+         index = index_b+1;
+         exist = false;
+       }
+     }
   }
     
 
