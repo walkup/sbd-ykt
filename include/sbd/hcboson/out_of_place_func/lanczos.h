@@ -187,7 +187,7 @@ namespace sbd {
 	A[ji] = A[ij];
 
 	for(int rank=0; rank < mpi_size_h; rank++) {
-	  if( mpi_rank_b == 0 && mpi_rank_h == rank ) {
+	  if( mpi_rank_r == 0 && mpi_rank_h == rank ) {
 	    std::cout << " Lanczos iteration " << it
 		      << " at h_comm rank " << mpi_rank_h
 		      << ": (A,B)=(" << A[ii] << "," << A[ij] << "):";
