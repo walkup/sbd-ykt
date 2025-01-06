@@ -804,8 +804,114 @@ Function for finding the state index of target bit string
     }
   }
 
+  void convert_int_to_string(int i, std::string & s) {
+    std::string snum = std::to_string(i);
+    if( i < 10 )
+      {
+	std::string zeros("0000000");
+	s = zeros + snum;
+      }
+    else if( i < 100 )
+      {
+	std::string zeros("000000");
+	s = zeros + snum;
+      }
+    else if( i < 1000 )
+      {
+	std::string zeros("00000");
+	s = zeros + snum;
+      }
+    else if( i < 10000 )
+      {
+	std::string zeros("0000");
+	s = zeros + snum;
+      }
+    else if( i < 100000 )
+      {
+	std::string zeros("000");
+	s = zeros + snum;
+      }
+    else if( i < 1000000 )
+      {
+	std::string zeros("00");
+	s = zeros + snum;
+      }
+    else if( i < 10000000 )
+      {
+	std::string zeros("0");
+	s = zeros + snum;
+      }
+    else
+      {
+	s = snum;
+      }
+  }
+
+  inline std::string get_extension(const std::string &path)
+  {
+    std::string ext;
+    size_t pos1 = path.rfind('.');
+    if(pos1 != std::string::npos){
+      ext = path.substr(pos1+1, path.size()-pos1);
+      std::string::iterator itr = ext.begin();
+      while(itr != ext.end()){
+	*itr = tolower(*itr);
+	itr++;
+      }
+      itr = ext.end()-1;
+      while(itr != ext.begin()){
+	if(*itr == 0 || *itr == 32){
+	  ext.erase(itr--);
+	}
+	else{
+	  itr--;
+	}
+      }
+    }
+    return ext;
+  }
+
+  std::string remove_extension(const std::string& filename) {
+    size_t lastdot = filename.find_last_of(".");
+    if (lastdot == std::string::npos) return filename;
+    return filename.substr(0, lastdot); 
+  }
   
+  std::string get_binary_file_name(int i, const std::string & filename) {
+    std::string name = remove_extension(filename);
+    std::string label;
+    convert_int_to_string(i,label);
+    std::string res = name + label + ".bin";
+    return res;
+  }
+
+  void SaveConfig(std::ostream & os,
+		  std::vector<std::vector<size_t>> & config) {
+    size_t size_v = config.size();
+    size_t size_b = 0;
+    if( config.size() != 0 ) {
+      size_b = config[0].size();
+    }
+    os.write(reinterpret_cast<char *>(&size_v),sizeof(size_t));
+    os.write(reinterpret_cast<char *>(&size_b),sizeof(size_t));
+    for(size_t n=0; n < size_v; n++) {
+      os.write(reinterpret_cast<char *>(config[n].data()),
+	       sizeof(size_t)*size_b);
+    }
+  }
   
+  void LoadConfig(std::istream & is,
+		  std::vector<std::vector<size_t>> & config) {
+    size_t size_v;
+    size_t size_b;
+    is.read(reinterpret_cast<char *>(&size_v),sizeof(size_t));
+    is.read(reinterpret_cast<char *>(&size_b),sizeof(size_t));
+    config = std::vector<std::vector<size_t>>(size_v,std::vector<size_t>(size_b));
+    for(size_t n=0; n < size_v; n++) {
+      is.read(reinterpret_cast<char *>(config[n].data()),
+	      sizeof(size_t)*size_b);
+    }
+  }
   
 
 }
