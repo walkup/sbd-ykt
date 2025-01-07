@@ -881,7 +881,7 @@ Function for finding the state index of target bit string
     std::string name = remove_extension(filename);
     std::string label;
     convert_int_to_string(i,label);
-    std::string res = name + label + ".bin";
+    std::string res = name + label + ".dat";
     return res;
   }
 
