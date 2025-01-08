@@ -29,6 +29,23 @@ namespace sbd {
     
   }
 
+  void mpi_slide_basis(const Basis & B,
+		       Basis & Bt,
+		       int slide_width) {
+    MPI_Comm comm = B.MpiComm();
+    Bt = B.MpiSlide(slide_width);
+  }
+
+  void mpi_slide_basis(std::vector<Basis> & B,
+		       int slide_width) {
+    size_t num_data = B.size();
+    Basis Bt;
+    for(size_t i=0; i < num_data; i++) {
+      mpi_slide_basis(B[i],Bt,slide_width);
+      B[i] = Bt;
+    }
+  }
+
   template <typename ElemT>
   void mpi_slide_wavefunction(const std::vector<ElemT> & W,
 			      const Basis & B,
@@ -266,6 +283,222 @@ namespace sbd {
     MpiAllreduce(W,MPI_SUM,h_comm);
     
   }
+
+  template <typename ElemT>
+  void make_hamiltonian(const GeneralOp<ElemT> & H,
+			const Basis & B,
+			std::vector<ElemT> & hii,
+			std::vector<std::vector<std::vector<size_t>>> & ij,
+			std::vector<std::vector<std::vector<size_t>>> & tr,
+			std::vector<std::vector<std::vector<ElemT>>> & hij,
+			size_t bit_length,
+			int data_width,
+			MPI_Comm h_comm) {
+    // Diagonal part
+    size_t size_t_one = 1;
+    size_t ns_rank = B.Size();
+    hii.resize(ns_rank);
+#pragma omp parallel
+    {
+      std::vector<size_t> v;
+      bool check;
+#pragma omp for
+      for(size_t is=0; is < ns_rank; is++) {
+	v = B.Config(is);
+	for(size_t n=0; n < H.d_.size(); n++) {
+	  check = false;
+	  for(int k=0; k < H.d_[n].n_dag_; k++) {
+	    size_t q = static_cast<size_t>(H.d_[n].fops_[k].q_);
+	    size_t r = q / bit_length;
+	    size_t x = q % bit_length;
+	    if( ( v[r] & ( size_t_one << x ) ) == 0 ) {
+	      check = true;
+	      break;
+	    }
+	  }
+	  if( check ) continue;
+	  hii[is] += H.e_[n];
+	}
+      }
+    }
+    // Off diagonal part
+
+    size_t mpi_size_b = B.MpiSize();
+    size_t mpi_rank_b = B.MpiRank();
+    
+    std::vector<Basis> Bp(data_width);
+    
+    int inc_size = (data_width-1)/2;
+    int dec_size = data_width/2;
+    
+    // data_width = 1      | 0 |
+    // data_width = 2      | 0 | 1
+    // data_width = 3    0 | 1 | 2
+    // data_width = 4    0 | 1 | 2 3
+    // data_width = 5  0 1 | 2 | 3 4
+    
+    for(int d=0; d < inc_size; d++) {
+      if( d == 0 ) {
+	mpi_slide_basis(B,Bp[inc_size-d-1],1);
+      } else {
+	mpi_slide_basis(Bp[inc_size-d],Bp[inc_size-d-1],1);
+      }
+    }
+    
+    Bp[inc_size] = B;
+    for(int d=0; d < dec_size; d++) {
+      if( d == 0 ) {
+	mpi_slide_basis(B,Bp[d+1+inc_size],-1);
+      } else {
+	mpi_slide_basis(Bp[d+inc_size],Bp[d+1+inc_size],-1);
+      }
+    }
+    int mpi_round = mpi_size_b / data_width;
+
+    ij.resize(mpi_round);
+    hij.resize(mpi_round);
+    for(int round=0; round < mpi_round; round++) {
+      ij[round].resize(ns_rank);
+      hij[round].resize(ns_rank);
+#pragma omp parallel
+      {
+	std::vector<size_t> v;
+	std::vector<size_t> w;
+	size_t js;
+	int target_rank;
+	bool check;
+
+#pragma omp for
+	for(size_t is=0; is < ns_rank; is++) {
+	  v = B.Config(is);
+	  for(size_t n=0; n < H.o_.size(); n++) {
+	    w = v;
+	    for(int k=0; k < H.o_[n].n_dag_; k++) {
+	      size_t q = static_cast<size_t>(H.o_[n].fops_[k].q_);
+	      size_t r = q / bit_length;
+	      size_t x = q % bit_length;
+	      if( ( w[r] & ( size_t_one << x )) != 0 ) {
+		w[r] = w[r] ^ ( size_t_one << x );
+	      } else {
+		check = true;
+		break;
+	      }
+	    }
+	    if( check ) continue;
+	    for(int k = H.o_[n].n_dag_; k < H.o_[n].fops_.size(); k++) {
+	      size_t q = static_cast<size_t>(H.o_[n].fops_[k].q_);
+	      size_t r = q / bit_length;
+	      size_t x = q % bit_length;
+	      if ( ( w[r] & ( size_t_one << x ) ) == 0 ) {
+		w[r] = w[r] | ( size_t_one << x );
+	      } else {
+		check = true;
+		break;
+	      }
+	    }
+	    if( check ) continue;
+	    B.MpiProcessSearch(w,target_rank,check);
+	    if( !check ) continue;
+	    check = true;
+	    int d_target;
+	    for(int d=0; d < Bp.size(); d++) {
+	      if( Bp[d].MpiRank() == target_rank ) {
+		check = false;
+		d_target = d;
+		break;
+	      }
+	    }
+	    if( check ) continue;
+	    Bp[d_target].IndexSearch(w,js,check);
+	    if( check ) {
+	      ij[round][is].push_back(js-B.BeginIndex(target_rank));
+	      tr[round][is].push_back(d_target);
+	      hij[round][is].push_back(H.c_[n]);
+	    }
+	  } // end for(size_t n=0; n < H.o_.size(); n++)
+	} // end for(size_t is=0; is < ns_rank; is++)
+      } // end omp paragma
+      if( mpi_round != 1 ) {
+	mpi_slide_basis(Bp,data_width);
+      }
+    } // end for(int round=0; round < mpi_round; round++)
+  }
+
+
+  template <typename ElemT>
+  void mult(const std::vector<ElemT> & hii,
+	    const std::vector<std::vector<std::vector<size_t>>> & ij,
+	    const std::vector<std::vector<std::vector<size_t>>> & tr,
+	    const std::vector<std::vector<std::vector<ElemT>>> & hij,
+	    const std::vector<ElemT> & C,
+	    const Basis & B,
+	    std::vector<ElemT> & W,
+	    size_t bit_length,
+	    int data_width,
+	    MPI_Comm h_comm) {
+
+
+    mult_prep(W,h_comm);
+
+    // perform diagonal without communication
+    size_t ns_rank = B.Size();
+#pragma omp parallel for
+    for(size_t is=0; is < ns_rank; is++) {
+      W[is] += hii[is] * C[is];
+    }
+
+    size_t mpi_size_b = B.MpiSize();
+    size_t mpi_rank_b = B.MpiRank();
+
+    std::vector<Basis> Bp(data_width);
+    std::vector<std::vector<ElemT>> Cp(data_width);
+
+    
+    int inc_size = (data_width-1)/2;
+    int dec_size = data_width/2;
+
+    // data_width = 1      | 0 |
+    // data_width = 2      | 0 | 1
+    // data_width = 3    0 | 1 | 2
+    // data_width = 4    0 | 1 | 2 3
+    // data_width = 5  0 1 | 2 | 3 4
+
+    for(int d=0; d < inc_size; d++) {
+      if( d == 0 ) {
+	mpi_slide_wavefunction(C,B,Cp[inc_size-d-1],Bp[inc_size-d-1],1);
+      } else {
+	mpi_slide_wavefunction(Cp[inc_size-d],Bp[inc_size-d],Cp[inc_size-d-1],Bp[inc_size-d-1],1);
+      }
+    }
+
+    Cp[inc_size] = C;
+    Bp[inc_size] = B;
+    for(int d=0; d < dec_size; d++) {
+      if( d == 0 ) {
+	mpi_slide_wavefunction(C,B,Cp[d+1+inc_size],Bp[d+1+inc_size],-1);
+      } else {
+	mpi_slide_wavefunction(Cp[d+inc_size],Bp[d+inc_size],Cp[d+1+inc_size],Bp[d+1+inc_size],-1);
+      }
+    }
+
+    int mpi_round = mpi_size_b / data_width;
+
+    for(int round=0; round < mpi_round; round++) {
+#pragma omp parallel for
+      for(size_t is=0; is < ns_rank; is++) {
+	for(size_t k=0; k < ij[round][is].size(); k++) {
+	  W[is] += hij[round][is][k] * Cp[tr[round][is][k]][ij[round][is][k]];
+	}
+      }
+      if( mpi_round != 1 ) {
+	mpi_slide_wavefunction(Cp,Bp,data_width);
+      }
+    } // end for(int round=0; round < mpi_round; round++)
+
+    MpiAllreduce(W,MPI_SUM,h_comm);
+    
+  }
+
 
 
 } // end for namespace sbd
