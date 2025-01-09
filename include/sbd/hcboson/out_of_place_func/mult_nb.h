@@ -5,6 +5,9 @@
 #ifndef SBD_HCBOSON_OUT_OF_PLACE_FUNC_MULT_NB_H
 #define SBD_HCBOSON_OUT_OF_PLACE_FUNC_MULT_NB_H
 
+
+#include <omp.h>
+
 #include "sbd/framework/mpi_utility.h"
 
 namespace sbd {
@@ -292,19 +295,21 @@ namespace sbd {
 			std::vector<std::vector<std::vector<size_t>>> & tr,
 			std::vector<std::vector<std::vector<ElemT>>> & hij,
 			size_t bit_length,
-			int data_width,
-			MPI_Comm h_comm) {
+			int data_width) {
     // Diagonal part
     size_t size_t_one = 1;
     size_t ns_rank = B.Size();
     hii.resize(ns_rank);
+    size_t num_threads = 1;
 #pragma omp parallel
     {
+      num_threads = omp_get_num_threads();
       std::vector<size_t> v;
       bool check;
 #pragma omp for
       for(size_t is=0; is < ns_rank; is++) {
 	v = B.Config(is);
+	hii[is] = ElemT(0.0);
 	for(size_t n=0; n < H.d_.size(); n++) {
 	  check = false;
 	  for(int k=0; k < H.d_[n].n_dag_; k++) {
@@ -356,10 +361,14 @@ namespace sbd {
     int mpi_round = mpi_size_b / data_width;
 
     ij.resize(mpi_round);
+    tr.resize(mpi_round);
     hij.resize(mpi_round);
     for(int round=0; round < mpi_round; round++) {
       ij[round].resize(ns_rank);
+      tr[round].resize(ns_rank);
       hij[round].resize(ns_rank);
+
+      size_t chunk_size = ns_rank / num_threads;
 #pragma omp parallel
       {
 	std::vector<size_t> v;
@@ -368,11 +377,22 @@ namespace sbd {
 	int target_rank;
 	bool check;
 
-#pragma omp for
-	for(size_t is=0; is < ns_rank; is++) {
+	size_t thread_id = omp_get_thread_num();
+	size_t start_idx = thread_id * chunk_size;
+	size_t end_idx   = (thread_id + 1) * chunk_size;
+	if( thread_id == num_threads - 1 ) {
+	  end_idx = ns_rank;
+	}
+
+	std::vector<std::vector<size_t>> local_ij(chunk_size);
+	std::vector<std::vector<size_t>> local_tr(chunk_size);
+	std::vector<std::vector<ElemT>> local_hij(chunk_size);
+	
+	for(size_t is=start_idx; is < end_idx; is++) {
 	  v = B.Config(is);
 	  for(size_t n=0; n < H.o_.size(); n++) {
 	    w = v;
+	    check = false;
 	    for(int k=0; k < H.o_[n].n_dag_; k++) {
 	      size_t q = static_cast<size_t>(H.o_[n].fops_[k].q_);
 	      size_t r = q / bit_length;
@@ -411,13 +431,29 @@ namespace sbd {
 	    if( check ) continue;
 	    Bp[d_target].IndexSearch(w,js,check);
 	    if( check ) {
+	      /*
 	      ij[round][is].push_back(js-B.BeginIndex(target_rank));
 	      tr[round][is].push_back(d_target);
 	      hij[round][is].push_back(H.c_[n]);
+	      */
+	      local_ij[is-start_idx].push_back(js-B.BeginIndex(target_rank));
+	      local_tr[is-start_idx].push_back(d_target);
+	      local_hij[is-start_idx].push_back(H.c_[n]);
 	    }
 	  } // end for(size_t n=0; n < H.o_.size(); n++)
 	} // end for(size_t is=0; is < ns_rank; is++)
+
+#pragma omp critical
+	{
+	  for(size_t is=start_idx; is < end_idx; is++) {
+	    ij[round][is].insert(ij[round][is].end(),local_ij[is-start_idx].begin(),local_ij[is-start_idx].end());
+	    tr[round][is].insert(tr[round][is].end(),local_tr[is-start_idx].begin(),local_tr[is-start_idx].end());
+	    hij[round][is].insert(hij[round][is].end(),local_hij[is-start_idx].begin(),local_hij[is-start_idx].end());
+	  }
+	}
+	
       } // end omp paragma
+      
       if( mpi_round != 1 ) {
 	mpi_slide_basis(Bp,data_width);
       }

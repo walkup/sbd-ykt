@@ -94,6 +94,16 @@ namespace sbd {
 		     MPI_Comm comm);
 
     template <typename ElemT_>
+    friend void make_hamiltonian(const GeneralOp<ElemT_> & H,
+		const Basis & B,
+	        std::vector<ElemT_> & hii,
+		std::vector<std::vector<std::vector<size_t>>> & ij,
+		std::vector<std::vector<std::vector<size_t>>> & tr,
+		std::vector<std::vector<std::vector<ElemT_>>> & hij,
+		size_t bit_length,
+		int data_width);
+
+    template <typename ElemT_>
     friend void MeasHamSquare(const GeneralOp<ElemT_> & H,
 			      const Basis & B,
 			      const std::vector<ElemT_> & W,
@@ -328,6 +338,16 @@ namespace sbd {
 		     std::vector<ElemT_> & W,
 		     MPI_Comm comm);
 
+    template <typename ElemT_>
+    friend void make_hamiltonian(const GeneralOp<ElemT_> & H,
+		const Basis & B,
+	        std::vector<ElemT_> & hii,
+		std::vector<std::vector<std::vector<size_t>>> & ij,
+		std::vector<std::vector<std::vector<size_t>>> & tr,
+		std::vector<std::vector<std::vector<ElemT_>>> & hij,
+		size_t bit_length,
+		int data_width);
+    
     template <typename ElemT_>
     friend void MeasHamSquare(const GeneralOp<ElemT_> & H,
 			      const Basis & B,
@@ -730,6 +750,16 @@ namespace sbd {
 		     std::vector<ElemT_> & W,
 		     MPI_Comm comm);
 
+    template <typename ElemT_>
+    friend void make_hamiltonian(const GeneralOp<ElemT_> & H,
+		const Basis & B,
+	        std::vector<ElemT_> & hii,
+		std::vector<std::vector<std::vector<size_t>>> & ij,
+		std::vector<std::vector<std::vector<size_t>>> & tr,
+		std::vector<std::vector<std::vector<ElemT_>>> & hij,
+		size_t bit_length,
+		int data_width);
+    
     template <typename ElemT_>
     friend void MeasHamSquare(const GeneralOp<ElemT_> & H,
 			      const Basis & B,
