@@ -1,9 +1,9 @@
 /**
-@file sbd/hcboson/out_of_place_func/mult_nb.h
+@file sbd/hcboson/out_of_place_func/mult.h
 @brief multiplication of operator to the wave vector using non-blocking communication
 */
-#ifndef SBD_HCBOSON_OUT_OF_PLACE_FUNC_MULT_NB_H
-#define SBD_HCBOSON_OUT_OF_PLACE_FUNC_MULT_NB_H
+#ifndef SBD_HCBOSON_OUT_OF_PLACE_FUNC_MULT_H
+#define SBD_HCBOSON_OUT_OF_PLACE_FUNC_MULT_H
 
 
 #include <omp.h>
@@ -288,10 +288,85 @@ namespace sbd {
   }
 
   template <typename ElemT>
+  void mult(const std::vector<ElemT> & hii,
+	    const std::vector<std::vector<std::vector<size_t>>> & ij,
+	    const std::vector<std::vector<std::vector<size_t>>> & tr,
+	    const std::vector<std::vector<std::vector<ElemT>>> & hij,
+	    const std::vector<ElemT> & C,
+	    const Basis & B,
+	    std::vector<ElemT> & W,
+	    size_t bit_length,
+	    int data_width,
+	    MPI_Comm h_comm) {
+
+
+    mult_prep(W,h_comm);
+
+    // perform diagonal without communication
+    size_t ns_rank = B.Size();
+#pragma omp parallel for
+    for(size_t is=0; is < ns_rank; is++) {
+      W[is] += hii[is] * C[is];
+    }
+
+    size_t mpi_size_b = B.MpiSize();
+    size_t mpi_rank_b = B.MpiRank();
+
+    std::vector<Basis> Bp(data_width);
+    std::vector<std::vector<ElemT>> Cp(data_width);
+
+    
+    int inc_size = (data_width-1)/2;
+    int dec_size = data_width/2;
+
+    // data_width = 1      | 0 |
+    // data_width = 2      | 0 | 1
+    // data_width = 3    0 | 1 | 2
+    // data_width = 4    0 | 1 | 2 3
+    // data_width = 5  0 1 | 2 | 3 4
+
+    for(int d=0; d < inc_size; d++) {
+      if( d == 0 ) {
+	mpi_slide_wavefunction(C,B,Cp[inc_size-d-1],Bp[inc_size-d-1],1);
+      } else {
+	mpi_slide_wavefunction(Cp[inc_size-d],Bp[inc_size-d],Cp[inc_size-d-1],Bp[inc_size-d-1],1);
+      }
+    }
+
+    Cp[inc_size] = C;
+    Bp[inc_size] = B;
+    for(int d=0; d < dec_size; d++) {
+      if( d == 0 ) {
+	mpi_slide_wavefunction(C,B,Cp[d+1+inc_size],Bp[d+1+inc_size],-1);
+      } else {
+	mpi_slide_wavefunction(Cp[d+inc_size],Bp[d+inc_size],Cp[d+1+inc_size],Bp[d+1+inc_size],-1);
+      }
+    }
+
+    int mpi_round = mpi_size_b / data_width;
+
+    for(int round=0; round < mpi_round; round++) {
+#pragma omp parallel for
+      for(size_t is=0; is < ns_rank; is++) {
+	for(size_t k=0; k < ij[round][is].size(); k++) {
+	  W[is] += hij[round][is][k] * Cp[tr[round][is][k]][ij[round][is][k]];
+	}
+      }
+      if( mpi_round != 1 ) {
+	mpi_slide_wavefunction(Cp,Bp,data_width);
+      }
+    } // end for(int round=0; round < mpi_round; round++)
+
+    MpiAllreduce(W,MPI_SUM,h_comm);
+    
+  }
+
+  template <typename ElemT>
   void make_hamiltonian(const GeneralOp<ElemT> & H,
 			const Basis & B,
 			std::vector<ElemT> & hii,
-			std::vector<std::vector<std::vector<size_t>>> & ij,
+			std::vector<std::vector<std::vector<size_t>>> & ih,
+			std::vector<std::vector<std::vector<size_t>>> & jh,
 			std::vector<std::vector<std::vector<size_t>>> & tr,
 			std::vector<std::vector<std::vector<ElemT>>> & hij,
 			size_t bit_length,
@@ -360,13 +435,11 @@ namespace sbd {
     }
     int mpi_round = mpi_size_b / data_width;
 
-    ij.resize(mpi_round);
-    tr.resize(mpi_round);
-    hij.resize(mpi_round);
+    ih.resize(mpi_round,std::vector<std::vector<size_t>>(num_threads));
+    jh.resize(mpi_round,std::vector<std::vector<size_t>>(num_threads));
+    tr.resize(mpi_round,std::vector<std::vector<size_t>>(num_threads));
+    hij.resize(mpi_round,std::vector<std::vector<ElemT>>(num_threads));
     for(int round=0; round < mpi_round; round++) {
-      ij[round].resize(ns_rank);
-      tr[round].resize(ns_rank);
-      hij[round].resize(ns_rank);
 
       size_t chunk_size = ns_rank / num_threads;
 #pragma omp parallel
@@ -384,9 +457,10 @@ namespace sbd {
 	  end_idx = ns_rank;
 	}
 
-	std::vector<std::vector<size_t>> local_ij(chunk_size);
-	std::vector<std::vector<size_t>> local_tr(chunk_size);
-	std::vector<std::vector<ElemT>> local_hij(chunk_size);
+	std::vector<size_t> local_ih;
+	std::vector<size_t> local_jh;
+	std::vector<size_t> local_tr;
+	std::vector<ElemT> local_hij;
 	
 	for(size_t is=start_idx; is < end_idx; is++) {
 	  v = B.Config(is);
@@ -436,22 +510,29 @@ namespace sbd {
 	      tr[round][is].push_back(d_target);
 	      hij[round][is].push_back(H.c_[n]);
 	      */
-	      local_ij[is-start_idx].push_back(js-B.BeginIndex(target_rank));
-	      local_tr[is-start_idx].push_back(d_target);
-	      local_hij[is-start_idx].push_back(H.c_[n]);
+	      local_ih.push_back(is);
+	      local_jh.push_back(js-B.BeginIndex(target_rank));
+	      local_tr.push_back(d_target);
+	      local_hij.push_back(H.c_[n]);
 	    }
 	  } // end for(size_t n=0; n < H.o_.size(); n++)
 	} // end for(size_t is=0; is < ns_rank; is++)
 
 #pragma omp critical
 	{
-	  for(size_t is=start_idx; is < end_idx; is++) {
-	    ij[round][is].insert(ij[round][is].end(),local_ij[is-start_idx].begin(),local_ij[is-start_idx].end());
-	    tr[round][is].insert(tr[round][is].end(),local_tr[is-start_idx].begin(),local_tr[is-start_idx].end());
-	    hij[round][is].insert(hij[round][is].end(),local_hij[is-start_idx].begin(),local_hij[is-start_idx].end());
-	  }
+	  ih[round][thread_id].insert(ih[round][thread_id].end(),
+				      std::make_move_iterator(local_ih.begin()),
+				      std::make_move_iterator(local_ih.end()));
+	  jh[round][thread_id].insert(jh[round][thread_id].end(),
+				      std::make_move_iterator(local_jh.begin()),
+				      std::make_move_iterator(local_jh.end()));
+	  tr[round][thread_id].insert(tr[round][thread_id].end(),
+				      std::make_move_iterator(local_tr.begin()),
+				      std::make_move_iterator(local_tr.end()));
+	  hij[round][thread_id].insert(hij[round][thread_id].end(),
+				      std::make_move_iterator(local_hij.begin()),
+				      std::make_move_iterator(local_hij.end()));
 	}
-	
       } // end omp paragma
       
       if( mpi_round != 1 ) {
@@ -463,7 +544,8 @@ namespace sbd {
 
   template <typename ElemT>
   void mult(const std::vector<ElemT> & hii,
-	    const std::vector<std::vector<std::vector<size_t>>> & ij,
+	    const std::vector<std::vector<std::vector<size_t>>> & ih,
+	    const std::vector<std::vector<std::vector<size_t>>> & jh,
 	    const std::vector<std::vector<std::vector<size_t>>> & tr,
 	    const std::vector<std::vector<std::vector<ElemT>>> & hij,
 	    const std::vector<ElemT> & C,
@@ -520,10 +602,12 @@ namespace sbd {
     int mpi_round = mpi_size_b / data_width;
 
     for(int round=0; round < mpi_round; round++) {
-#pragma omp parallel for
-      for(size_t is=0; is < ns_rank; is++) {
-	for(size_t k=0; k < ij[round][is].size(); k++) {
-	  W[is] += hij[round][is][k] * Cp[tr[round][is][k]][ij[round][is][k]];
+#pragma omp parallel
+      {
+	size_t thread_id = omp_get_thread_num();
+	for(size_t k=0; k < hij[round][thread_id].size(); k++) {
+	  W[ih[round][thread_id][k]] += hij[round][thread_id][k] *
+	    Cp[tr[round][thread_id][k]][jh[round][thread_id][k]];
 	}
       }
       if( mpi_round != 1 ) {

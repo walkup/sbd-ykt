@@ -392,7 +392,8 @@ namespace sbd {
 
   template <typename ElemT, typename RealT>
   void Lanczos(const std::vector<ElemT> & hii,
-	       const std::vector<std::vector<std::vector<size_t>>> & ij,
+	       const std::vector<std::vector<std::vector<size_t>>> & ih,
+	       const std::vector<std::vector<std::vector<size_t>>> & jh,
 	       const std::vector<std::vector<std::vector<size_t>>> & tr,
 	       const std::vector<std::vector<std::vector<ElemT>>> & hij,
 	       const Basis & B,
@@ -434,7 +435,7 @@ namespace sbd {
       int ij_r = it + lda * (it + 1);
       int ji_r = it + 1 + lda * it;
       
-      mult(hii,ij,tr,hij,C0,B,C1,bit_length,data_width,h_comm);
+      mult(hii,ih,jh,tr,hij,C0,B,C1,bit_length,data_width,h_comm);
       InnerProduct(C0,C1,Aii,b_comm);
       A[ii_r] = GetReal(Aii);
       for(int i=0; i < n; i++) {
@@ -504,7 +505,7 @@ namespace sbd {
       int ij_r = it + lda * (it + 1);
       int ji_r = it + 1 + lda * it;
       
-      mult(hii,ij,tr,hij,C0,B,C1,bit_length,data_width,h_comm);
+      mult(hii,ih,jh,tr,hij,C0,B,C1,bit_length,data_width,h_comm);
 #pragma omp parallel for
       for(size_t is=0; is < C0.size(); is++) {
 	C1[is] -= A[ii_r] * C0[is];
