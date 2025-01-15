@@ -4,6 +4,7 @@
 #include "sbd/hcboson/out_of_place_func/arithmetic.h"
 #include "sbd/hcboson/out_of_place_func/mult.h"
 #include "sbd/hcboson/out_of_place_func/lanczos.h"
+#include "sbd/hcboson/out_of_place_func/davidson.h"
 #include "sbd/hcboson/out_of_place_func/expand.h"
 
 #endif

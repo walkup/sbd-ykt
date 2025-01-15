@@ -278,7 +278,7 @@ namespace sbd {
     int mpi_rank_h; MPI_Comm_rank(h_comm,&mpi_rank_h);
     int mpi_size_h; MPI_Comm_size(h_comm,&mpi_size_h);
     int mpi_rank_b; MPI_Comm_rank(b_comm,&mpi_rank_b);
-    int mpi_size_b; MPI_Comm_size(b_comm,&mpi_size_h);
+    int mpi_size_b; MPI_Comm_size(b_comm,&mpi_size_b);
     
     RealT * A = (RealT *) calloc(max_iteration*max_iteration,sizeof(RealT));
     RealT * U = (RealT *) calloc(max_iteration*max_iteration,sizeof(RealT));
