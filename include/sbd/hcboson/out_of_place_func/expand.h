@@ -13,7 +13,8 @@ namespace sbd {
 		     const std::vector<ElemT> & W,
 		     size_t bit_length,
 		     MPI_Comm & comm,
-		     ElemT & res) {
+		     ElemT & res,
+		     bool sign) {
 
     int mpi_master = 0;
     int mpi_size; MPI_Comm_size(comm,&mpi_size);
@@ -74,11 +75,13 @@ namespace sbd {
       std::vector<size_t> v;
       std::vector<size_t> w;
       size_t size_t_one = 1;
+      size_t sign_factor;
       bool check;
 #pragma omp for
       for(size_t is=0; is < num_b; is++) {
 	v = B.Config(is);
 	for(size_t n=0; n < H.o_.size(); n++) {
+	  sign_factor=1;
 	  w = v;
 	  check = false;
 	  for(int k=0; k < H.o_[n].n_dag_; k++) {
@@ -87,6 +90,9 @@ namespace sbd {
 	    size_t x = q % bit_length;
 	    if( ( w[r] & ( size_t_one << x ) ) != 0 ) {
 	      w[r] = w[r] ^ ( size_t_one << x );
+	      if( sign ) {
+		sign_factor *= bit_string_sign_factor(w,bit_length,x,r);
+	      }
 	    } else {
 	      check = true;
 	      break;
@@ -99,6 +105,9 @@ namespace sbd {
 	    size_t x = q % bit_length;
 	    if( ( w[r] & ( size_t_one << x ) ) == 0 ) {
 	      w[r] = w[r] | ( size_t_one << x );
+	      if( sign ) {
+		sign_factor *= bit_string_sign_factor(w,bit_length,x,r);
+	      }
 	    } else {
 	      check = true;
 	      break;
@@ -106,7 +115,7 @@ namespace sbd {
 	  }
 	  if ( check ) continue;
 	  local_config.push_back(w);
-	  local_weight.push_back(H.c_[n] * W[is]);
+	  local_weight.push_back(H.c_[n] * W[is] * ElemT(sign_factor));
 	} // end loop for generating new configurations
       } // end omp parallel for
 #pragma omp critical

@@ -804,6 +804,28 @@ Function for finding the state index of target bit string
     }
   }
 
+  inline int bit_string_sign_factor(const std::vector<size_t> & w,
+				    int bit_length,
+				    size_t x,
+				    size_t r) {
+    int sign = 1;
+    size_t size_t_one = 1;
+    for(size_t k=0; k < r; k++) {
+      for(size_t l=0; l < bit_length; l++) {
+	if( (w[k] & (size_t_one << l)) != 0 ) {
+	  sign *= -1;
+	}
+      }
+    }
+    for(size_t l=0; l < x; l++) {
+      if( ( w[r] & (size_t_one << l) ) != 0 ) {
+	sign *= -1;
+      }
+    }
+    return sign;
+  }
+			 
+
   void convert_int_to_string(int i, std::string & s) {
     std::string snum = std::to_string(i);
     if( i < 10 )

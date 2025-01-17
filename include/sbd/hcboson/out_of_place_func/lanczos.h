@@ -108,7 +108,8 @@ namespace sbd {
 	       MPI_Comm & r_comm,
 	       int max_iteration,
 	       size_t bit_length,
-	       RealT eps) {
+	       RealT eps,
+	       bool sign) {
 
     // using RealT = qsbd::GetRealType<ElemT>::RealT;
 
@@ -152,7 +153,7 @@ namespace sbd {
       int ij = it + lda * (it + 1);
       int ji = it + 1 + lda * it;
       
-      mult(H,C,S,HC,B,bit_length,h_comm,c_comm,r_comm);
+      mult(H,C,S,HC,B,bit_length,h_comm,c_comm,r_comm,sign);
 
       if( mpi_rank_r == 0 ) {
 	InnerProduct(C,HC,Aii,b_comm);
@@ -234,7 +235,7 @@ namespace sbd {
       int ij = it + lda * (it + 1);
       int ji = it + 1 + lda * it;
       
-      mult(H,C,S,HC,B,bit_length,h_comm,c_comm,r_comm);
+      mult(H,C,S,HC,B,bit_length,h_comm,c_comm,r_comm,sign);
       if( mpi_rank_r == 0 ) {
 #pragma omp parallel for
 	for(size_t is=0; is < C.size(); is++) {
@@ -263,7 +264,8 @@ namespace sbd {
 	       int max_iteration,
 	       size_t bit_length,
 	       int data_width,
-	       RealT eps) {
+	       RealT eps,
+	       bool sign) {
 
     // using RealT = qsbd::GetRealType<ElemT>::RealT;
 
@@ -300,7 +302,7 @@ namespace sbd {
       int ij = it + lda * (it + 1);
       int ji = it + 1 + lda * it;
       
-      mult(H,C0,B,C1,bit_length,data_width,h_comm);
+      mult(H,C0,B,C1,bit_length,data_width,h_comm,sign);
       InnerProduct(C0,C1,Aii,b_comm);
       A[ii] = GetReal(Aii);
       for(int i=0; i < n; i++) {
@@ -370,7 +372,7 @@ namespace sbd {
       int ij = it + lda * (it + 1);
       int ji = it + 1 + lda * it;
       
-      mult(H,C0,B,C1,bit_length,data_width,h_comm);
+      mult(H,C0,B,C1,bit_length,data_width,h_comm,sign);
 #pragma omp parallel for
       for(size_t is=0; is < C0.size(); is++) {
 	C1[is] -= A[ii] * C0[is];

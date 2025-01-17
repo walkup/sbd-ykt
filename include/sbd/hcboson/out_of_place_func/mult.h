@@ -128,7 +128,8 @@ namespace sbd {
 			const Basis & B,
 			std::vector<ElemT> & W,
 			size_t bit_length,
-			int data_width) {
+			int data_width,
+			bool sign) {
 
     size_t mpi_size_b = B.MpiSize();
     size_t mpi_rank_b = B.MpiRank();
@@ -177,15 +178,17 @@ namespace sbd {
 	size_t js;
 	size_t ns_rank = B.Size();
 	int target_rank;
+	int sign_count;
 	bool exist_rank;
 	bool check;
 
 #pragma omp for
 	for(size_t is=0; is < ns_rank; is++) {
-
+	  
 	  v = B.Config(is);
-
+	  
 	  for(size_t n=0; n < H.o_.size(); n++) {
+	    sign_count = 1;
 	    w = v;
 	    check = false;
 	    for(int k=0; k < H.o_[n].n_dag_; k++) {
@@ -194,6 +197,9 @@ namespace sbd {
 	      size_t x = q % bit_length;
 	      if( ( w[r] & ( size_t_one << x ) ) != 0 ) {
 		w[r] = w[r] ^ ( size_t_one << x );
+		if( sign ) {
+		  sign_count *= bit_string_sign_factor(w,bit_length,x,r);
+		}
 	      } else {
 		check = true;
 		break;
@@ -206,6 +212,9 @@ namespace sbd {
 	      size_t x = q % bit_length;
 	      if( ( w[r] & ( size_t_one << x ) ) == 0 ) {
 		w[r] = w[r] | ( size_t_one << x );
+		if( sign ) {
+		  sign_count *= bit_string_sign_factor(w,bit_length,x,r);
+		}
 	      } else {
 		check = true;
 		break;
@@ -214,7 +223,7 @@ namespace sbd {
 	    if ( check ) continue;
 	    B.MpiProcessSearch(w,target_rank,check);
 	    if ( !check ) continue;
-
+	    
 	    check = true;
 	    int d_target;
 	    for(int d=0; d < Bp.size(); d++) {
@@ -228,14 +237,7 @@ namespace sbd {
 	    
 	    Bp[d_target].IndexSearch(w,js,check);
 	    if( check ) {
-	      /*
-	      std::cout << " mpi rank, is, js  = "
-			<< B.MpiRank() << ", "
-			<< is + B.BeginIndex(B.MpiRank()) << ", "
-			<< js << std::endl;
-	      */
-	      
-	      W[is] = W[is] + H.c_[n] * Cp[d_target][js-B.BeginIndex(target_rank)];
+	      W[is] = W[is] + H.c_[n] * ElemT(sign_count) * Cp[d_target][js-B.BeginIndex(target_rank)];
 	    }
 	  } // end for(size_t n=0; n < H.o_.size(); n++)
 	} // end for(size_t is=0; is < ns_rank; is++)
@@ -245,7 +247,6 @@ namespace sbd {
 	mpi_slide_wavefunction(Cp,Bp,data_width);
       }
     } // end for(int round=0; round < mpi_round; round++)
-    
   }
   
   template <typename ElemT>
@@ -255,7 +256,8 @@ namespace sbd {
 	    std::vector<ElemT> & W,
 	    size_t bit_length,
 	    int data_width,
-	    MPI_Comm h_comm) {
+	    MPI_Comm h_comm,
+	    bool sign) {
     
     //
     //  basis |    processes for Hamiltonian parallelization 
@@ -282,7 +284,7 @@ namespace sbd {
 
     mult_prep(W,h_comm);
     mult_diagonal(H,C,B,W,bit_length);
-    mult_offdiagonal(H,C,B,W,bit_length,data_width);
+    mult_offdiagonal(H,C,B,W,bit_length,data_width,sign);
     MpiAllreduce(W,MPI_SUM,h_comm);
     
   }
@@ -370,7 +372,8 @@ namespace sbd {
 			std::vector<std::vector<std::vector<size_t>>> & tr,
 			std::vector<std::vector<std::vector<ElemT>>> & hij,
 			size_t bit_length,
-			int data_width) {
+			int data_width,
+			bool sign) {
     // Diagonal part
     size_t size_t_one = 1;
     size_t ns_rank = B.Size();
@@ -439,6 +442,8 @@ namespace sbd {
     jh.resize(mpi_round,std::vector<std::vector<size_t>>(num_threads));
     tr.resize(mpi_round,std::vector<std::vector<size_t>>(num_threads));
     hij.resize(mpi_round,std::vector<std::vector<ElemT>>(num_threads));
+
+
     for(int round=0; round < mpi_round; round++) {
 
       size_t chunk_size = ns_rank / num_threads;
@@ -448,15 +453,16 @@ namespace sbd {
 	std::vector<size_t> w;
 	size_t js;
 	int target_rank;
+	int sign_count;
 	bool check;
-
+	
 	size_t thread_id = omp_get_thread_num();
 	size_t start_idx = thread_id * chunk_size;
 	size_t end_idx   = (thread_id + 1) * chunk_size;
 	if( thread_id == num_threads - 1 ) {
 	  end_idx = ns_rank;
 	}
-
+	
 	std::vector<size_t> local_ih;
 	std::vector<size_t> local_jh;
 	std::vector<size_t> local_tr;
@@ -465,6 +471,7 @@ namespace sbd {
 	for(size_t is=start_idx; is < end_idx; is++) {
 	  v = B.Config(is);
 	  for(size_t n=0; n < H.o_.size(); n++) {
+	    sign_count = 1;
 	    w = v;
 	    check = false;
 	    for(int k=0; k < H.o_[n].n_dag_; k++) {
@@ -473,6 +480,9 @@ namespace sbd {
 	      size_t x = q % bit_length;
 	      if( ( w[r] & ( size_t_one << x )) != 0 ) {
 		w[r] = w[r] ^ ( size_t_one << x );
+		if( sign ) {
+		  sign_count *= bit_string_sign_factor(w,bit_length,x,r);
+		}
 	      } else {
 		check = true;
 		break;
@@ -485,6 +495,9 @@ namespace sbd {
 	      size_t x = q % bit_length;
 	      if ( ( w[r] & ( size_t_one << x ) ) == 0 ) {
 		w[r] = w[r] | ( size_t_one << x );
+		if ( sign ) {
+		  sign_count *= bit_string_sign_factor(w,bit_length,x,r);
+		}
 	      } else {
 		check = true;
 		break;
@@ -505,19 +518,14 @@ namespace sbd {
 	    if( check ) continue;
 	    Bp[d_target].IndexSearch(w,js,check);
 	    if( check ) {
-	      /*
-	      ij[round][is].push_back(js-B.BeginIndex(target_rank));
-	      tr[round][is].push_back(d_target);
-	      hij[round][is].push_back(H.c_[n]);
-	      */
 	      local_ih.push_back(is);
 	      local_jh.push_back(js-B.BeginIndex(target_rank));
 	      local_tr.push_back(d_target);
-	      local_hij.push_back(H.c_[n]);
+	      local_hij.push_back(H.c_[n]*ElemT(sign_count));
 	    }
 	  } // end for(size_t n=0; n < H.o_.size(); n++)
 	} // end for(size_t is=0; is < ns_rank; is++)
-
+	
 #pragma omp critical
 	{
 	  ih[round][thread_id].insert(ih[round][thread_id].end(),
@@ -530,8 +538,8 @@ namespace sbd {
 				      std::make_move_iterator(local_tr.begin()),
 				      std::make_move_iterator(local_tr.end()));
 	  hij[round][thread_id].insert(hij[round][thread_id].end(),
-				      std::make_move_iterator(local_hij.begin()),
-				      std::make_move_iterator(local_hij.end()));
+				       std::make_move_iterator(local_hij.begin()),
+				       std::make_move_iterator(local_hij.end()));
 	}
       } // end omp paragma
       

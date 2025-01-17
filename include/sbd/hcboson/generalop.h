@@ -61,7 +61,8 @@ namespace sbd {
 
     template <typename ElemT_>
     friend void NormalOrdering(const ProductOp & P,
-			       GeneralOp<ElemT_> & G);
+			       GeneralOp<ElemT_> & G,
+			       bool sign);
     
     friend void MpiSend(const FieldOp & F,
 			int destination,
@@ -84,14 +85,16 @@ namespace sbd {
 				 const Basis & B,
 				 std::vector<ElemT_> & W,
 				 size_t bit_length,
-				 int data_width);
+				 int data_width,
+				 bool sign);
 
     template <typename ElemT_>
     friend void mult(const GeneralOp<ElemT_> & H,
 		     const std::vector<ElemT_> & C,
 		     const Basis & B,
 		     std::vector<ElemT_> & W,
-		     MPI_Comm comm);
+		     MPI_Comm comm,
+		     bool sign);
 
     template <typename ElemT_>
     friend void make_hamiltonian(const GeneralOp<ElemT_> & H,
@@ -102,7 +105,8 @@ namespace sbd {
 		std::vector<std::vector<std::vector<size_t>>> & tr,
 		std::vector<std::vector<std::vector<ElemT_>>> & hij,
 		size_t bit_length,
-		int data_width);
+	        int data_width,
+		bool sign);
 
     template <typename ElemT_>
     friend void MeasHamSquare(const GeneralOp<ElemT_> & H,
@@ -110,7 +114,8 @@ namespace sbd {
 			      const std::vector<ElemT_> & W,
 			      size_t bit_length,
 			      MPI_Comm & comm,
-			      ElemT_ & res);
+			      ElemT_ & res,
+			      bool sign);
     
     friend std::ostream & operator << (std::ostream & s,
 				       const FieldOp & o);
@@ -315,7 +320,8 @@ namespace sbd {
     
     template <typename ElemT_>
     friend void NormalOrdering(const ProductOp & P,
-			       GeneralOp<ElemT_> & G);
+			       GeneralOp<ElemT_> & G,
+			       bool sign);
 
     template <typename ElemT_>
     friend void mult_diagonal(const GeneralOp<ElemT_> & H,
@@ -330,14 +336,16 @@ namespace sbd {
 				 const Basis & B,
 				 std::vector<ElemT_> & W,
 				 size_t bit_length,
-				 int data_width);
+				 int data_width,
+				 bool sign);
 
     template <typename ElemT_>
     friend void mult(const GeneralOp<ElemT_> & H,
 		     const std::vector<ElemT_> & C,
 		     const Basis & B,
 		     std::vector<ElemT_> & W,
-		     MPI_Comm comm);
+		     MPI_Comm comm,
+		     bool sign);
 
     template <typename ElemT_>
     friend void make_hamiltonian(const GeneralOp<ElemT_> & H,
@@ -348,7 +356,8 @@ namespace sbd {
 		std::vector<std::vector<std::vector<size_t>>> & tr,
 		std::vector<std::vector<std::vector<ElemT_>>> & hij,
 		size_t bit_length,
-		int data_width);
+		int data_width,
+		bool sign);
     
     template <typename ElemT_>
     friend void MeasHamSquare(const GeneralOp<ElemT_> & H,
@@ -356,7 +365,8 @@ namespace sbd {
 			      const std::vector<ElemT_> & W,
 			      size_t bit_length,
 			      MPI_Comm & comm,
-			      ElemT_ & res);
+			      ElemT_ & res,
+			      bool sign);
     
     friend void MpiSend(const ProductOp & F,
 			int destination,
@@ -722,10 +732,12 @@ namespace sbd {
     // out-of-place function
     template <typename ElemT_>
     friend void NormalOrdering(const ProductOp & P,
-			       GeneralOp<ElemT_> & G);
+			       GeneralOp<ElemT_> & G,
+			       bool sign);
     
     template <typename ElemT_>
-    friend void NormalOrdering(GeneralOp<ElemT_> & G);
+    friend void NormalOrdering(GeneralOp<ElemT_> & G,
+			       bool sign);
 
     template <typename ElemT_>
     friend void Simplify(GeneralOp<ElemT_> & G);
@@ -743,14 +755,16 @@ namespace sbd {
 				 const Basis & B,
 				 std::vector<ElemT_> & W,
 				 size_t bit_length,
-				 int data_width);
+				 int data_width,
+				 bool sign);
 
     template <typename ElemT_>
     friend void mult(const GeneralOp<ElemT_> & H,
 		     const std::vector<ElemT_> & C,
 		     const Basis & B,
 		     std::vector<ElemT_> & W,
-		     MPI_Comm comm);
+		     MPI_Comm comm,
+		     bool sign);
 
     template <typename ElemT_>
     friend void make_hamiltonian(const GeneralOp<ElemT_> & H,
@@ -761,7 +775,8 @@ namespace sbd {
 		std::vector<std::vector<std::vector<size_t>>> & tr,
 		std::vector<std::vector<std::vector<ElemT_>>> & hij,
 		size_t bit_length,
-		int data_width);
+		int data_width,
+		bool sign);
     
     template <typename ElemT_>
     friend void MeasHamSquare(const GeneralOp<ElemT_> & H,
@@ -769,7 +784,8 @@ namespace sbd {
 			      const std::vector<ElemT_> & W,
 			      size_t bit_length,
 			      MPI_Comm & comm,
-			      ElemT_ & res);
+			      ElemT_ & res,
+			      bool sign);
     
     template <typename ElemT_>
     friend void MpiSend(const GeneralOp<ElemT_> & G, int destination, MPI_Comm comm);

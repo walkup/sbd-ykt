@@ -13,15 +13,6 @@ namespace sbd {
     return res;
   }
 
-  /*
-  template <typename ElemT>
-  GeneralOp<ElemT> operator * (const ProductOp & P, ElemT c) {
-    GeneralOp<ElemT> res(P);
-    res *= c;
-    return res;
-  }
-  */
-  
   template <typename ElemT>
   GeneralOp<ElemT> operator + (const ProductOp & P, const GeneralOp<ElemT> & G) {
     GeneralOp<ElemT> res(G);
@@ -37,10 +28,24 @@ namespace sbd {
   }
 
   template <typename ElemT>
+  GeneralOp<ElemT> operator * (ElemT c, const FieldOp & a) {
+    ProductOp P(a);
+    return GeneralOp<ElemT>(c,P);
+  }
+
+  template <typename ElemT>
+  GeneralOp<ElemT> operator * (ElemT c, const GeneralOp<ElemT> & G) {
+    GeneralOp<ElemT> res(G);
+    res *= c;
+    return res;
+  }
+
+  template <typename ElemT>
   void NormalOrdering(const ProductOp & P,
-		      GeneralOp<ElemT> & G) {
+		      GeneralOp<ElemT> & G,
+		      bool sign) {
     GeneralOp<ElemT> temp(P);
-    
+    std::vector<int> osign(1);
     std::vector<int> indcr(1);
     
     int n_cr = 0;
@@ -52,6 +57,7 @@ namespace sbd {
     }
     
     indcr[0] = 0;
+    osign[0] = 1;
     
     int m_an;
     for(int i=0; i < n_cr; i++) {
@@ -75,8 +81,14 @@ namespace sbd {
 	    term *= tpop.extract(indcr[m]+m_an-k+1,tpop.size());
 	    temp.o_.push_back(term);
 	    indcr.push_back(indcr[m]);
+	    osign.push_back(osign[m]);
 	  }
 	  FieldOp ft2(tpop.fops_[indcr[m]+m_an-k-1]);
+	  if( sign ) {
+	    osign[m] *= -1;
+	  } else {
+	    osign[m] *= 1;
+	  }
 	  tpop.fops_[indcr[m]+m_an-k-1] = tpop.fops_[indcr[m]+m_an-k];
 	  tpop.fops_[indcr[m]+m_an-k] = ft2;
 	}
@@ -98,6 +110,11 @@ namespace sbd {
 	for(int l=k+1; l < indcr[m]; l++) {
 	  FieldOp ft2(tpop.fops_[l]);
 	  if( ft2 < ft1 ) {
+	    if( sign ) {
+	      osign[m] *= -1;
+	    } else {
+	      osign[m] *= 1;
+	    }
 	    tpop.fops_[k] = ft2;
 	    tpop.fops_[l] = ft1;
 	    ft1 = ft2;
@@ -121,6 +138,11 @@ namespace sbd {
 	for(int l=k+1; l < tpop.size(); l++) {
 	  FieldOp ft2(tpop.fops_[l]);
 	  if( ft1 < ft2 ) {
+	    if( sign ) {
+	      osign[m] *= -1;
+	    } else {
+	      osign[m] *= 1;
+	    }
 	    tpop.fops_[k] = ft2;
 	    tpop.fops_[l] = ft1;
 	    ft1 = ft2;
@@ -171,7 +193,7 @@ namespace sbd {
       
       if( b == true ) {
 	bres.o_.push_back(tpop);
-	bres.c_.push_back(1.0);
+	bres.c_.push_back(1.0*osign[m]);
 	n_op++;
       }
     }
@@ -218,17 +240,13 @@ namespace sbd {
       }
     }
 
-    // std::cout << " End elimination of Reordering of ProductOp " << std::endl;
-    // std::cout << res << std::endl;
-
     G = res;
-
-    // return res;
     
   }
     
   template <typename ElemT>
-  void NormalOrdering(GeneralOp<ElemT> & res) {
+  void NormalOrdering(GeneralOp<ElemT> & res,
+		      bool sign) {
     GeneralOp<ElemT> G(res);
     res = GeneralOp<ElemT>();
     int n_d = 0;
@@ -236,7 +254,7 @@ namespace sbd {
     for(int m=0; m < G.d_.size(); m++) {
       ProductOp pop(G.d_[m]);
       GeneralOp<ElemT> gop;
-      NormalOrdering(pop,gop);
+      NormalOrdering(pop,gop,sign);
 
       int l_d = 0;
       for(int k=0; k < gop.d_.size(); k++) {
@@ -250,7 +268,7 @@ namespace sbd {
     for(int m=0; m < G.o_.size(); m++) {
       ProductOp pop(G.o_[m]);
       GeneralOp<ElemT> gop;
-      NormalOrdering(pop,gop);
+      NormalOrdering(pop,gop,sign);
 
       for(int k=0; k < gop.d_.size(); k++) {
 	res.d_.push_back(gop.d_[k]);
@@ -497,6 +515,13 @@ namespace sbd {
     return res;
   }
 
+  FieldOp An(int q) {
+    return FieldOp(false,q);
+  }
+
+  FieldOp Cr(int q) {
+    return FieldOp(true,q);
+  }
   
 } // end namespace sbd
 
