@@ -6,5 +6,6 @@
 #include "sbd/hcboson/out_of_place_func/lanczos.h"
 #include "sbd/hcboson/out_of_place_func/davidson.h"
 #include "sbd/hcboson/out_of_place_func/expand.h"
+#include "sbd/hcboson/out_of_place_func/typical.h"
 
 #endif

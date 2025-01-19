@@ -81,7 +81,7 @@ namespace sbd {
       for(size_t is=0; is < num_b; is++) {
 	v = B.Config(is);
 	for(size_t n=0; n < H.o_.size(); n++) {
-	  sign_factor=1;
+	  sign_factor = 1;
 	  w = v;
 	  check = false;
 	  for(int k=0; k < H.o_[n].n_dag_; k++) {
