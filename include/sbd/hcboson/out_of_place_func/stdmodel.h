@@ -66,14 +66,22 @@ namespace sbd {
 	  // For the definition of indecies, see following link:
 	  // https://theochem.github.io/horton/2.0.2/user_hamiltonian_io.html
 	  GeneralOp<ElemT> V;
-	  std::vector<std::vector<int>> index(4,std::vector<int>(4));
+	  std::vector<std::vector<int>> index(8,std::vector<int>(4));
 	  index[0][0] = i; index[0][1] = j; index[0][2] = k; index[0][3] = l;
-	  index[1][0] = k; index[1][1] = l; index[1][2] = i; index[1][3] = j;
-	  index[2][0] = j; index[2][1] = i; index[2][2] = l; index[2][3] = k;
-	  index[3][0] = l; index[3][1] = k; index[3][2] = j; index[3][3] = i;
+	  index[1][0] = j; index[1][1] = i; index[1][2] = k; index[1][3] = l;
+	  index[2][0] = i; index[2][1] = j; index[2][2] = l; index[2][3] = k;
+	  index[3][0] = j; index[3][1] = i; index[3][2] = l; index[3][3] = k;
+	  index[4][0] = k; index[4][1] = l; index[4][2] = i; index[4][3] = j;
+	  index[5][0] = k; index[5][1] = l; index[5][2] = j; index[5][3] = i;
+	  index[6][0] = l; index[6][1] = k; index[6][2] = i; index[6][3] = j;
+	  index[7][0] = l; index[7][1] = k; index[7][2] = j; index[7][3] = i;
 	  std::sort(index.begin(),index.end());
 	  auto it = std::unique(index.begin(),index.end());
 	  index.erase(it,index.end());
+#ifdef SBD_DEBUG
+	  std::cout << " index [" << i << "," << j << "," << k << "," << l << "]: size = " << index.size() << std::endl;
+#endif
+	  
 	  for(const auto & p : index) {
 	    V += ElemT(0.5*value) * Cr(p[0]-1) * Cr(p[2]-1) * An(p[3]-1) * An(p[1]-1);
 	    V += ElemT(0.5*value) * Cr(p[0]-1) * Cr(p[2]-1+L) * An(p[3]-1+L) * An(p[1]-1);
