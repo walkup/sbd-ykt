@@ -75,7 +75,7 @@ namespace sbd {
       std::vector<size_t> v;
       std::vector<size_t> w;
       size_t size_t_one = 1;
-      size_t sign_factor;
+      int sign_factor;
       bool check;
 #pragma omp for
       for(size_t is=0; is < num_b; is++) {

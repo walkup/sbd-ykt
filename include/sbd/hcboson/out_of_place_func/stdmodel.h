@@ -1,9 +1,9 @@
 /**
-@file sbd/hcboson/out_of_place_func/fcidump.h
+@file sbd/hcboson/out_of_place_func/stdmodel.h
 @brief construct quantum chemistry hamiltonian based on the fcidump format
 */
-#ifndef SBD_HCBOSON_OUT_OF_PLACE_FUNC_TYPICAL_H
-#define SBD_HCBOSON_OUT_OF_PLACE_FUNC_TYPICAL_H
+#ifndef SBD_HCBOSON_OUT_OF_PLACE_FUNC_STDMODEL_H
+#define SBD_HCBOSON_OUT_OF_PLACE_FUNC_STDMODEL_H
 
 #include "sbd/framework/fcidump.h"
 
@@ -46,6 +46,7 @@ namespace sbd {
     for(const auto & [value, i, j, k, l] : fcidump.integrals) {
       if( (m % mpi_size_h) == mpi_rank_h ) {
 	if( (i == 0) && (k == 0) && (j == 0) && (l == 0) ) {
+	  H += ElemT(value);
 	} else if( (k == l) && (k == 0) ) {
 	  GeneralOp<ElemT> T;
 	  std::vector<std::vector<int>> index(2,std::vector<int>(2));
