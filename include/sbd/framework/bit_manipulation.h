@@ -978,7 +978,7 @@ Function for finding the state index of target bit string
   void LoadFromAlphaDets(const std::string & filename,
 			 std::vector<std::vector<size_t>> & config,
 			 size_t norb,
-			 int bit_length,
+			 size_t bit_length,
 			 MPI_Comm comm) {
 
     int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
@@ -994,29 +994,27 @@ Function for finding the state index of target bit string
 
     size_t Na = alphadets.size();
     size_t Nb = Na;
-    size_t ia_start = 0;
-    size_t ia_end = Na;
+    size_t ib_start = 0;
+    size_t ib_end = Nb;
 
-    get_mpi_range(mpi_size,mpi_rank,ia_start,ia_end);
+    get_mpi_range(mpi_size,mpi_rank,ib_start,ib_end);
 
     size_t config_size = (2*norb-1)/bit_length+1;
-    config.resize(Nb*(ia_end-ia_start));
+    config.resize(Na*(ib_end-ib_start));
 
-    for(size_t ia=ia_start; ia < ia_end; ia++) {
-      for(size_t ib=0; ib < Nb; ib++) {
+    for(size_t ib=ib_start; ib < ib_end; ib++) {
+      for(size_t ia=0; ia < Na; ia++) {
 	std::vector<size_t> bst(2*norb);
 	for(int p=0; p < norb; p++) {
-	  bst[p] = alphadets[ib][p];
+	  bst[norb-p-1] = alphadets[ia][p];
 	}
 	for(int p=0; p < norb; p++) {
-	  bst[p] = alphadets[ia][p];
+	  bst[2*norb-p-1] = alphadets[ib][p];
 	}
 	change_bitlength(1,bst,bit_length);
-	config[Nb*(ia-ia_start)+ib] = bst;
+	config[Na*(ib-ib_start)+ia] = bst;
       }
     }
-
-    return config;
   }
   
 
