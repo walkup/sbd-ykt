@@ -325,6 +325,16 @@ Initialization of basis
       }
     }
 
+    template <typename ElemT_, typename RealT_>
+    friend void ExpandBasis(const GeneralOp<ElemT_> & H,
+			    const Basis & B,
+			    const std::vector<ElemT_> & W,
+			    Basis & Bnew,
+			    RealT_ eps_hb,
+			    size_t bit_length,
+			    MPI_Comm & comm,
+			    bool sign);
+
   private:
 
     std::vector<std::vector<size_t>> config_;

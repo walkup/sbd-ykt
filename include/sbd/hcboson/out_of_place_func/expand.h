@@ -212,6 +212,162 @@ namespace sbd {
     MPI_Allreduce(&sum_send,&res,1,DataT,MPI_SUM,comm);
     
   } // end HamSquare
+
+  template <typename ElemT, typename RealT>
+  void ExpandBasis(const GeneralOp<ElemT> & H,
+		   const Basis & B,
+		   const std::vector<ElemT> & W,
+		   Basis & Bnew,
+		   RealT eps_hb,
+		   size_t bit_length,
+		   MPI_Comm & comm,
+		   bool sign) {
+
+    int mpi_master = 0;
+    int mpi_size; MPI_Comm_size(comm,&mpi_size);
+    int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
+
+    // We first generate all possible space. Then, perform sorting.
+    std::vector<size_t> config_0 = B.Config(static_cast<size_t>(0));
+    size_t c_len = config_0.size();
+    size_t num_b = B.Size();
+    size_t num_h = H.NumOpTerms();
+    std::vector<std::vector<size_t>> config;
+    std::vector<ElemT> weight;
+
+    config.reserve(num_b*(num_h+1));
+    weight.reserve(num_b*(num_h+1));
+
+    size_t nc = 0;
+    config.resize(num_b);
+    weight.resize(num_b);
+    std::vector<std::vector<size_t>> B_config = B.Config();
+    std::copy(B_config.begin(),B_config.end(),config.begin());
+    
+    // generate all configurations
+#pragma omp parallel
+    {
+      std::vector<std::vector<size_t>> local_config;
+      std::vector<ElemT> local_weight;
+      
+      std::vector<size_t> v;
+      std::vector<size_t> w;
+      size_t size_t_one = 1;
+      int sign_factor;
+      bool check;
+      ElemT hc;
+#pragma omp for
+      for(size_t is=0; is < num_b; is++) {
+	v = B.Config(is);
+	for(size_t n=0; n < H.o_.size(); n++) {
+	  sign_factor = 1;
+	  w = v;
+	  check = false;
+	  for(int k=0; k < H.o_[n].n_dag_; k++) {
+	    size_t q = static_cast<size_t>(H.o_[n].fops_[k].q_);
+	    size_t r = q / bit_length;
+	    size_t x = q % bit_length;
+	    if( ( w[r] & ( size_t_one << x ) ) != 0 ) {
+	      w[r] = w[r] ^ ( size_t_one << x );
+	      if( sign ) {
+		sign_factor *= bit_string_sign_factor(w,bit_length,x,r);
+	      }
+	    } else {
+	      check = true;
+	      break;
+	    }
+	  }
+	  if ( check ) continue;
+	  for(int k = H.o_[n].n_dag_; k < H.o_[n].fops_.size(); k++) {
+	    size_t q = static_cast<size_t>(H.o_[n].fops_[k].q_);
+	    size_t r = q / bit_length;
+	    size_t x = q % bit_length;
+	    if( ( w[r] & ( size_t_one << x ) ) == 0 ) {
+	      w[r] = w[r] | ( size_t_one << x );
+	      if( sign ) {
+		sign_factor *= bit_string_sign_factor(w,bit_length,x,r);
+	      }
+	    } else {
+	      check = true;
+	      break;
+	    }
+	  }
+	  if ( check ) continue;
+
+	  hc = H.c_[n] * W[is] * ElemT(sign_factor);
+	  if( abs(hc) > eps_hb )
+	    {
+	      local_config.push_back(w);
+	    }
+	} // end loop for generating new configurations
+      } // end omp parallel for
+#pragma omp critical
+      {
+	config.insert(config.end(),
+		      std::make_move_iterator(local_config.begin()),
+		      std::make_move_iterator(local_config.end()));
+      }
+    } // end omp parallel scope
+    nc = config.size();
+    
+    // perform full sort for all process
+    std::vector<std::vector<size_t>> new_config(config);
+    std::vector<std::vector<size_t>> config_begin(mpi_size,std::vector<size_t>(c_len));
+    std::vector<std::vector<size_t>> config_end(mpi_size,  std::vector<size_t>(c_len));
+    std::vector<size_t> index_begin(mpi_size);
+    std::vector<size_t> index_end(mpi_size);
+    mpi_sort_bitarray(new_config,config_begin,config_end,index_begin,index_end,bit_length,comm);
+
+    // determine the node to be send
+#ifdef SBD_DEBUG
+    for(int rank=0; rank < mpi_size; rank++) {
+      if( mpi_rank == rank ) {
+	std::cout << " Start send data preparation: ";
+	std::cout << " Sizes: config.size() = " << config.size();
+	std::cout << " while nc = " << nc;
+	std::cout << " config_begin.size() = " << config_begin.size() << std::endl;
+      }
+      MPI_Barrier(comm);
+    }
+#endif
+
+    /**
+    std::vector<std::vector<size_t>> config_;
+
+    // variables for communicator
+    MPI_Comm comm_;
+    int mpi_master_;
+    int mpi_size_;
+    int mpi_rank_;
+    std::vector<size_t> index_begin_;
+    std::vector<size_t> index_end_;
+    std::vector<std::vector<size_t>> config_begin_;
+    std::vector<std::vector<size_t>> config_end_;
+     */
+    Bnew.config_.insert(Bnew.config_.end(),
+			std::make_move_iterator(new_config.begin()),
+			std::make_move_iterator(new_config.end()));
+    Bnew.comm_ = comm;
+    Bnew.mpi_master_ = mpi_master;
+    Bnew.mpi_size_ = mpi_size;
+    Bnew.mpi_rank_ = mpi_rank;
+    Bnew.index_begin_.insert(Bnew.index_begin_.end(),
+			     std::make_move_iterator(index_begin.begin()),
+			     std::make_move_iterator(index_begin.end()));
+    Bnew.index_end_.insert(Bnew.index_end_.end(),
+			   std::make_move_iterator(index_end.begin()),
+			   std::make_move_iterator(index_end.end()));
+    Bnew.config_begin_.insert(Bnew.config_begin_.end(),
+			      std::make_move_iterator(config_begin.begin()),
+			      std::make_move_iterator(config_begin.end()));
+    Bnew.config_end_.insert(Bnew.config_end_.end(),
+			    std::make_move_iterator(config_end.begin()),
+			    std::make_move_iterator(config_end.end()));
+
+    
+  } // end HamSquare
+
+  
   
 }
 
