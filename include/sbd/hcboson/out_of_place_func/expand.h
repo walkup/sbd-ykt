@@ -344,26 +344,15 @@ namespace sbd {
     std::vector<std::vector<size_t>> config_begin_;
     std::vector<std::vector<size_t>> config_end_;
      */
-    Bnew.config_.insert(Bnew.config_.end(),
-			std::make_move_iterator(new_config.begin()),
-			std::make_move_iterator(new_config.end()));
-    Bnew.comm_ = comm;
-    Bnew.mpi_master_ = mpi_master;
-    Bnew.mpi_size_ = mpi_size;
-    Bnew.mpi_rank_ = mpi_rank;
-    Bnew.index_begin_.insert(Bnew.index_begin_.end(),
-			     std::make_move_iterator(index_begin.begin()),
-			     std::make_move_iterator(index_begin.end()));
-    Bnew.index_end_.insert(Bnew.index_end_.end(),
-			   std::make_move_iterator(index_end.begin()),
-			   std::make_move_iterator(index_end.end()));
-    Bnew.config_begin_.insert(Bnew.config_begin_.end(),
-			      std::make_move_iterator(config_begin.begin()),
-			      std::make_move_iterator(config_begin.end()));
-    Bnew.config_end_.insert(Bnew.config_end_.end(),
-			    std::make_move_iterator(config_end.begin()),
-			    std::make_move_iterator(config_end.end()));
-
+    Bnew.Move(new_config,
+	      comm,
+	      mpi_master,
+	      mpi_size,
+	      mpi_rank,
+	      index_begin,
+	      index_end,
+	      config_begin,
+	      config_end);
     
   } // end HamSquare
 

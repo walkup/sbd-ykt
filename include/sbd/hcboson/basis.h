@@ -248,6 +248,43 @@ Initialization of basis
       }
     }
 
+    // Init by Move
+    void Move(std::vector<std::vector<size_t>> & config,
+	      MPI_Comm comm,
+	      int mpi_master,
+	      int mpi_size,
+	      int mpi_rank,
+	      std::vector<size_t> & index_begin,
+	      std::vector<size_t> & index_end,
+	      std::vector<std::vector<size_t>> & config_begin,
+	      std::vector<std::vector<size_t>> & config_end) {
+      comm_ = comm;
+      mpi_master_ = mpi_master;
+      mpi_size_ = mpi_size;
+      mpi_rank_ = mpi_rank;
+      config_.resize(0);
+      index_begin_.resize(0);
+      index_end_.resize(0);
+      config_begin_.resize(0);
+      config_end_.resize(0);
+      config_.insert(config_.end(),
+		     std::make_move_iterator(config.begin()),
+		     std::make_move_iterator(config.end()));
+      config_begin_.insert(config_begin_.end(),
+			   std::make_move_iterator(config_begin_.begin()),
+			   std::make_move_iterator(config_begin_.end()));
+      config_end_.insert(config_end_.end(),
+			 std::make_move_iterator(config_end.begin()),
+			 std::make_move_iterator(config_end.end()));
+      index_begin_.insert(index_begin_.end(),
+			  std::make_move_iterator(index_begin.begin()),
+			  std::make_move_iterator(index_begin.end()));
+      index_end_.insert(index_end_.end(),
+			std::make_move_iterator(index_end.begin()),
+			std::make_move_iterator(index_end.end()));
+      
+    }
+
     // Getter
 
     inline MPI_Comm MpiComm() const { return comm_; }
@@ -324,16 +361,6 @@ Initialization of basis
 	os.write(reinterpret_cast<char *>(c.data()),size_c*sizeof(size_t));
       }
     }
-
-    template <typename ElemT_, typename RealT_>
-    friend void ExpandBasis(const GeneralOp<ElemT_> & H,
-			    const Basis & B,
-			    const std::vector<ElemT_> & W,
-			    Basis & Bnew,
-			    RealT_ eps_hb,
-			    size_t bit_length,
-			    MPI_Comm & comm,
-			    bool sign);
 
   private:
 
