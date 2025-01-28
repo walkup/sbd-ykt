@@ -75,6 +75,26 @@ namespace sbd {
   }
 
   template <typename ElemT>
+  void mpi_slide_wavefunction(const std::vector<ElemT> & W,
+			      std::vector<ElemT> & Wt,
+			      MPI_Comm b_comm,
+			      int slide_width) {
+    MpiSlide(W,Wt,slide_width,b_comm);
+  }
+
+  template <typename ElemT>
+  void mpi_slide_wavefunction(std::vector<std::vector<ElemT>> & W,
+			      MPI_Comm b_comm,
+			      int slide_width) {
+    size_t num_data = W.size();
+    std::vector<ElemT> Wt;
+    for(size_t i=0; i < num_data; i++) {
+      mpi_slide_wavefunction(W[i],Wt,b_comm,slide_width);
+      W[i] = Wt;
+    }
+  }
+  
+  template <typename ElemT>
   void mult_prep(std::vector<ElemT> & W,
 		 MPI_Comm h_comm) {
     // Since we will perform Allreduce at the end of multiplication
@@ -549,7 +569,6 @@ namespace sbd {
     } // end for(int round=0; round < mpi_round; round++)
   }
 
-
   template <typename ElemT>
   void mult(const std::vector<ElemT> & hii,
 	    const std::vector<std::vector<std::vector<size_t>>> & ih,
@@ -627,6 +646,80 @@ namespace sbd {
     
   }
 
+  template <typename ElemT>
+  void mult(const std::vector<ElemT> & hii,
+	    const std::vector<std::vector<std::vector<size_t>>> & ih,
+	    const std::vector<std::vector<std::vector<size_t>>> & jh,
+	    const std::vector<std::vector<std::vector<size_t>>> & tr,
+	    const std::vector<std::vector<std::vector<ElemT>>> & hij,
+	    const std::vector<ElemT> & C,
+	    std::vector<ElemT> & W,
+	    size_t bit_length,
+	    int data_width,
+	    MPI_Comm h_comm,
+	    MPI_Comm b_comm) {
+
+
+    mult_prep(W,h_comm);
+
+    // perform diagonal without communication
+    size_t ns_rank = C.size();
+#pragma omp parallel for
+    for(size_t is=0; is < ns_rank; is++) {
+      W[is] += hii[is] * C[is];
+    }
+
+    int mpi_size_b; MPI_Comm_size(b_comm,&mpi_size_b);
+    int mpi_rank_b; MPI_Comm_rank(b_comm,&mpi_rank_b);
+
+    std::vector<std::vector<ElemT>> Cp(data_width);
+
+    
+    int inc_size = (data_width-1)/2;
+    int dec_size = data_width/2;
+
+    // data_width = 1      | 0 |
+    // data_width = 2      | 0 | 1
+    // data_width = 3    0 | 1 | 2
+    // data_width = 4    0 | 1 | 2 3
+    // data_width = 5  0 1 | 2 | 3 4
+
+    for(int d=0; d < inc_size; d++) {
+      if( d == 0 ) {
+	mpi_slide_wavefunction(C,Cp[inc_size-d-1],b_comm,1);
+      } else {
+	mpi_slide_wavefunction(Cp[inc_size-d],Cp[inc_size-d-1],b_comm,1);
+      }
+    }
+
+    Cp[inc_size] = C;
+    for(int d=0; d < dec_size; d++) {
+      if( d == 0 ) {
+	mpi_slide_wavefunction(C,Cp[d+1+inc_size],b_comm,-1);
+      } else {
+	mpi_slide_wavefunction(Cp[d+inc_size],Cp[d+1+inc_size],b_comm,-1);
+      }
+    }
+
+    int mpi_round = mpi_size_b / data_width;
+
+    for(int round=0; round < mpi_round; round++) {
+#pragma omp parallel
+      {
+	size_t thread_id = omp_get_thread_num();
+	for(size_t k=0; k < hij[round][thread_id].size(); k++) {
+	  W[ih[round][thread_id][k]] += hij[round][thread_id][k] *
+	    Cp[tr[round][thread_id][k]][jh[round][thread_id][k]];
+	}
+      }
+      if( mpi_round != 1 ) {
+	mpi_slide_wavefunction(Cp,b_comm,data_width);
+      }
+    } // end for(int round=0; round < mpi_round; round++)
+
+    MpiAllreduce(W,MPI_SUM,h_comm);
+    
+  }
 
 
 } // end for namespace sbd

@@ -29,9 +29,9 @@ namespace sbd {
 		const std::vector<std::vector<std::vector<size_t>>> & jh,
 		const std::vector<std::vector<std::vector<size_t>>> & tr,
 		const std::vector<std::vector<std::vector<ElemT>>> & hij,
-		const Basis & B,
 		std::vector<ElemT> & W,
 		MPI_Comm & h_comm,
+		MPI_Comm & b_comm,
 		int max_iteration,
 		int num_block,
 		size_t bit_length,
@@ -44,7 +44,6 @@ namespace sbd {
     std::vector<std::vector<ElemT>> HC(num_block,W);
     std::vector<ElemT> R(W);
     std::vector<ElemT> dii(hii);
-    MPI_Comm b_comm = B.MpiComm();
     int mpi_rank_h; MPI_Comm_rank(h_comm,&mpi_rank_h);
     int mpi_size_h; MPI_Comm_size(h_comm,&mpi_size_h);
     int mpi_rank_b; MPI_Comm_rank(b_comm,&mpi_rank_b);
@@ -72,7 +71,7 @@ namespace sbd {
       
       for(int ib=0; ib < nb; ib++) {
 	Zero(HC[ib]);
-	mult(hii,ih,jh,tr,hij,C[ib],B,HC[ib],bit_length,data_width,h_comm);
+	mult(hii,ih,jh,tr,hij,C[ib],HC[ib],bit_length,data_width,h_comm,b_comm);
 	for(int jb=0; jb <= ib; jb++) {
 	  InnerProduct(C[jb],HC[ib],H[jb+nb*ib],b_comm);
 	  H[ib+nb*jb] = Conjugate(H[jb+nb*ib]);
