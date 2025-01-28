@@ -826,7 +826,30 @@ Function for finding the state index of target bit string
     return sign;
   }
 
-  void parity(const std::vector<size_t>& dets, const size_t bit_length, const int& start, const int& end, double& sgn) {
+  // Set the specified bit (x) in the vector of size_t (bit representation)
+  void setocc(std::vector<size_t>& dets, const size_t bit_length, int x, bool y) {
+    if (x < 0) {
+      throw std::invalid_argument("Bit index cannot be negative");
+    }
+    
+    size_t block = x / bit_length; // Determine the block
+    size_t bit = x % bit_length;   // Determine the bit within the block
+    
+    if (block >= dets.size()) {
+      throw std::out_of_range("Bit index is out of range for the given vector");
+    }
+    
+    if (y) {
+      dets[block] |= (size_t(1) << bit); // Set the bit to 1
+    } else {
+      dets[block] &= ~(size_t(1) << bit); // Set the bit to 0
+    }
+  }
+
+  
+  void parity(const std::vector<size_t>& dets,
+	      const size_t bit_length,
+	      const int& start, const int& end, double& sgn) {
     if (start > end) {
       throw std::invalid_argument("Start index cannot be greater than end index");
     }
@@ -876,25 +899,18 @@ Function for finding the state index of target bit string
       sgn *= (count % 2 == 0) ? 1.0 : -1.0;
     }
   }
-  
-  // Set the specified bit (x) in the vector of size_t (bit representation)
-  void setocc(std::vector<size_t>& dets, const size_t bit_length, int x, bool y) {
-    if (x < 0) {
-      throw std::invalid_argument("Bit index cannot be negative");
-    }
-    
-    size_t block = x / bit_length; // Determine the block
-    size_t bit = x % bit_length;   // Determine the bit within the block
-    
-    if (block >= dets.size()) {
-      throw std::out_of_range("Bit index is out of range for the given vector");
-    }
-    
-    if (y) {
-      dets[block] |= (size_t(1) << bit); // Set the bit to 1
-    } else {
-      dets[block] &= ~(size_t(1) << bit); // Set the bit to 0
-    }
+
+  // Calculate parity for four particles
+  void parity(const std::vector<size_t>& dets,
+	      const size_t bit_length,
+	      const int i, const int j, const int a, const int b,
+	      double& sgn) {
+    parity(dets, std::min(i,a), std::max(i,a), sgn, bit_length);
+    setocc(const_cast<std::vector<size_t>&>(dets), bit_length, i, false);
+    setocc(const_cast<std::vector<size_t>&>(dets), bit_length, a, true);
+    parity(dets, std::min(j,b), std::max(j,b), sgn, bit_length);
+    setocc(const_cast<std::vector<size_t>&>(dets), bit_length, a, false);
+    setocc(const_cast<std::vector<size_t>&>(dets), bit_length, j, true);
   }
   
   void convert_int_to_string(int i, std::string & s) {
