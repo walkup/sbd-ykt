@@ -1,10 +1,10 @@
 /// This file is a part of sbd
 /**
-@file sbd/hcboson/basis.h
+@file sbd/basic/basis.h
 @brief Class to manage the basis for qubit selected configuration diagonalization
 */
-#ifndef SBD_HCBOSON_BASIS_H
-#define SBD_HCBOSON_BASIS_H
+#ifndef SBD_BASIC_BASIS_H
+#define SBD_BASIC_BASIS_H
 
 #include "sbd/framework/type_def.h"
 #include "sbd/framework/mpi_utility.h"

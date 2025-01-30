@@ -1,9 +1,9 @@
 /**
-@file sbd/hcboson/out_of_place_func/mult_nb.h
+@file sbd/basic/out_of_place_func/mult_nb.h
 @brief multiplication of operator to the wave vector using square of nodes to store the wave vector.
 */
-#ifndef SBD_HCBOSON_OUT_OF_PLACE_FUNC_MULT_NB_H
-#define SBD_HCBOSON_OUT_OF_PLACE_FUNC_MULT_NB_H
+#ifndef SBD_BASIC_OUT_OF_PLACE_FUNC_MULT_NC_H
+#define SBD_BASIC_OUT_OF_PLACE_FUNC_MULT_NC_H
 
 #include "sbd/framework/mpi_utility.h"
 

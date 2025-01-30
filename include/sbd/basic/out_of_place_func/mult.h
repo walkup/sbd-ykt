@@ -1,9 +1,9 @@
 /**
-@file sbd/hcboson/out_of_place_func/mult.h
+@file sbd/basic/out_of_place_func/mult.h
 @brief multiplication of operator to the wave vector using non-blocking communication
 */
-#ifndef SBD_HCBOSON_OUT_OF_PLACE_FUNC_MULT_H
-#define SBD_HCBOSON_OUT_OF_PLACE_FUNC_MULT_H
+#ifndef SBD_BASIC_OUT_OF_PLACE_FUNC_MULT_H
+#define SBD_BASIC_OUT_OF_PLACE_FUNC_MULT_H
 
 
 #include <omp.h>

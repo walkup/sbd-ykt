@@ -1,9 +1,9 @@
 /**
-@file sbd/hcboson/out_of_place_func/stdmodel.h
+@file sbd/basic/out_of_place_func/stdmodel.h
 @brief construct quantum chemistry hamiltonian based on the fcidump format
 */
-#ifndef SBD_HCBOSON_OUT_OF_PLACE_FUNC_STDMODEL_H
-#define SBD_HCBOSON_OUT_OF_PLACE_FUNC_STDMODEL_H
+#ifndef SBD_BASIC_OUT_OF_PLACE_FUNC_STDMODEL_H
+#define SBD_BASIC_OUT_OF_PLACE_FUNC_STDMODEL_H
 
 #include "sbd/framework/fcidump.h"
 

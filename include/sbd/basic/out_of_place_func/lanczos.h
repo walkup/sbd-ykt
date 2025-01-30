@@ -1,9 +1,9 @@
 /**
-@file sbd/hcboson/out_of_place_func/lanczos.h
+@file sbd/basic/out_of_place_func/lanczos.h
 @brief lanczos diagonalization for ground state
 */
-#ifndef SBD_HCBOSON_OUT_OF_PLACE_FUNC_LANCZOS_H
-#define SBD_HCBOSON_OUT_OF_PLACE_FUNC_LANCZOS_H
+#ifndef SBD_BASIC_OUT_OF_PLACE_FUNC_LANCZOS_H
+#define SBD_BASIC_OUT_OF_PLACE_FUNC_LANCZOS_H
 
 #include <chrono>
 #include <random>

@@ -1,9 +1,9 @@
 /**
-@file sbd/hcboson/out_of_place_func/arithmetic.h
+@file sbd/basic/out_of_place_func/arithmetic.h
 @brief out-of-place arithmetic for GeneralOp class
 */
-#ifndef SBD_HCBOSON_OUT_OF_PLACE_FUNC_ARITHMETIC_H
-#define SBD_HCBOSON_OUT_OF_PLACE_FUNC_ARITHMETIC_H
+#ifndef SBD_BASIC_OUT_OF_PLACE_FUNC_ARITHMETIC_H
+#define SBD_BASIC_OUT_OF_PLACE_FUNC_ARITHMETIC_H
 
 namespace sbd {
 

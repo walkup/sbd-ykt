@@ -1,9 +1,9 @@
 /**
-@file sbd/hcboson/generalop.h
+@file sbd/basic/generalop.h
 @brief Class to manage the operator
 */
-#ifndef SBD_HCBOSON_GENERALOP_H
-#define SBD_HCBOSON_GENERALOP_H
+#ifndef SBD_BASIC_GENERALOP_H
+#define SBD_BASIC_GENERALOP_H
 
 namespace sbd {
 

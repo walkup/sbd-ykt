@@ -1,9 +1,9 @@
 /**
-@file sbd/hcboson/out_of_place_func/davidson.h
+@file sbd/basic/out_of_place_func/davidson.h
 @brief davidson diagonalization for ground state
 */
-#ifndef SBD_HCBOSON_OUT_OF_PLACE_FUNC_DAVIDSON_H
-#define SBD_HCBOSON_OUT_OF_PLACE_FUNC_DAVIDSON_H
+#ifndef SBD_BASIC_OUT_OF_PLACE_FUNC_DAVIDSON_H
+#define SBD_BASIC_OUT_OF_PLACE_FUNC_DAVIDSON_H
 
 namespace sbd {
 

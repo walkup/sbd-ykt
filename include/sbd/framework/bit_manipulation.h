@@ -847,7 +847,7 @@ Function for finding the state index of target bit string
   }
 
   
-  void parity(const std::vector<size_t>& dets,
+  void parity(const std::vector<size_t> & dets,
 	      const size_t bit_length,
 	      const int& start, const int& end, double& sgn) {
     if (start > end) {
@@ -905,10 +905,10 @@ Function for finding the state index of target bit string
 	      const size_t bit_length,
 	      const int i, const int j, const int a, const int b,
 	      double& sgn) {
-    parity(dets, std::min(i,a), std::max(i,a), sgn, bit_length);
+    parity(dets, bit_length, std::min(i,a), std::max(i,a), sgn);
     setocc(const_cast<std::vector<size_t>&>(dets), bit_length, i, false);
     setocc(const_cast<std::vector<size_t>&>(dets), bit_length, a, true);
-    parity(dets, std::min(j,b), std::max(j,b), sgn, bit_length);
+    parity(dets, bit_length, std::min(j,b), std::max(j,b), sgn);
     setocc(const_cast<std::vector<size_t>&>(dets), bit_length, a, false);
     setocc(const_cast<std::vector<size_t>&>(dets), bit_length, j, true);
   }
