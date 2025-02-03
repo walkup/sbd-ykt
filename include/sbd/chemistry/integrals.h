@@ -23,6 +23,8 @@ namespace sbd {
     ElemT maxEntry;
     ElemT zero;
     int norbs;
+    std::vector<ElemT> DirectMat;
+    std::vector<ElemT> ExchangeMat;
     twoInt() : zero(0.0), maxEntry(100.0) {}
     inline ElemT & operator()(int i, int j, int k, int l) {
       zero = ElemT(0.0);
@@ -33,6 +35,12 @@ namespace sbd {
       int a = std::max(ij,kl);
       int b = std::min(ij,kl);
       return store[a*(a+1)/2+b];
+    }
+    inline ElemT & Direct(int i, int j) {
+      return DirectMat[i+norbs*j];
+    }
+    inline ElemT & Exchange(int i, int j) {
+      return ExchangeMat[i+norbs*j];
     }
   };
   

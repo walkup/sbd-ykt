@@ -14,14 +14,188 @@ namespace sbd {
     std::vector<std::vector<size_t>> BetaMajorToDet;
     std::vector<std::vector<size_t>> SingleFromAlpha;
     std::vector<std::vector<size_t>> SingleFromBeta;
-    std::map<std::vector<std::vector<size_t>>, size_t> BetaN;
-    std::map<std::vector<std::vector<size_t>>, size_t> AlphaN;
+    std::map<std::vector<size_t>, size_t> BetaN;
+    std::map<std::vector<size_t>, size_t> AlphaN;
 
-    void PopulateHelpers(std::vector<std::vector<size_t>> * Dets,
-			 size_t DetsSize,
-			 size_t startIndex);
-    void MakeHelpers();
+    int* AlphaMajorToBetaLen;
+    int* SinglesFromAlphaLen;
+    int* BetaMajorToAlphaLen;
+    int* SinglesFromBetaLen;
+    
+    std::vector<int*> AlphaMajorToBetaSM;
+    std::vector<int*> AlphaMajorToDetSM;
+    std::vector<int*> SinglesFromAlphaSM;
+    std::vector<int*> BetaMajorToAlphaSM;
+    std::vector<int*> BetaMajorToDetSM;
+    std::vector<int*> SinglesFromBetaSM;
   };
+
+  void updateAlphaBeta(std::vector<size_t> & DetAlpha,
+		       std::vector<size_t> & DetBeta,
+		       size_t bit_length,
+		       size_t norb,
+		       Helpers & helper,
+		       std::vector<std::vector<size_t>> & Det,
+		       size_t startIdx,
+		       size_t DetIdx) {
+    auto itb = helper.BetaN.find(DetBeta);
+    if( itb == helper.BetaN.end() ) {
+      auto ret = helper.BetaN.insert(std::pair<std::vector<size_t>,size_t>(DetBeta,BetaMajorToDet.size()));
+      itb = ret.first;
+      helper.BetaMajorToAlpha.resize(itb->second+1);
+      helper.BetaMajorToDet.resize(itb->second+1);
+      helper.SinglesFromBeta.resize(itb->second+1);
+      std::vector<int> closed(norb);
+      std::vector<int> open(norb);
+      int nclosed = getOpenClosed(DetBeta,bit_length,norb,open,closed);
+      for(int j=0; j < nclosed; j++) {
+	for(int k=0; k < norb-nclosed; k++) {
+	  auto DetBetaCopy = DetBeta;
+	  setocc(DetBetaCopy,bit_length,closed[j],false);
+	  setocc(DetBetaCopy,bit_length,open[k],true);
+	  auto itbcopy = BetaN.find(DetBetaCopy);
+	  if( itbcopy != BetaN.end() ) {
+	    helper.SinglesFromBeta[itb->second].push_back(itbcopy->second);
+	    helper.SinglesFromBeta[itbcopy->second].push_back(itb->second);
+	  }
+	}
+      }
+    }
+    
+    auto ita = helper.AlphaN.find(DetAlpha);
+    if( ita == helper.AlphaN.end() ) {
+      auto ret = helper.AlphaN.insert(std::pair<std::vector<size_t>,size_t>(AlphDet,helper.AlphaMajorToDet.size()));
+      ita = ret.first;
+      helper.AlphaMajorToBeta.resize(ita->second+1);
+      helper.AlphaMajorToDet.resize(ita->second+1);
+      helper.SinglesFromAlpha.resize(ita->second+1);
+      std::vector<int> closed(norb);
+      std::vector<int> open(norb);
+      int nclosed = getOpenClosed(DetAlpha,bit_length,norb,open,closed);
+      for(int j=0; j < nclosed; j++) {
+	for(int k=0; k < norb-nclosed; k++) {
+	  auto DetAlphaCopy = DetAlpha;
+	  setocc(DetAlphaCopy,bit_length,closed[j],false);
+	  setocc(DetAlphaCopy,bit_length,open[k],true);
+	  auto itacopy = AlphaN.find(DetAlphaCopy);
+	  if( itacopy != AlphaN.end() ) {
+	    helper.SinglesFromAlpha[ita->second].push_back(itacopy->second);
+	    helper.SinglesFromAlpha[itacopy->second].push_back(ita->second);
+	  }
+	}
+      }
+    }
+
+    helper.AlphaMajorToBeta[ita->second].push_back(itb->second);
+    helper.AlphaMajorToDet[ita->second].push_back(DetIndex);
+    helper.BetaMajorToAlpha[itb->second].push_back(ita->second);
+    helper.BetaMajorToDet[itb->second].push_back(DetIndex);
+    
+  }
+
+  void PopulateHelpers(std::vector<std::vector<size_t>> & Det,
+		       size_t bit_length,
+		       size_t norb,
+		       size_t startIdx,
+		       Helpers & helper) {
+
+    for(size_t i=StartIdx; i < Det.size(); i++) {
+      auto AlphaDet = getAlpha(Det[i],bit_length,norb);
+      auto BetaDet = getBeta(Det[i],bit_length,norb);
+      updateAlphaBeta(DetAlpha,DetBeta,bit_length,norb,
+		      helper,Det,startidx,i+1);
+    }
+    for(size_t i=0; i < helper.AlphaMajorToBeta.size(); i++) {
+      
+      std::vector<size_t> & betaRef = helper.AlphaMajorToBeta[i];
+      std::vector<size_t> & detRef = helper.AlphaMajorToDet[i];
+      std::vector<size_t> detIndex(betaRef.size());
+      std::iota(detIndex.begin(),detIndex.end(),0);
+      std::sort(detIndex.begin(),detIndex.end(),
+		[&](size_t lhs, size_t rhs) {
+		    return betaRef[lhs] < betaRef[rhs]; } );
+      std::vector<size_t> sortedBeta(betaRef.size());
+      std::vector<size_t> sortedDet(detRef.size());
+      for(size_t j=0; j < detIndex.size(); j++) {
+	sortedBeta[j] = betaRef[detIndex[j]];
+	sortedDet[j] = detRef[detIndex[j]];
+      }
+      betaRef = std::move(sortedBeta);
+      detRef = std::move(sortedDet);
+      
+      std::sort(helper.SinglesFromAlpha[i].begin(),
+		  helper.SinglesFromAlpha[i].end());
+    }
+    
+    for(size_t i=0; i < helper.BetaMajorToAlpha.size(); i++) {
+      std::vector<size_t> & alphaRef = helper.BetaMajorToAlpha[i];
+      std::vector<size_t> & detRef = helper.BetaMajorToDet[i];
+      std::vector<size_t> detIndex(alphaRef.size());
+      std::iota(detIndex.begin(),detIndex.end(),0);
+      std::sort(detIndex.begin(),detIndex.end(),
+		[&](size_t lhs, size_t rhs) {
+		  return alphaRef[lhs] < alphaRef[rhs]; } );
+      std::vector<size_t> sortedAlpha(alphaRef.size());
+      std::vector<size_t> sortedDet(detRef.size());
+      for(size_t j=0; j < detIndex.size(); j++) {
+	sortedAlpha[j] = alphaRef[detIndex[j]];
+	sortedDet[j] = detRef[detIndex[j]];
+      }
+      alphaRef = std::move(sotredAlpha);
+      detRef = std::move(sortedDet);
+    }
+  }
+  
+  void MakeHelper(Helpers &helper) {
+    size_t nAlpha = helper.AlphaMajorToBeta.size();
+    size_t nBeta = helper.BetaMajorToAlpha.size();
+    
+    helper.AlphaMajorToBetaLen = (int*)malloc(nAlpha * sizeof(int));
+    helper.SinglesFromAlphaLen = (int*)malloc(nAlpha * sizeof(int));
+    helper.BetaMajorToAlphaLen = (int*)malloc(nBeta * sizeof(int));
+    helper.SinglesFromBetaLen = (int*)malloc(nBeta * sizeof(int));
+    
+    for (size_t i = 0; i < nAlpha; ++i) {
+      helper.AlphaMajorToBetaLen[i] = helper.AlphaMajorToBeta[i].size();
+      helper.SinglesFromAlphaLen[i] = helper.SingleFromAlpha[i].size();
+    }
+    for (size_t i = 0; i < nBeta; ++i) {
+      helper.BetaMajorToAlphaLen[i] = helper.BetaMajorToAlpha[i].size();
+      helper.SinglesFromBetaLen[i] = helper.SingleFromBeta[i].size();
+    }
+    
+    int* begin = helper.SinglesFromBetaLen + nBeta;
+    size_t counter = 0;
+    
+    for (size_t i = 0; i < nAlpha; i++) {
+      helper.AlphaMajorToBetaSM[i] = begin + counter;
+      counter += helper.AlphaMajorToBetaLen[i];
+      helper.AlphaMajorToDetSM[i] = begin + counter;
+      counter += helper.AlphaMajorToBetaLen[i];
+      helper.SinglesFromAlphaSM[i] = begin + counter;
+      counter += helper.SinglesFromAlphaLen[i];
+    }
+    
+    for (size_t i = 0; i < nBeta; i++) {
+      helper.BetaMajorToAlphaSM[i] = begin + counter;
+      counter += helper.BetaMajorToAlphaLen[i];
+      helper.BetaMajorToDetSM[i] = begin + counter;
+      counter += helper.BetaMajorToAlphaLen[i];
+      helper.SinglesFromBetaSM[i] = begin + counter;
+      counter += helper.SinglesFromBetaLen[i];
+    }
+    
+    for (size_t i = 0; i < nAlpha; i++) {
+      std::memcpy(helper.AlphaMajorToBetaSM[i], helper.AlphaMajorToBeta[i].data(), helper.AlphaMajorToBetaLen[i] * sizeof(int));
+      std::memcpy(helper.AlphaMajorToDetSM[i], helper.AlphaMajorToDet[i].data(), helper.AlphaMajorToBetaLen[i] * sizeof(int));
+      std::memcpy(helper.SinglesFromAlphaSM[i], helper.SingleFromAlpha[i].data(), helper.SinglesFromAlphaLen[i] * sizeof(int));
+    }
+    for (size_t i = 0; i < nBeta; i++) {
+      std::memcpy(helper.BetaMajorToAlphaSM[i], helper.BetaMajorToAlpha[i].data(), helper.BetaMajorToAlphaLen[i] * sizeof(int));
+      std::memcpy(helper.BetaMajorToDetSM[i], helper.BetaMajorToDet[i].data(), helper.BetaMajorToAlphaLen[i] * sizeof(int));
+      std::memcpy(helper.SinglesFromBetaSM[i], helper.SingleFromBeta[i].data(), helper.SinglesFromBetaLen[i] * sizeof(int));
+    }
+  }
   
 }
 

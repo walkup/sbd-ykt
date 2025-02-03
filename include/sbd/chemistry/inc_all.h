@@ -3,5 +3,7 @@
 
 #include "sbd/chemistry/integrals.h"
 #include "sbd/chemistry/determinants.h"
+#include "sbd/chemistry/helpers.h"
+
 
 #endif

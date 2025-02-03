@@ -42,6 +42,15 @@ namespace sbd {
 	I2(2*(i-1),2*(j-1),2*(k-1),2*(l-1)) = ElemT(value);
       }
     }
+
+    I2.DirectMat.resize(L*L);
+    I2.ExchangeMat.resize(L*L);
+    for(int i=0; i < L; i++) {
+      for(int j=0; j < L; j++) {
+	I2.Direct(i,j) = I2(2*i,2*i,2*j,2*j);
+	I2.Exchange(i,j) = I2(2*i,2*j,2*j,2*i);
+      }
+    }
   }
   
 }

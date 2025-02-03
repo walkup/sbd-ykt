@@ -46,7 +46,40 @@ namespace sbd {
       count += __builtin_popcountll(det[full_words] & mask);
     }
     return count;
-  }  
+  }
+
+  int getClosed(const std::vector<size_t> & det,
+		const size_t bit_length,
+		const size_t L,
+		std::vector<int> & closed) {
+    int cindex = 0;
+    for(int i=0; i < L; i++) {
+      if( getocc(det, bit_length, x) ) {
+	closed.at(cindex) = i;
+	cindex++;
+      }
+    }
+    return cindex;
+  }
+
+  int getOpenClosed(const std::vector<size_t> & det,
+		    const size_t bit_length,
+		    const size_t L,
+		    std::vector<int> & open,
+		    std::vector<int> & closed) {
+    int cindex = 0;
+    int oindex = 0;
+    for(int i=0; i < L; i++) {
+      if( getocc(det, bit_length, x) ) {
+	closed.at(cindex) = i;
+	cindex++;
+      } else {
+	open.at(oindex) = i;
+	oindex++;
+      }
+    }
+    return cindex;
+  }
   
   void parity(const std::vector<size_t> & dets,
 	      const size_t bit_length,
@@ -210,6 +243,32 @@ namespace sbd {
       }
     }
   }
+
+  template <typename ElemT>
+  ElemT ZeroExcite(const std::vector<size_t> & det,
+		   const size_t bit_length,
+		   const size_t L,
+		   const ElemT & I0,
+		   const oneInt<ElemT> & I1,
+		   const twoInt<ElemT> & I2) {
+    ElemT energy(0.0);
+    size_t one = 1;
+    std::vector<int> closed;
+    int num_closed = getClosed(det,bit_length,L,closed);
+
+    for(int i=0; i < closed.size(); i++) {
+      int I = closed.at(i);
+      energy += I1(I,I);
+      for(int j=i+1; j < closed.size(); j++) {
+	int J = closed.at(j);
+	energy += I2.Direct(I/2,J/2);
+	if( (I%2) == (J%2) ) {
+	  energy -= I2.Exchange(I/2,J/2);
+	}
+      }
+    }
+    return energy+I0;
+  }
   
   template <typename ElemT>
   ElemT OneExcite(std::vector<size_t> & det,
@@ -254,7 +313,62 @@ namespace sbd {
     return ElemT(sgn) * (I2(A,I,B,J)-I2(A,J,B,I));
   }
 
-  
+  ElemT Hij(const std::vector<size_t> & DetA,
+	    const std::vector<size_t> & DetB,
+	    const size_t & bit_length,
+	    const size_t & L,
+	    const ElemT & I0,
+	    const oneInt<ElemT> & I1,
+	    const twoInt<ElemT> & I2,
+	    size_t & orbDiff) {
+    std::vector<int> c(2);
+    std::vector<int> d(2);
+    size_t nc=0;
+    size_t nd=0;
+
+    size_t full_words = (2*L)/bit_length;
+    size_t remaning_bits = (2*L) % bit_length;
+
+    for(size_t i=0; i < full_words; ++i) {
+      size_t diff_c = DetA[i] & ~DetB[i];
+      size_t diff_d = DetB[i] & ~DetA[i];
+      for(size_t bit_pos=0; bit_pos < bit_length; ++bit_pos) {
+	if(diff_c & (static_cast<size_t>(1) << bit_pos)) {
+	  c.push_back(i*bit_length+bit_pos);
+	}
+	if(diff_d & (static_cast<size_t>(1) << bit_pos)) {
+	  d.push_back(i*bit_length+bit_pos);
+	}
+      }
+    }
+
+    if( remaining_bits > 0 ) {
+      size_t mask = (static_cast<size_t>(1) << remaning_bits) -1;
+      size_t diff_c = (DetA[full_words] & ~DetB[full_words]) & mask;
+      size_t diff_d = (DetB[full_words] & ~DetA[full_words]) & mask;
+      for(size_t bit_pos = 0; bit_pos < remaining_bits; ++bit_pos) {
+	if( diff_c & (static_cast<size_t>(1) << bit_pos) ) {
+	  c.push_back(i*full_words+bit_pos);
+	}
+	if( diff_d & (static_cast<size_t>(1) << bit_pos) ) {
+	  d.push_back(i*full_words+bit_pos);
+	}
+      }
+    }
+
+    if( nc == 0 ) {
+      orbDiff = static_cast<size_t>(0);
+      return ZeroExcite(DetB,bit_length,2*L,I0,I1,I2);
+    } else if ( nc == 1 ) {
+      orbDiff = static_cast<size_t>(c[0] * L + d[0]);
+      return OneExcite(DetB,bit_length,d[0],c[0],I1,I2);
+    } else if ( nc == 2 ) {
+      orbDiff = static_cast<size_t>(c[1]*L*L*L+d[1]*L*L+c[0]*L+d[0]);
+      return TwoExcite(DetB,bit_length,d[0],d[1],c[0],c[1],I1,I2);
+    }
+    return ElemT(0.0);
+  }
+	    
   
 } // end namespace sbd
 
