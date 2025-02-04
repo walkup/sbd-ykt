@@ -7,6 +7,30 @@
 
 namespace sbd {
 
+  std::vector<size_t> DetFromAlphaBeta(const std::vector<size_t>& A,
+				       const std::vector<size_t>& B,
+				       size_t bit_length,
+				       size_t L) {
+    size_t D_size = (2*L+bit_length-1)/bit_length;
+    std::vector<size_t> D(D_size,0);
+    for(size_t i=0; i < L; ++i) {
+      size_t block = i / bit_length;
+      size_t bit_pos = i % bit_length;
+      size_t new_block_A = (2*i) / bit_length;
+      size_t new_bit_pos_A = (2*i) % bit_length;
+      size_t new_block_B = (2*i+1) / bit_length;
+      size_t new_bit_pos_B = (2*i+1) % bit_length;
+      if ( A[block] & (size_t(1) << bit_pos) ) {
+	D[new_block_A] |= size_t(1) << new_bit_pos_A;
+      }
+      if( B[block] & (size_t(1) << bit_pos) ) {
+	D[new_block_B] |= size_t(1) << new_bit_pos_B;
+      }
+    }
+    return D;
+  }
+
+  
   // Set the specified bit (x) in the vector of size_t (bit representation)
   void setocc(std::vector<size_t> & dets, const size_t bit_length, int x, bool y) {
     if (x < 0) {
@@ -54,7 +78,7 @@ namespace sbd {
 		std::vector<int> & closed) {
     int cindex = 0;
     for(int i=0; i < L; i++) {
-      if( getocc(det, bit_length, x) ) {
+      if( getocc(det, bit_length, i) ) {
 	closed.at(cindex) = i;
 	cindex++;
       }
@@ -70,7 +94,7 @@ namespace sbd {
     int cindex = 0;
     int oindex = 0;
     for(int i=0; i < L; i++) {
-      if( getocc(det, bit_length, x) ) {
+      if( getocc(det, bit_length, i) ) {
 	closed.at(cindex) = i;
 	cindex++;
       } else {
@@ -248,9 +272,9 @@ namespace sbd {
   ElemT ZeroExcite(const std::vector<size_t> & det,
 		   const size_t bit_length,
 		   const size_t L,
-		   const ElemT & I0,
-		   const oneInt<ElemT> & I1,
-		   const twoInt<ElemT> & I2) {
+		   ElemT & I0,
+		   oneInt<ElemT> & I1,
+		   twoInt<ElemT> & I2) {
     ElemT energy(0.0);
     size_t one = 1;
     std::vector<int> closed;
@@ -271,7 +295,7 @@ namespace sbd {
   }
   
   template <typename ElemT>
-  ElemT OneExcite(std::vector<size_t> & det,
+  ElemT OneExcite(const std::vector<size_t> & det,
 		  const size_t bit_length,
 		  int & i,
 		  int & a,
@@ -294,7 +318,8 @@ namespace sbd {
     return energy;
   }
 
-  ElemT TwoExcite(std::vector<size_t> & det,
+  template <typename ElemT>
+  ElemT TwoExcite(const std::vector<size_t> & det,
 		  const size_t bit_length,
 		  int & i,
 		  int & j,
@@ -313,13 +338,14 @@ namespace sbd {
     return ElemT(sgn) * (I2(A,I,B,J)-I2(A,J,B,I));
   }
 
+  template <typename ElemT>
   ElemT Hij(const std::vector<size_t> & DetA,
 	    const std::vector<size_t> & DetB,
 	    const size_t & bit_length,
 	    const size_t & L,
-	    const ElemT & I0,
-	    const oneInt<ElemT> & I1,
-	    const twoInt<ElemT> & I2,
+	    ElemT & I0,
+	    oneInt<ElemT> & I1,
+	    twoInt<ElemT> & I2,
 	    size_t & orbDiff) {
     std::vector<int> c(2);
     std::vector<int> d(2);
@@ -327,7 +353,7 @@ namespace sbd {
     size_t nd=0;
 
     size_t full_words = (2*L)/bit_length;
-    size_t remaning_bits = (2*L) % bit_length;
+    size_t remaining_bits = (2*L) % bit_length;
 
     for(size_t i=0; i < full_words; ++i) {
       size_t diff_c = DetA[i] & ~DetB[i];
@@ -343,15 +369,15 @@ namespace sbd {
     }
 
     if( remaining_bits > 0 ) {
-      size_t mask = (static_cast<size_t>(1) << remaning_bits) -1;
+      size_t mask = (static_cast<size_t>(1) << remaining_bits) -1;
       size_t diff_c = (DetA[full_words] & ~DetB[full_words]) & mask;
       size_t diff_d = (DetB[full_words] & ~DetA[full_words]) & mask;
       for(size_t bit_pos = 0; bit_pos < remaining_bits; ++bit_pos) {
 	if( diff_c & (static_cast<size_t>(1) << bit_pos) ) {
-	  c.push_back(i*full_words+bit_pos);
+	  c.push_back(bit_length*full_words+bit_pos);
 	}
 	if( diff_d & (static_cast<size_t>(1) << bit_pos) ) {
-	  d.push_back(i*full_words+bit_pos);
+	  d.push_back(bit_length*full_words+bit_pos);
 	}
       }
     }
