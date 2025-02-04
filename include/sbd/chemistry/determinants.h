@@ -125,21 +125,21 @@ namespace sbd {
       throw std::invalid_argument("Invalid bit length");
     }
     
-    sgn = 1.0; // Initialize the parity as positive
+    // sgn = 1.0; // Initialize the parity as positive
     
-    size_t blockStart = start / bit_length; // Block index for the start position
-    size_t bitStart = start % bit_length;   // Bit index within the start block
+    size_t blockStart = start / bit_length;
+    size_t bitStart = start % bit_length;
     
-    size_t blockEnd = end / bit_length;     // Block index for the end position
-    size_t bitEnd = end % bit_length;       // Bit index within the end block
+    size_t blockEnd = end / bit_length;
+    size_t bitEnd = end % bit_length;
     
     // 1. Count bits in the start block
     if (blockStart == blockEnd) {
       // Case where start and end are within the same block
       size_t mask = ((size_t(1) << bitEnd) - 1) ^ ((size_t(1) << bitStart) - 1);
       size_t bits = dets[blockStart] & mask;
-      size_t count = __builtin_popcountll(bits); // Count the number of set bits
-      sgn *= (count % 2 == 0) ? 1.0 : -1.0;     // Adjust parity based on bit count
+      size_t count = __builtin_popcountll(bits);
+      sgn *= (count % 2 == 0) ? 1.0 : -1.0;
       return;
     }
     
