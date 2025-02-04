@@ -20,6 +20,7 @@ namespace sbd {
       size_t new_bit_pos_A = (2*i) % bit_length;
       size_t new_block_B = (2*i+1) / bit_length;
       size_t new_bit_pos_B = (2*i+1) % bit_length;
+      
       if ( A[block] & (size_t(1) << bit_pos) ) {
 	D[new_block_A] |= size_t(1) << new_bit_pos_A;
       }
@@ -52,13 +53,16 @@ namespace sbd {
   }
 
   //
-  inline bool getocc(const std::vector<size_t> & det, const size_t bit_length, int x) {
+  inline bool getocc(const std::vector<size_t> & det,
+		     const size_t bit_length, int x) {
     size_t index = x / bit_length;
     size_t bit_pos = x % bit_length;
     return (det[index] >> bit_pos) & 1;
   }
 
-  inline int bitcount(const std::vector<size_t> & det, size_t bit_length, size_t L) {
+  inline int bitcount(const std::vector<size_t> & det,
+		      const size_t bit_length,
+		      const size_t L) {
     int count = 0;
     size_t full_words = L / bit_length;
     size_t remaining_bits = L % bit_length;
@@ -77,9 +81,11 @@ namespace sbd {
 		const size_t L,
 		std::vector<int> & closed) {
     int cindex = 0;
+    int csize = bitcount(det,bit_length,L);
+    closed.resize(csize);
     for(int i=0; i < L; i++) {
       if( getocc(det, bit_length, i) ) {
-	closed.at(cindex) = i;
+	closed.at(cindex)=i;
 	cindex++;
       }
     }
@@ -93,6 +99,9 @@ namespace sbd {
 		    std::vector<int> & closed) {
     int cindex = 0;
     int oindex = 0;
+    int csize = bitcount(det,bit_length,L);
+    // closed.resize(csize);
+    // open.resize(L-csize);
     for(int i=0; i < L; i++) {
       if( getocc(det, bit_length, i) ) {
 	closed.at(cindex) = i;
@@ -278,12 +287,12 @@ namespace sbd {
     ElemT energy(0.0);
     size_t one = 1;
     std::vector<int> closed;
-    int num_closed = getClosed(det,bit_length,L,closed);
+    int num_closed = getClosed(det,bit_length,2*L,closed);
 
-    for(int i=0; i < closed.size(); i++) {
+    for(int i=0; i < num_closed; i++) {
       int I = closed.at(i);
       energy += I1(I,I);
-      for(int j=i+1; j < closed.size(); j++) {
+      for(int j=i+1; j < num_closed; j++) {
 	int J = closed.at(j);
 	energy += I2.Direct(I/2,J/2);
 	if( (I%2) == (J%2) ) {
@@ -347,12 +356,12 @@ namespace sbd {
 	    oneInt<ElemT> & I1,
 	    twoInt<ElemT> & I2,
 	    size_t & orbDiff) {
-    std::vector<int> c(2);
-    std::vector<int> d(2);
+    std::vector<int> c;
+    std::vector<int> d;
     size_t nc=0;
     size_t nd=0;
 
-    size_t full_words = (2*L)/bit_length;
+    size_t full_words = (2*L) / bit_length;
     size_t remaining_bits = (2*L) % bit_length;
 
     for(size_t i=0; i < full_words; ++i) {
@@ -361,9 +370,11 @@ namespace sbd {
       for(size_t bit_pos=0; bit_pos < bit_length; ++bit_pos) {
 	if(diff_c & (static_cast<size_t>(1) << bit_pos)) {
 	  c.push_back(i*bit_length+bit_pos);
+	  nc++;
 	}
 	if(diff_d & (static_cast<size_t>(1) << bit_pos)) {
 	  d.push_back(i*bit_length+bit_pos);
+	  nd++;
 	}
       }
     }
@@ -375,9 +386,11 @@ namespace sbd {
       for(size_t bit_pos = 0; bit_pos < remaining_bits; ++bit_pos) {
 	if( diff_c & (static_cast<size_t>(1) << bit_pos) ) {
 	  c.push_back(bit_length*full_words+bit_pos);
+	  nc++;
 	}
 	if( diff_d & (static_cast<size_t>(1) << bit_pos) ) {
 	  d.push_back(bit_length*full_words+bit_pos);
+	  nd++;
 	}
       }
     }

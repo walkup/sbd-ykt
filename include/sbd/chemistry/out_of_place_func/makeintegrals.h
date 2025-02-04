@@ -28,6 +28,7 @@ namespace sbd {
     I1.store.resize(4*L*L,ElemT(0.0));
 
     int B = L*(L+1)/2;
+    I2.norbs = L;
     I2.store.resize(B*(B+1)/2,ElemT(0.0));
 
     for(const auto & [value, i, j, k, l] : fcidump.integrals) {

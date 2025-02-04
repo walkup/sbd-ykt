@@ -968,9 +968,16 @@ Function for finding the state index of target bit string
 	  ++bit_index;
 	}
       }
+
+      // reverse bit sequence
+      std::vector<size_t> reverse_bit_sequence(bit_sequence.size());
+      for(int i=0; i < bit_sequence.size(); i++) {
+	reverse_bit_sequence[i] = bit_sequence[bit_sequence.size()-i-1];
+      }
       
       // store the decoded bit array
-      all_bit_sequences.push_back(bit_sequence);
+      // all_bit_sequences.push_back(bit_sequence);
+      all_bit_sequences.push_back(reverse_bit_sequence);
     }
     
     return all_bit_sequences;
@@ -1007,10 +1014,10 @@ Function for finding the state index of target bit string
       for(size_t ia=0; ia < Na; ia++) {
 	std::vector<size_t> bst(2*norb);
 	for(int p=0; p < norb; p++) {
-	  bst[norb-p-1] = alphadets[ia][p];
+	  bst[p] = alphadets[ia][p];
 	}
 	for(int p=0; p < norb; p++) {
-	  bst[2*norb-p-1] = alphadets[ib][p];
+	  bst[norb+p] = alphadets[ib][p];
 	}
 	change_bitlength(1,bst,bit_length);
 	config[Na*(ib-ib_start)+ia] = bst;

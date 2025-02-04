@@ -57,10 +57,9 @@ namespace sbd {
 	  if( itA != (&helper.BetaMajorToAlphaSM[Bstring][0]
 		      + helper.BetaMajorToAlphaLen[Bstring]) ) {
 	    int indexA = std::distance(&helper.BetaMajorToAlphaSM[Bstring][0],itA);
-	    int DetJ = helper.BetaMajorToAlphaSM[Bstring][indexA];
+	    int DetJ = helper.BetaMajorToDetSM[Bstring][indexA];
 	    if( DetJ >= DetI ) continue;
 	    size_t orbDiff;
-	    // WRITING NOW
 	    ElemT eij = Hij(dets[DetI-1],dets[DetJ-1],
 			    bit_length,norbs,I0,I1,I2,orbDiff);
 	    ij[(DetI-1)/mpi_size].push_back(DetJ-1);
@@ -214,6 +213,8 @@ namespace sbd {
       }
     }
 
+    std::cout << " End Diagonal terms " << std::endl;
+
     std::vector<std::vector<std::vector<size_t>>> tdets(data_width);
     int inc_size = (data_width-1)/2;
     int dec_size = (data_width)/2;
@@ -234,14 +235,14 @@ namespace sbd {
     }
     int mpi_round = mpi_size_b / data_width;
 
-    jh.resize(mpi_round,std::vector<std::vector<size_t>>(num_threads));
+    ih.resize(mpi_round,std::vector<std::vector<size_t>>(num_threads));
     jh.resize(mpi_round,std::vector<std::vector<size_t>>(num_threads));
     tr.resize(mpi_round,std::vector<std::vector<size_t>>(num_threads));
     hij.resize(mpi_round,std::vector<std::vector<ElemT>>(num_threads));
 
     for(int round=0; round < mpi_round; round++) {
 
-      size_t chunk_size = helper.AlphaMajorToBeta.size() / num_threads;
+      size_t chunk_size = helper.AlphaMajorToBetaSM.size() / num_threads;
       
 #pragma omp parallel
       {
@@ -250,7 +251,7 @@ namespace sbd {
 	size_t i_start = thread_id * chunk_size;
 	size_t i_end = (thread_id+1) * chunk_size;
 	if( thread_id == num_threads - 1 ) {
-	  i_end = helper.AlphaMajorToBeta.size();
+	  i_end = helper.AlphaMajorToBetaSM.size();
 	}
 
 	std::vector<size_t> local_ih;
@@ -276,12 +277,11 @@ namespace sbd {
 					  +helper.BetaMajorToAlphaLen[Bstring],
 					  Asingle);
 	      if( itA != (&helper.BetaMajorToAlphaSM[Bstring][0]
-			  + helper.BetaMajorToAlphaLen[Bstring]) ) {
+			 + helper.BetaMajorToAlphaLen[Bstring]) ) {
 		int indexA = std::distance(&helper.BetaMajorToAlphaSM[Bstring][0],itA);
-		int DetJ = helper.BetaMajorToAlphaSM[Bstring][indexA];
-		if(DetJ >= DetI) continue;
+		int DetJ = helper.BetaMajorToDetSM[Bstring][indexA];
+		if(DetJ == DetI) continue;
 		size_t orbDiff;
-		// WRITING NOW
 		ElemT eij = Hij(dets[DetI-1],dets[DetJ-1],
 				bit_length,norbs,I0,I1,I2,orbDiff);
 		local_ih.push_back(DetI-1);
@@ -313,7 +313,7 @@ namespace sbd {
 		    helper.AlphaMajorToBetaSM[Asingle][index] == Bsingle) {
 		  int DetJ = helper.AlphaMajorToDetSM[Asingle][SearchStartIndex];
 		  
-		  if (DetJ >= DetI) continue;
+		  if (DetJ == DetI) continue;
 		  
 		  size_t orbDiff;
 		  ElemT eij = Hij(dets[DetJ-1], dets[DetI-1],
@@ -344,7 +344,7 @@ namespace sbd {
 	      
 		int DetJ = helper.AlphaMajorToDetSM[Astring][index];
 	      
-		if (DetJ >= DetI) continue;
+		if (DetJ == DetI) continue;
 		
 		size_t orbDiff;
 		ElemT eij = Hij(dets[DetJ-1],dets[DetI-1],
@@ -360,7 +360,7 @@ namespace sbd {
 	    // double beta excitation
 	    for (size_t j = 0; j < helper.AlphaMajorToBetaLen[i]; j++) {
 	      int DetJ = helper.AlphaMajorToDetSM[i][j];
-	      if (DetJ >= DetI) continue;
+	      if (DetJ == DetI) continue;
 	      
 	      const std::vector<size_t> & DetAtJ = dets[DetJ - 1];
 	      const std::vector<size_t> & DetAtI = dets[DetI - 1];
@@ -381,7 +381,7 @@ namespace sbd {
 	    for (int j = 0; j < helper.BetaMajorToAlphaLen[Bstring]; j++) {
 	      int DetJ = helper.BetaMajorToDetSM[Bstring][j];
 	      
-	      if (DetJ >= DetI) continue;
+	      if (DetJ == DetI) continue;
 	      
 	      const std::vector<size_t> & DetAtJ = dets[DetJ - 1];
 	      const std::vector<size_t> & DetAtI = dets[DetI - 1];

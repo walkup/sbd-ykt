@@ -179,10 +179,12 @@ namespace sbd {
 
     size_t total_size = 0;
     for (size_t i = 0; i < nAlpha; i++) {
-      total_size += 2 * helper.AlphaMajorToBetaLen[i] + helper.SinglesFromAlphaLen[i];
+      total_size += 2 * helper.AlphaMajorToBetaLen[i]
+	              + helper.SinglesFromAlphaLen[i];
     }
     for (size_t i = 0; i < nBeta; i++) {
-      total_size += 2 * helper.BetaMajorToAlphaLen[i] + helper.SinglesFromBetaLen[i];
+      total_size += 2 * helper.BetaMajorToAlphaLen[i]
+	              + helper.SinglesFromBetaLen[i];
     }
 
     sharedMemory.resize(total_size);
@@ -211,14 +213,26 @@ namespace sbd {
     }
     
     for (size_t i = 0; i < nAlpha; i++) {
-      std::memcpy(helper.AlphaMajorToBetaSM[i], helper.AlphaMajorToBeta[i].data(), helper.AlphaMajorToBetaLen[i] * sizeof(size_t));
-      std::memcpy(helper.AlphaMajorToDetSM[i], helper.AlphaMajorToDet[i].data(), helper.AlphaMajorToBetaLen[i] * sizeof(size_t));
-      std::memcpy(helper.SinglesFromAlphaSM[i], helper.SinglesFromAlpha[i].data(), helper.SinglesFromAlphaLen[i] * sizeof(size_t));
+      std::memcpy(helper.AlphaMajorToBetaSM[i],
+		  helper.AlphaMajorToBeta[i].data(),
+		  helper.AlphaMajorToBetaLen[i] * sizeof(size_t));
+      std::memcpy(helper.AlphaMajorToDetSM[i],
+		  helper.AlphaMajorToDet[i].data(),
+		  helper.AlphaMajorToBetaLen[i] * sizeof(size_t));
+      std::memcpy(helper.SinglesFromAlphaSM[i],
+		  helper.SinglesFromAlpha[i].data(),
+		  helper.SinglesFromAlphaLen[i] * sizeof(size_t));
     }
     for (size_t i = 0; i < nBeta; i++) {
-      std::memcpy(helper.BetaMajorToAlphaSM[i], helper.BetaMajorToAlpha[i].data(), helper.BetaMajorToAlphaLen[i] * sizeof(size_t));
-      std::memcpy(helper.BetaMajorToDetSM[i], helper.BetaMajorToDet[i].data(), helper.BetaMajorToAlphaLen[i] * sizeof(size_t));
-      std::memcpy(helper.SinglesFromBetaSM[i], helper.SinglesFromBeta[i].data(), helper.SinglesFromBetaLen[i] * sizeof(size_t));
+      std::memcpy(helper.BetaMajorToAlphaSM[i],
+		  helper.BetaMajorToAlpha[i].data(),
+		  helper.BetaMajorToAlphaLen[i] * sizeof(size_t));
+      std::memcpy(helper.BetaMajorToDetSM[i],
+		  helper.BetaMajorToDet[i].data(),
+		  helper.BetaMajorToAlphaLen[i] * sizeof(size_t));
+      std::memcpy(helper.SinglesFromBetaSM[i],
+		  helper.SinglesFromBeta[i].data(),
+		  helper.SinglesFromBetaLen[i] * sizeof(size_t));
     }
     
   }

@@ -26,7 +26,9 @@ namespace sbd {
     Det.resize((na_end-na_begin)*NcB);
     for(size_t na=na_begin; na < na_end; na++) {
       for(size_t nb=0; nb < NcB; nb++) {
-	Det[NcB*(na-na_begin)+nb] = DetFromAlphaBeta(AlphaDet[na],AlphaDet[nb],bit_length,L);
+	Det[NcB*(na-na_begin)+nb] = DetFromAlphaBeta(AlphaDet[na],
+						     AlphaDet[nb],
+						     bit_length,L);
       }
     }
   }
