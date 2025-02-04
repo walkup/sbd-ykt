@@ -151,7 +151,7 @@ namespace sbd {
     }
   }
   
-  void MakeHelper(Helpers &helper) {
+  void MakeHelper(Helpers & helper, std::vector<size_t> & sharedMemory) {
     size_t nAlpha = helper.AlphaMajorToBeta.size();
     size_t nBeta = helper.BetaMajorToAlpha.size();
     
@@ -168,8 +168,28 @@ namespace sbd {
       helper.BetaMajorToAlphaLen[i] = helper.BetaMajorToAlpha[i].size();
       helper.SinglesFromBetaLen[i] = helper.SinglesFromBeta[i].size();
     }
-    
-    size_t * begin = helper.SinglesFromBetaLen + nBeta;
+
+    helper.AlphaMajorToBetaSM.resize(nAlpha);
+    helper.AlphaMajorToDetSM.resize(nAlpha);
+    helper.SinglesFromAlphaSM.resize(nAlpha);
+
+    helper.BetaMajorToAlphaSM.resize(nBeta);
+    helper.BetaMajorToDetSM.resize(nBeta);
+    helper.SinglesFromBetaSM.resize(nBeta);
+
+    size_t total_size = 0;
+    for (size_t i = 0; i < nAlpha; i++) {
+      total_size += 2 * helper.AlphaMajorToBetaLen[i] + helper.SinglesFromAlphaLen[i];
+    }
+    for (size_t i = 0; i < nBeta; i++) {
+      total_size += 2 * helper.BetaMajorToAlphaLen[i] + helper.SinglesFromBetaLen[i];
+    }
+
+    sharedMemory.resize(total_size);
+
+    // size_t * begin = (size_t *) malloc(total_size * sizeof(size_t));
+    // size_t * begin = helper.SinglesFromBetaLen + nBeta;
+    size_t * begin = sharedMemory.data();
     size_t counter = 0;
 
     for (size_t i = 0; i < nAlpha; i++) {
