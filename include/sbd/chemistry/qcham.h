@@ -213,8 +213,6 @@ namespace sbd {
       }
     }
 
-    std::cout << " End Diagonal terms " << std::endl;
-
     std::vector<std::vector<std::vector<size_t>>> tdets(data_width);
     int inc_size = (data_width-1)/2;
     int dec_size = (data_width)/2;
