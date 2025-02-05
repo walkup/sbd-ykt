@@ -1,9 +1,9 @@
 /**
-@file sbd/chemistry/twdavidson.h
+@file sbd/chemistry/twist/davidson.h
 @brief davidson for twist-basis parallelization scheme
 */
-#ifndef SBD_CHEMISTRY_TWDAVIDSON_H
-#define SBD_CHEMISTRY_TWDAVIDSON_H
+#ifndef SBD_CHEMISTRY_TWIST_DAVIDSON_H
+#define SBD_CHEMISTRY_TWIST_DAVIDSON_H
 
 namespace sbd {
 

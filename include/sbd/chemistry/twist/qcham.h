@@ -1,5 +1,5 @@
 /**
-@file sbd/chemistry/twham.h
+@file sbd/chemistry/twist/qcham.h
 @brief Function to make Hamiltonian for twist-based parallelization scheme
 */
 #ifndef SBD_CHEMISTRY_TWHAM_H

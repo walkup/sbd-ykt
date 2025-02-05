@@ -1,9 +1,9 @@
 /**
-   @file sbd/chemistry/twmult.h
-   @brief Function to perform Hamiltonian operation for twist-basis parallelization scheme
+@file sbd/chemistry/twist/mult.h
+@brief Function to perform Hamiltonian operation for twist-basis parallelization scheme
 */
-#ifndef SBD_CHEMISTRY_TWMULT_H
-#define SBD_CHEMISTRY_TWMULT_H
+#ifndef SBD_CHEMISTRY_TWIST_MULT_H
+#define SBD_CHEMISTRY_TWIST_MULT_H
 
 namespace sbd {
 

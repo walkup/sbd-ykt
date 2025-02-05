@@ -1,9 +1,9 @@
 /**
-@file sbd/chemistry/helpers.h
+@file sbd/chemistry/twist/helpers.h
 @brief Helper array to construct Hamiltonian for twisted-basis assuming tensor product basis of alpha and beta strings
  */
-#ifndef SBD_CHEMISTRY_TWHELPER_H
-#define SBD_CHEMISTRY_TWHELPER_H
+#ifndef SBD_CHEMISTRY_TWIST_HELPER_H
+#define SBD_CHEMISTRY_TWIST_HELPER_H
 
 namespace sbd {
   
