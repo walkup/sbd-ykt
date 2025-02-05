@@ -9,8 +9,8 @@ namespace sbd {
 
   std::vector<size_t> DetFromAlphaBeta(const std::vector<size_t>& A,
 				       const std::vector<size_t>& B,
-				       size_t bit_length,
-				       size_t L) {
+				       const size_t bit_length,
+				       const size_t L) {
     size_t D_size = (2*L+bit_length-1)/bit_length;
     std::vector<size_t> D(D_size,0);
     for(size_t i=0; i < L; ++i) {
