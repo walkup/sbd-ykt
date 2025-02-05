@@ -1024,7 +1024,23 @@ Function for finding the state index of target bit string
       }
     }
   }
-  
+
+  std::string makestring(const std::vector<size_t> & config,
+			 size_t bit_length,
+			 size_t L) {
+    std::string s;
+    for(size_t i=L; i > 0; i--) {
+      size_t p = (i-1) % bit_length;
+      size_t b = (i-1) / bit_length;
+      if( config[b] & (static_cast<size_t>(1) << p) ) {
+	s += std::string("1").c_str();
+      }
+      else {
+	s += std::string("0").c_str();
+      }
+    }
+    return s;
+  }
 
 }
 

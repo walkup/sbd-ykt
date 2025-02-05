@@ -139,7 +139,7 @@ namespace sbd {
 	  const std::vector<size_t> & DetAtI = dets[DetI - 1];
 	  
 	  // ExcitationDistance
-	  if( difference(DetAtI,DetAtJ,bit_length,2*norbs) == 2 ) {
+	  if( difference(DetAtI,DetAtJ,bit_length,2*norbs) == 4 ) {
 	    size_t orbDiff;
 	    ElemT eij = Hij(DetAtJ,DetAtI,
 			    bit_length,norbs,I0,I1,I2,orbDiff);
@@ -158,7 +158,7 @@ namespace sbd {
 	  const std::vector<size_t> & DetAtI = dets[DetI - 1];
 	  
 	  // ExcitationDistance
-	  if ( difference(DetAtI,DetAtI,bit_length,2*norbs) == 2 ) {
+	  if ( difference(DetAtI,DetAtJ,bit_length,2*norbs) == 4 ) {
 	    size_t orbDiff;
 	    ElemT eij = Hij(DetAtJ,DetAtI,
 			    bit_length,norbs,I0,I1,I2,orbDiff);
@@ -263,6 +263,7 @@ namespace sbd {
 	
 	for(size_t i=i_start; i < i_end; i++) {
 	  for(size_t ii=0; ii < helper.AlphaMajorToBetaLen[i]; ii++) {
+	    
 	    size_t Astring = i;
 	    size_t Bstring = helper.AlphaMajorToBetaSM[i][ii];
 	    size_t DetI = helper.AlphaMajorToDetSM[i][ii];
@@ -279,15 +280,19 @@ namespace sbd {
 	      if( itA != (&helper.BetaMajorToAlphaSM[Bstring][0]
 			 + helper.BetaMajorToAlphaLen[Bstring]) ) {
 		int indexA = std::distance(&helper.BetaMajorToAlphaSM[Bstring][0],itA);
+		if( helper.BetaMajorToAlphaSM[Bstring][indexA] != Asingle ) continue;
+		
 		int DetJ = helper.BetaMajorToDetSM[Bstring][indexA];
 		if(DetJ == DetI) continue;
 		size_t orbDiff;
 		ElemT eij = Hij(dets[DetI-1],dets[DetJ-1],
 				bit_length,norbs,I0,I1,I2,orbDiff);
-		local_ih.push_back(DetI-1);
-		local_jh.push_back(DetJ-1);
-		local_tr.push_back(0);
-		local_hij.push_back(eij);
+		if( std::abs(eij) > 1.0e-8 ) {
+		  local_ih.push_back(DetI-1);
+		  local_jh.push_back(DetJ-1);
+		  local_tr.push_back(0);
+		  local_hij.push_back(eij);
+		}
 	      }
 	    }
 	    
@@ -318,10 +323,12 @@ namespace sbd {
 		  size_t orbDiff;
 		  ElemT eij = Hij(dets[DetJ-1], dets[DetI-1],
 				  bit_length,norbs,I0,I1,I2,orbDiff);
-		  local_ih.push_back(DetI-1);
-		  local_jh.push_back(DetJ-1);
-		  local_tr.push_back(0);
-		  local_hij.push_back(eij);
+		  if( std::abs(eij) > 1.0e-8 ) {
+		    local_ih.push_back(DetI-1);
+		    local_jh.push_back(DetJ-1);
+		    local_tr.push_back(0);
+		    local_hij.push_back(eij);
+		  }
 		}
 	      }
 	    }
@@ -329,8 +336,6 @@ namespace sbd {
 	    // single beta excitation
 	    for (int j = 0; j < helper.SinglesFromBetaLen[Bstring]; j++) {
 	      int Bsingle = helper.SinglesFromBetaSM[Bstring][j];
-	      
-	      // Find Bsingle by bisection
 	      auto it = std::lower_bound(&helper.AlphaMajorToBetaSM[Astring][0],
 					 &helper.AlphaMajorToBetaSM[Astring][0]
 					 + helper.AlphaMajorToBetaLen[Astring],
@@ -338,7 +343,7 @@ namespace sbd {
 	      if( it != (&helper.AlphaMajorToBetaSM[Astring][0]
 			 +helper.AlphaMajorToBetaLen[Astring]) ) {
 		int index = std::distance(&helper.AlphaMajorToBetaSM[Astring][0], it);
-		if ( helper.AlphaMajorToBetaSM[Astring][index] != Bsingle) {
+		if ( helper.AlphaMajorToBetaSM[Astring][index] != Bsingle ) {
 		  continue; //
 		}
 	      
@@ -349,11 +354,12 @@ namespace sbd {
 		size_t orbDiff;
 		ElemT eij = Hij(dets[DetJ-1],dets[DetI-1],
 				bit_length,norbs,I0,I1,I2,orbDiff);
-	      
-		local_ih.push_back(DetI-1);
-		local_jh.push_back(DetJ-1);
-		local_tr.push_back(0);
-		local_hij.push_back(eij);
+		if( std::abs(eij) > 1.0e-8 ) {
+		  local_ih.push_back(DetI-1);
+		  local_jh.push_back(DetJ-1);
+		  local_tr.push_back(0);
+		  local_hij.push_back(eij);
+		}
 	      }
 	    }
 	    
@@ -366,14 +372,17 @@ namespace sbd {
 	      const std::vector<size_t> & DetAtI = dets[DetI - 1];
 	      
 	      // ExcitationDistance
-	      if( difference(DetAtI,DetAtJ,bit_length,2*norbs) == 2 ) {
+	      if( difference(DetAtI,DetAtJ,bit_length,2*norbs) == 4 ) {
+
 		size_t orbDiff;
 		ElemT eij = Hij(DetAtJ,DetAtI,
 				bit_length,norbs,I0,I1,I2,orbDiff);
-		local_ih.push_back(DetI-1);
-		local_jh.push_back(DetJ-1);
-		local_tr.push_back(0);
-		local_hij.push_back(eij);
+		if( std::abs(eij) > 1.0e-8 ) {
+		  local_ih.push_back(DetI-1);
+		  local_jh.push_back(DetJ-1);
+		  local_tr.push_back(0);
+		  local_hij.push_back(eij);
+		}
 	      }
 	    }
 	    
@@ -387,14 +396,17 @@ namespace sbd {
 	      const std::vector<size_t> & DetAtI = dets[DetI - 1];
 	      
 	      // ExcitationDistance
-	      if ( difference(DetAtI,DetAtI,bit_length,2*norbs) == 2 ) {
+	      if ( difference(DetAtI,DetAtJ,bit_length,2*norbs) == 4 ) {
+
 		size_t orbDiff;
 		ElemT eij = Hij(DetAtJ,DetAtI,
 				bit_length,norbs,I0,I1,I2,orbDiff);
-		local_ih.push_back(DetI-1);
-		local_jh.push_back(DetJ-1);
-		local_tr.push_back(0);
-		local_hij.push_back(eij);
+		if( std::abs(eij) > 1.0e-8 ) {
+		  local_ih.push_back(DetI-1);
+		  local_jh.push_back(DetJ-1);
+		  local_tr.push_back(0);
+		  local_hij.push_back(eij);
+		}
 	      }
 	    }
 	  } // end for loop for ii

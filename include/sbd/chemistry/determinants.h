@@ -124,46 +124,46 @@ namespace sbd {
     if (bit_length <= 0 || bit_length > static_cast<size_t>(8 * sizeof(size_t))) {
       throw std::invalid_argument("Invalid bit length");
     }
-    
-    // sgn = 1.0; // Initialize the parity as positive
-    
+
     size_t blockStart = start / bit_length;
     size_t bitStart = start % bit_length;
-    
+
     size_t blockEnd = end / bit_length;
     size_t bitEnd = end % bit_length;
-    
+
+    int nonZeroBits = 0; // counter for nonzero bits
+
     // 1. Count bits in the start block
     if (blockStart == blockEnd) {
-      // Case where start and end are within the same block
-      size_t mask = ((size_t(1) << bitEnd) - 1) ^ ((size_t(1) << bitStart) - 1);
-      size_t bits = dets[blockStart] & mask;
-      size_t count = __builtin_popcountll(bits);
-      sgn *= (count % 2 == 0) ? 1.0 : -1.0;
-      return;
+        // the case where start and end is same block
+        size_t mask = ((size_t(1) << bitEnd) - 1) ^ ((size_t(1) << bitStart) - 1);
+        nonZeroBits += __builtin_popcountll(dets[blockStart] & mask);
+    } else {
+        // 2. Handle the partial bits in the start block
+        if (bitStart != 0) {
+            size_t mask = ~((size_t(1) << bitStart) - 1); // count after bitStart
+            nonZeroBits += __builtin_popcountll(dets[blockStart] & mask);
+            blockStart++;
+        }
+
+        // 3. Handle full blocks in between
+        for (size_t i = blockStart; i < blockEnd; i++) {
+            nonZeroBits += __builtin_popcountll(dets[i]);
+        }
+
+        // 4. Handle the partial bits in the end block
+        if (bitEnd != 0) {
+            size_t mask = (size_t(1) << bitEnd) - 1; // count before bitEnd
+            nonZeroBits += __builtin_popcountll(dets[blockEnd] & mask);
+        }
     }
-    
-    // 2. Handle the partial bits in the start block
-    if (bitStart != 0) {
-      size_t mask = ~((size_t(1) << bitStart) - 1); // Mask for all bits >= bitStart
-      size_t bits = dets[blockStart] & mask;
-      size_t count = __builtin_popcountll(bits);
-      sgn *= (count % 2 == 0) ? 1.0 : -1.0;
-      blockStart++; // Move to the next block
-    }
-    
-    // 3. Handle full blocks in between
-    for (size_t i = blockStart; i < blockEnd; i++) {
-      size_t count = __builtin_popcountll(dets[i]); // Count bits in the block
-      sgn *= (count % 2 == 0) ? 1.0 : -1.0;
-    }
-    
-    // 4. Handle the partial bits in the end block
-    if (bitEnd != 0) {
-      size_t mask = (size_t(1) << bitEnd) - 1; // Mask for all bits < bitEnd
-      size_t bits = dets[blockEnd] & mask;
-      size_t count = __builtin_popcountll(bits);
-      sgn *= (count % 2 == 0) ? 1.0 : -1.0;
+
+    // parity estimation
+    sgn *= (-2. * (nonZeroBits % 2) + 1);
+
+    // flip sign if start == 1
+    if ((dets[start / bit_length] >> (start % bit_length)) & 1) {
+        sgn *= -1.;
     }
   }
 
@@ -173,6 +173,12 @@ namespace sbd {
 	      const int i, const int j, const int a, const int b,
 	      double& sgn) {
     parity(dets, bit_length, std::min(i,a), std::max(i,a), sgn);
+    if( !getocc(dets,bit_length,i) ) {
+      throw std::invalid_argument("parity: bit 0 at occupied site");
+    }
+    if( getocc(dets,bit_length,a) ) {
+      throw std::invalid_argument("parity: bit 1 at empty site");
+    }
     setocc(const_cast<std::vector<size_t>&>(dets), bit_length, i, false);
     setocc(const_cast<std::vector<size_t>&>(dets), bit_length, a, true);
     parity(dets, bit_length, std::min(j,b), std::max(j,b), sgn);
@@ -397,7 +403,7 @@ namespace sbd {
 
     if( nc == 0 ) {
       orbDiff = static_cast<size_t>(0);
-      return ZeroExcite(DetB,bit_length,2*L,I0,I1,I2);
+      return ZeroExcite(DetB,bit_length,L,I0,I1,I2);
     } else if ( nc == 1 ) {
       orbDiff = static_cast<size_t>(c[0] * L + d[0]);
       return OneExcite(DetB,bit_length,d[0],c[0],I1,I2);
