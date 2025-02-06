@@ -231,8 +231,8 @@ namespace sbd {
 
 
   void MpiBcast(FCIDump & fcidump,
-		MPI_Comm comm,
-		int root) {
+		int root,
+		MPI_Comm comm) {
 
     int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
     int mpi_size; MPI_Comm_size(comm,&mpi_size);

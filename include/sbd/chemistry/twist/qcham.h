@@ -132,7 +132,7 @@ namespace sbd {
 	    // double alpha excitation
 	    for(size_t j=0; j < helper.DoublesFromAlphaLen[ia-helper.braAlphaStart]; j++) {
 	      size_t ja = helper.DoublesFromAlphaSM[ia-helper.braAlphaStart][j];
-	      size_t ketIdx = (ja-helper.ketAlphaStart)*ketBetaSize + (ib-helper.ketBetaStart);
+	      size_t ketIdx = (ja-helper.ketAlphaStart)*ketBetaSize + ib-helper.ketBetaStart;
 	      auto DetJ = DetFromAlphaBeta(adets[ja],bdets[ib],bit_length,norbs);
 	      size_t orbDiff;
 	      ElemT eij = Hij(DetI,DetJ,bit_length,norbs,I0,I1,I2,orbDiff);

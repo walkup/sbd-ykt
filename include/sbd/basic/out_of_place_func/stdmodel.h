@@ -28,9 +28,9 @@ namespace sbd {
       fcidump = LoadFCIDump(filename);
     }
     if( mpi_rank_b == 0 ) {
-      MpiBcast(fcidump,h_comm,0);
+      MpiBcast(fcidump,0,h_comm);
     }
-    MpiBcast(fcidump,b_comm,0);
+    MpiBcast(fcidump,0,b_comm);
 
     for(const auto & [key, value] : fcidump.header) {
       if( key == std::string("NORB") ) {

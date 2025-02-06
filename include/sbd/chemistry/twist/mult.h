@@ -13,7 +13,7 @@ namespace sbd {
 	    const std::vector<std::vector<size_t>> & jh,
 	    const std::vector<std::vector<ElemT>> & hij,
 	    std::vector<ElemT> & Wk,
-	    std::vector<ElemT> Wb,
+	    std::vector<ElemT> & Wb,
 	    size_t bit_length,
 	    MPI_Comm h_comm,
 	    MPI_Comm b_comm,
