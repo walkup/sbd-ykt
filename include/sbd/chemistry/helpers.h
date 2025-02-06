@@ -236,24 +236,6 @@ namespace sbd {
     }
   }
 
-
-  struct TwistHelpers {
-    std::vector<std::vector<size_t>> SinglesFromAlpha;
-    std::vector<std::vector<size_t>> SinglesFromBeta;
-    std::vector<std::vector<size_t>> DoublesFromAlpha;
-    std::vector<std::vector<size_t>> DoublesFromBeta;
-    size_t * SinglesFromAlphaLen;
-    size_t * SinglesFromBetaLen;
-    size_t * DoublesFromAlphaLen;
-    size_t * DoublesFromBetaLen;
-    std::vector<size_t*> SinglesFromAlphaSM;
-    std::vector<size_t*> SinglesFromBetaSM;
-    std::vector<size_t*> DoublesFromAlphaSM;
-    std::vector<size_t*> DoublesFromBetaSM;
-  };
-
-  void 
-  
 }
 
 #endif // end SBD_CHEMISTRY_HELPERS_H

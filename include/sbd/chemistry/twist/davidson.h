@@ -7,14 +7,97 @@
 
 namespace sbd {
 
-  template <typename ElemT>
-  void TwistBasisVectorSetup(std::vector<ElemT> & W,
-			     const TwistHelper helper,
-			     MPI_Comm & h_comm,
-			     MPI_Comm & b_comm,
-			     MPI_Comm & t_comm,
-			     MPI_Comm & r_comm) {
+/**
+
+   --- b_comm --- color rule: y = const
+   
+    o -- o -- o -- o
+
+    o -- o -- o -- o
+
+    o -- o -- o -- o
+
+    o -- o -- o -- o
     
+x = 0    1    2    3
+   
+   --- r_comm --- color rule: x = const
+                      y
+    o    o    o    o  3
+    |    |    |    |
+    o    o    o    o  2
+    |    |    |    |
+    o    o    o    o  1
+    |    |    |    |
+    o    o    o    o  0
+x = 0    1    2    3
+
+   --- t_comm --- color rule: mod(2L-x-y,L) = const
+                     | winded
+   o    o    o    o
+    \    \    \    \
+ - o `- o `- o `- o `
+    \    \    \    \
+ - o `- o `- o `- o `
+    \    \    \    \
+ - o `- o `- o `- o `
+   
+ Example:
+   (0,0) -> mod(8-0-0,4) = 0
+   (3,1) -> mod(8-3-1,4) = 0
+   ...
+
+   (1,0) -> mod(8-1-0, 4) = 3
+   (0,1) -> mod(8-0-1, 4) = 3
+   ...
+
+   (2,0) -> mod(8-2-0, 4) = 2
+   (1,1) -> mod(8-1-1, 4) = 2
+   ...
+
+   (3,0) -> mod(8-3-0, 4) = 1
+   (2,1) -> mod(8-2-1, 4) = 1
+   ...
+   -----------------------
+
+   - h_comm is the communicator in direction
+     perpendicular to b_comm times r_comm plane.
+     
+ */
+  
+
+  
+  template <typename ElemT>
+  void TwistBasisInitVector(std::vector<ElemT> & W,
+			    const TwistHelper helper,
+			    MPI_Comm & h_comm,
+			    MPI_Comm & b_comm,
+			    MPI_Comm & t_comm,
+			    MPI_Comm & r_comm,
+			    int init) {
+    int mpi_rank_h; MPI_Comm_rank(h_comm,&mpi_rank_h);
+    int mpi_size_h; MPI_Comm_size(h_comm,&mpi_size_h);
+    int mpi_rank_b; MPI_Comm_rank(b_comm,&mpi_rank_b);
+    int mpi_size_b; MPI_Comm_size(b_comm,&mpi_size_b);
+    int mpi_rank_t; MPI_Comm_rank(t_comm,&mpi_rank_t);
+    int mpi_size_t; MPI_Comm_size(t_comm,&mpi_size_t);
+    int mpi_rank_r; MPI_Comm_rank(r_comm,&mpi_rank_r);
+    int mpi_size_r; MPI_Comm_size(r_comm,&mpi_size_r);
+
+
+    size_t AlphaSize = helper.braAlphaEnd - helper.braAlphaStart;
+    size_t BetaSize  = helper.braBetaEnd - helper.braBetaStart;
+    W.resize(AlphaSize*BetaSize,ElemT(0.0));
+    if( init == 0 ) { // default = start from fermi sea
+      if( mpi_rank_b == 0 ) {
+	W[0] = ElemT(1.0);
+      }
+    } else if ( init == 1 ) {
+      if( mpi_rank_r == 0 ) {
+	Random(W,b_comm,h_comm);
+      }
+      MpiBcast(W,0,r_comm);
+    }
   }
 
   template <typename ElemT, typename RealT>

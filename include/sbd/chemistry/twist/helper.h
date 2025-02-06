@@ -165,46 +165,60 @@ namespace sbd {
     }
     int x = mpi_rank % bsize;
     int y = mpi_rank / bsize;
-    int t = (x-y+bsize) % bsize;
+    int t = (2*bsize-x-y) % bsize;
     MPI_Comm_split(comm,t,mpi_rank,&t_comm);
     MPI_Comm_split(comm,x,mpi_rank,&r_comm);
     MPI_Comm_split(comm,y,mpi_rank,&b_comm);
     
   }
   
-  void PopulateHelpers(const std::vector<std::vector<size_t>> & ADets,
-		       const std::vector<std::vector<size_t>> & BDets,
+  void PopulateHelpers(const std::vector<std::vector<size_t>> & adets,
+		       const std::vector<std::vector<size_t>> & bdets,
 		       size_t bit_length,
 		       size_t norb,
 		       TwistHelper & helper,
 		       MPI_Comm comm,
 		       MPI_Comm & t_comm,
 		       MPI_Comm & r_comm,
-		       MPI_Comm & b_comm) {
+		       MPI_Comm & b_comm,
+		       size_t alpha_comm_size,
+		       size_t beta_comm_size) {
+    
     TwistCommunicator(comm,t_comm,r_comm,b_comm);
     
     int mpi_size;  MPI_Comm_size(comm,&mpi_size);
     int mpi_rank;  MPI_Comm_rank(comm,&mpi_rank);
     int mpi_sqrt;  MPI_Comm_size(t_comm,&mpi_sqrt);
-    
-    size_t braStart=0;
-    size_t braEnd=ADets.size();
-    size_t ketStart=0;
-    size_t ketEnd=ADets.size();
+
+    if( mpi_sqrt != alpha_comm_size*beta_comm_size ) {
+      throw std::invalid_arguments("MPI Size for alpha and beta is not appropriate");
+    }
     
     int x = mpi_rank % mpi_size;
     int y = mpi_rank / mpi_size;
     int bra_rank = x;
     int ket_rank = (x-y+mpi_sqrt) % mpi_sqrt;
-    get_mpi_range(mpi_sqrt,bra_rank,braStart,braEnd);
-    get_mpi_range(mpi_sqrt,ket_rank,ketStart,ketEnd);
-    helper.braAlphaStart = braStart;
-    helper.braAlphaEnd = braEnd;
-    helper.ketAlphaStart = ketStart;
-    helper.ketAlphaEnd = ketEnd;
+
+    int bra_alpha_rank = bra_rank / beta_comm_size;
+    int ket_alpha_rank = ket_rank / beta_comm_size;
+    int bra_beta_rank = bra_rank % beta_comm_size;
+    int ket_beta_rank = ket_rank % beta_comm_size;
+
+    helper.braAlphaStart = 0;
+    helper.braAlphaEnd = adets.size();
+    helper.ketAlphaStart = 0;
+    helper.ketAlphaEnd = adets.size();
+    helper.braBetaStart = 0;
+    helper.braBetaEnd = bdets.size();
+    helper.ketBetaStart = 0;
+    helper.ketBetaEnd = bdets.size();
+    get_mpi_range(alpha_comm_size,bra_alpha_rank,helper.braAlphaStart,helper.braAlphaEnd);
+    get_mpi_range(alpha_comm_size,ket_alpha_rank,helper.ketAlphaStart,helper.ketAlphaEnd);
+    get_mpi_range(beta_comm_size,bra_beta_rank,helper.braBetaStart,helper.braBetaEnd);
+    get_mpi_range(beta_comm_size,ket_beta_rank,helper.ketBetaStart,helper.ketBetaEnd);
     
-    GenerateSingles(ADets,BDets,bit_length,norb,helper);
-    GenerateDoubles(ADets,BDets,bit_length,norb,helper);
+    GenerateSingles(adets,bdets,bit_length,norb,helper);
+    GenerateDoubles(adets,bdets,bit_length,norb,helper);
     
   }
   
