@@ -69,7 +69,7 @@ x = 0    1    2    3
   
   template <typename ElemT>
   void TwistBasisInitVector(std::vector<ElemT> & W,
-			    const TwistHelper helper,
+			    const TwistHelpers helper,
 			    MPI_Comm & h_comm,
 			    MPI_Comm & b_comm,
 			    MPI_Comm & t_comm,
@@ -94,7 +94,7 @@ x = 0    1    2    3
       }
     } else if ( init == 1 ) {
       if( mpi_rank_r == 0 ) {
-	Random(W,b_comm,h_comm);
+	Randomize(W,b_comm,h_comm);
       }
       MpiBcast(W,0,r_comm);
     }

@@ -12,7 +12,7 @@ namespace sbd {
 	    const std::vector<std::vector<size_t>> & ih,
 	    const std::vector<std::vector<size_t>> & jh,
 	    const std::vector<std::vector<ElemT>> & hij,
-	    const std::vector<ElemT> & Wk,
+	    std::vector<ElemT> & Wk,
 	    std::vector<ElemT> Wb,
 	    size_t bit_length,
 	    MPI_Comm h_comm,
@@ -52,8 +52,8 @@ namespace sbd {
       }
 
       size_t thread_id = omp_get_thread_num();
-      for(size_t i=0; i < hij[thread_id].size(); k++) {
-	Wb[ih[thread_id][i]] += hij[thread_id][k] * Wk[jh[thead_id][k]];
+      for(size_t k=0; k < hij[thread_id].size(); k++) {
+	Wb[ih[thread_id][k]] += hij[thread_id][k] * Wk[jh[thread_id][k]];
       }
     }
     MpiAllreduce(Wb,MPI_SUM,r_comm);

@@ -12,12 +12,10 @@ namespace sbd {
 		 const std::vector<std::vector<size_t>> & bdets,
 		 const size_t bit_length,
 		 const size_t norbs,
-		 const TwistHelper & helper,
+		 const TwistHelpers & helper,
 		 ElemT & I0,
 		 oneInt<ElemT> & I1,
 		 twoInt<ElemT> & I2,
-		 const size_t StartIdx,
-		 const size_t EndIdx,
 		 std::vector<ElemT> & hii,
 		 std::vector<std::vector<size_t>> & ih,
 		 std::vector<std::vector<size_t>> & jh,
@@ -29,20 +27,13 @@ namespace sbd {
 
     int mpi_rank_h = 0;
     int mpi_size_h = 1;
-    int mpi_rank_b = 0;
-    int mpi_size_b = 1;
-    int mpi_rank_t = 0;
-    int mpi_size_t = 1;
-    int mpi_rank_r = 0;
-    int mpi_size_r = 1;
     MPI_Comm_rank(h_comm,&mpi_rank_h);
     MPI_Comm_size(h_comm,&mpi_size_h);
-    MPI_Comm_rank(b_comm,&mpi_rank_b);
-    MPI_Comm_size(b_comm,&mpi_size_b);
-    MPI_Comm_rank(t_comm,&mpi_rank_t);
-    MPI_Comm_size(t_comm,&mpi_size_t);
-    MPI_Comm_rank(r_comm,&mpi_rank_r);
-    MPI_Comm_size(r_comm,&mpi_size_r);
+
+    int mpi_size_x; MPI_Comm_size(b_comm,&mpi_size_x);
+    int mpi_rank_x; MPI_Comm_rank(b_comm,&mpi_rank_x);
+    int mpi_size_y; MPI_Comm_size(r_comm,&mpi_size_y);
+    int mpi_rank_y; MPI_Comm_rank(r_comm,&mpi_rank_y);
 
     size_t braAlphaSize = helper.braAlphaEnd-helper.braAlphaStart;
     size_t ketAlphaSize = helper.ketAlphaEnd-helper.ketAlphaStart;
@@ -60,8 +51,8 @@ namespace sbd {
 	hii.resize(braSize,ElemT(0.0));
 #pragma omp for
 	for(size_t ia=helper.braAlphaStart; ia < helper.braAlphaEnd; ia++) {
-	  for(size_t ib=0; ib < bSize; ib++) {
-	    size_t k = (ia-helper.braAlphaStart)*bSize+ib-helper.braBetaStart;
+	  for(size_t ib=helper.braBetaStart; ib < helper.braBetaEnd; ib++) {
+	    size_t k = (ia-helper.braAlphaStart)*braBetaSize+ib-helper.braBetaStart;
 	    if( (k % mpi_size_h) != mpi_rank_h ) continue;
 	    auto det = DetFromAlphaBeta(adets[ia],bdets[ib],bit_length,norbs);
 	    hii[k] = ZeroExcite(det,bit_length,norbs,I0,I1,I2);
@@ -70,20 +61,44 @@ namespace sbd {
       }
     }
 
-    size_t chunk_size = bdets.size() / num_threads;
+#ifdef SBD_DEBUG
+    for(int rank_y=0; rank_y < mpi_size_y; rank_y++) {
+      for(int rank_x=0; rank_x < mpi_size_x; rank_x++) {
+	if( mpi_rank_x == rank_x && mpi_rank_y == rank_y ) {
+	  std::cout << " mpi rank (" << rank_x << "," << rank_y << ")";
+	  std::cout << " braAlphaRange, braBetaRange, ketAlphaRange, ketBetaRange = "
+		    << "(" << helper.braAlphaStart << "," << helper.braAlphaEnd
+		    << "), (" << helper.braBetaStart << "," << helper.braBetaEnd
+		    << "), (" << helper.ketAlphaStart << "," << helper.ketAlphaEnd
+		    << "), (" << helper.ketBetaStart << "," << helper.ketBetaEnd
+		    << ")" << std::endl;
+	}
+	MPI_Barrier(b_comm);
+      }
+      MPI_Barrier(r_comm);
+    }
+    sleep(1);
+#endif
+
+    ih.resize(num_threads);
+    jh.resize(num_threads);
+    hij.resize(num_threads);
+
+    size_t chunk_size = (helper.braBetaEnd-helper.braBetaStart) / num_threads;
 #pragma omp parallel
     {
       size_t thread_id = omp_get_thread_num();
       size_t ib_start = thread_id * chunk_size;
       size_t ib_end   = (thread_id+1) * chunk_size;
       if( thread_id == num_threads - 1 ) {
-	ib_end = bdets.size();
+	ib_end = helper.braBetaEnd;
       }
 
       std::vector<size_t> local_ih;
       std::vector<size_t> local_jh;
       std::vector<ElemT> local_hij;
 
+      std::cout << " start off-diagonal " << std::endl;
       // alpha-beta excitation
 
       for(size_t ia = helper.braAlphaStart; ia < helper.braAlphaEnd; ia++) {
@@ -110,14 +125,14 @@ namespace sbd {
 	      if( std::abs(eij) > 1.0e-8 ) {
 		local_ih.push_back(braIdx);
 		local_jh.push_back(ketIdx);
-	      local_hij.push_back(eij);
+		local_hij.push_back(eij);
 	      }
 	    }
 
 	    // double alpha excitation
 	    for(size_t j=0; j < helper.DoublesFromAlphaLen[ia-helper.braAlphaStart]; j++) {
 	      size_t ja = helper.DoublesFromAlphaSM[ia-helper.braAlphaStart][j];
-	      size_t ketIdx = (ja-helper.ketAlphaStart)*ketBetaSize + jb-helper.ketBetaStart;
+	      size_t ketIdx = (ja-helper.ketAlphaStart)*ketBetaSize + (ib-helper.ketBetaStart);
 	      auto DetJ = DetFromAlphaBeta(adets[ja],bdets[ib],bit_length,norbs);
 	      size_t orbDiff;
 	      ElemT eij = Hij(DetI,DetJ,bit_length,norbs,I0,I1,I2,orbDiff);
@@ -147,8 +162,8 @@ namespace sbd {
 	    }
 	  }
 
-	  // single beta excitation
 	  if( helper.braAlphaStart == helper.ketAlphaStart ) {
+	    // single beta excitation
 	    for(size_t j=0; j < helper.SinglesFromBetaLen[ib-helper.braBetaStart]; j++) {
 	      size_t jb = helper.SinglesFromBetaSM[ib-helper.braBetaStart][j];
 	      size_t ketIdx = (ia-helper.ketAlphaStart) * ketBetaSize + jb - helper.ketBetaStart;
