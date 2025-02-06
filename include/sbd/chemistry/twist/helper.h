@@ -317,9 +317,9 @@ namespace sbd {
     }
     
     helper.SinglesFromAlphaSM.resize(nAlpha);
-    helper.SinglesFromBetaSM.resize(nBeta);
     helper.DoublesFromAlphaSM.resize(nAlpha);
-    helper.DoublesFromBetaSM.resize(nAlpha);
+    helper.SinglesFromBetaSM.resize(nBeta);
+    helper.DoublesFromBetaSM.resize(nBeta);
     
     size_t total_size = 0;
     for (size_t i=0; i < nAlpha; i++) {
