@@ -60,7 +60,7 @@ namespace sbd {
 			       ADets.begin()+ketAlphaEnd,
 			       aDet);
 	  if( itk != ADets.begin()+ketAlphaEnd ) {
-	    auto ik = std::distance(ADets.begin()+ketAlphaStart,itk);
+	    auto ik = std::distance(ADets.begin(),itk);
 	    helper.SinglesFromAlpha[ib-braAlphaStart].push_back(static_cast<size_t>(ik));
 	  }
 	}
@@ -75,9 +75,10 @@ namespace sbd {
 	  setocc(bDet,bit_length,closed[j],false);
 	  setocc(bDet,bit_length,open[k],true);
 	  auto itk = std::find(BDets.begin()+ketBetaStart,
-			       BDets.begin()+ketBetaEnd,bDet);
+			       BDets.begin()+ketBetaEnd,
+			       bDet);
 	  if( itk != BDets.begin()+ketBetaEnd ) {
-	    auto ik = std::distance(BDets.begin()+ketBetaStart,itk);
+	    auto ik = std::distance(BDets.begin(),itk);
 	    helper.SinglesFromBeta[ib-braBetaStart].push_back(static_cast<size_t>(ik));
 	  }
 	}
@@ -118,7 +119,7 @@ namespace sbd {
 				   ADets.begin()+ketAlphaEnd,
 				   aDet);
 	      if( itk != ADets.begin()+ketAlphaEnd ) {
-		auto ik = std::distance(ADets.begin()+ketAlphaStart,itk);
+		auto ik = std::distance(ADets.begin(),itk);
 		helper.DoublesFromAlpha[ib-braAlphaStart].push_back(static_cast<size_t>(ik));
 	      }
 	    }
@@ -266,7 +267,14 @@ namespace sbd {
 	if( y_rank == y && x_rank == x ) {
 	  std::cout << " Singles is finished at mpi rank (" << x << "," << y << ")" << std::endl;
 	  for(size_t i=0; i < helper.SinglesFromAlpha.size(); i++) {
-	    std::cout << " Size of Singles from alpha[" << i+helper.braAlphaStart << "] = " << helper.SinglesFromAlpha[i].size() << std::endl;
+	    std::cout << " Size of Singles from alpha ("
+		      << makestring(adets[i+helper.braAlphaStart],bit_length,norb) 
+		      << ") = " << helper.SinglesFromAlpha[i].size() << ":";
+	    for(size_t k=0; k < helper.SinglesFromAlpha[i].size(); k++) {
+	      size_t m = helper.SinglesFromAlpha[i][k];
+	      std::cout << " (" << makestring(adets[m],bit_length,norb) << ")";
+	    }
+	    std::cout << std::endl;
 	  }
 	}
 	MPI_Barrier(b_comm);
@@ -284,7 +292,9 @@ namespace sbd {
 	if( y_rank == y && x_rank == x ) {
 	  std::cout << " Doubles is finished at mpi rank (" << x << "," << y << ")" << std::endl;
 	  for(size_t i=0; i < helper.SinglesFromAlpha.size(); i++) {
-	    std::cout << " Size of Doubles from alpha[" << i+helper.braAlphaStart << "] = " << helper.DoublesFromAlpha[i].size() << std::endl;
+	    std::cout << " Size of Doubles from alpha["
+		      << makestring(adets[i+helper.braAlphaStart],bit_length,norb)
+		      << "] = " << helper.DoublesFromAlpha[i].size() << std::endl;
 	  }
 	}
 	MPI_Barrier(b_comm);

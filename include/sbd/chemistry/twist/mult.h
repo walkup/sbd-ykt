@@ -40,10 +40,11 @@ namespace sbd {
     // distribute vector by t_comm
     MpiBcast(Wk,0,t_comm);
 
-    size_t num_threads = 1;
 #pragma omp parallel
     {
-      num_threads = omp_get_num_threads();
+      size_t num_threads = omp_get_num_threads();
+      size_t thread_id = omp_get_thread_num();
+      
       if( mpi_rank_r == 0 ) {
 #pragma omp for
 	for(size_t i=0; i < Wk.size(); i++) {
@@ -51,7 +52,6 @@ namespace sbd {
 	}
       }
 
-      size_t thread_id = omp_get_thread_num();
       for(size_t k=0; k < hij[thread_id].size(); k++) {
 	Wb[ih[thread_id][k]] += hij[thread_id][k] * Wk[jh[thread_id][k]];
       }
