@@ -101,7 +101,25 @@ namespace sbd {
     size_t ketBetaEnd = helper.ketBetaEnd;
 
     helper.DoublesFromAlpha.resize(braAlphaEnd-braAlphaStart);
-    
+    helper.DoublesFromBeta.resize(braBetaEnd-braBetaStart);
+
+    for(size_t ib=braAlphaStart; ib < braAlphaEnd; ib++) {
+      for(size_t ik=ketAlphaStart; ik < ketAlphaEnd; ik++) {
+	if( difference(ADets[ib],ADets[ik],bit_length,norb) == 4 ) {
+	  helper.DoublesFromAlpha[ib-braAlphaStart].push_back(static_cast<size_t>(ik));
+	}
+      }
+    }
+
+    for(size_t ib=braBetaStart; ib < braBetaEnd; ib++) {
+      for(size_t ik=ketBetaStart; ik < ketBetaEnd; ik++) {
+	if( difference(BDets[ib],BDets[ik],bit_length,norb) == 4 ) {
+	  helper.DoublesFromBeta[ib-braBetaStart].push_back(static_cast<size_t>(ik));
+	}
+      }
+    }
+
+    /*
     std::vector<int> closed(norb);
     std::vector<int> open(norb);
     for(size_t ib=braAlphaStart; ib < braAlphaEnd; ib++) {
@@ -128,8 +146,6 @@ namespace sbd {
       }
     }
 
-    helper.DoublesFromBeta.resize(braBetaEnd-braBetaStart);
-    
     for(size_t ib=braBetaStart; ib < braBetaEnd; ib++) {
       int nclosed = getOpenClosed(BDets[ib],bit_length,norb,open,closed);
       for(size_t i=0; i < nclosed; i++) {
@@ -153,6 +169,9 @@ namespace sbd {
 	}
       }
     }
+    */
+
+    
   }
 
   void TwistCommunicator(MPI_Comm comm,

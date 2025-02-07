@@ -98,7 +98,6 @@ namespace sbd {
       std::vector<size_t> local_jh;
       std::vector<ElemT> local_hij;
 
-      std::cout << " start off-diagonal " << std::endl;
       // alpha-beta excitation
 
       for(size_t ia = helper.braAlphaStart; ia < helper.braAlphaEnd; ia++) {
