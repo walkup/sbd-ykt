@@ -70,10 +70,10 @@ x = 0    1    2    3
   template <typename ElemT>
   void TwistBasisInitVector(std::vector<ElemT> & W,
 			    const TwistHelpers helper,
-			    MPI_Comm & h_comm,
-			    MPI_Comm & b_comm,
-			    MPI_Comm & t_comm,
-			    MPI_Comm & r_comm,
+			    MPI_Comm h_comm,
+			    MPI_Comm b_comm,
+			    MPI_Comm t_comm,
+			    MPI_Comm r_comm,
 			    int init) {
     int mpi_rank_h; MPI_Comm_rank(h_comm,&mpi_rank_h);
     int mpi_size_h; MPI_Comm_size(h_comm,&mpi_size_h);
@@ -83,7 +83,6 @@ x = 0    1    2    3
     int mpi_size_t; MPI_Comm_size(t_comm,&mpi_size_t);
     int mpi_rank_r; MPI_Comm_rank(r_comm,&mpi_rank_r);
     int mpi_size_r; MPI_Comm_size(r_comm,&mpi_size_r);
-
 
     size_t AlphaSize = helper.braAlphaEnd - helper.braAlphaStart;
     size_t BetaSize  = helper.braBetaEnd - helper.braBetaStart;
@@ -106,10 +105,8 @@ x = 0    1    2    3
 		const std::vector<std::vector<size_t>> & jh,
 		const std::vector<std::vector<ElemT>> & hij,
 		std::vector<ElemT> & W,
-		MPI_Comm & h_comm,
-		MPI_Comm & b_comm,
-		MPI_Comm & t_comm,
-		MPI_Comm & r_comm,
+		MPI_Comm h_comm,MPI_Comm b_comm,
+		MPI_Comm t_comm,MPI_Comm r_comm,
 		int max_iteration,
 		int num_block,
 		size_t bit_length,
@@ -154,6 +151,24 @@ x = 0    1    2    3
 
 	Zero(HC[ib]);
 	mult(hii,ih,jh,hij,C[ib],HC[ib],bit_length,h_comm,b_comm,t_comm,r_comm);
+
+#ifdef SBD_DEBUG
+	std::cout << " (h,b,t,r) = ("
+		  << mpi_rank_h << "," << mpi_rank_b << ","
+		  << mpi_rank_t << "," << mpi_rank_r << "): Hv(" << ib << ") =";
+	for(size_t n=0; n < std::min(static_cast<size_t>(6),W.size()); n++) {
+	  std::cout << " " << HC[ib][n];
+	}
+	std::cout << "..." << std::endl;
+	std::cout << " (h,b,t,r) = ("
+		  << mpi_rank_h << "," << mpi_rank_b << ","
+		  << mpi_rank_t << "," << mpi_rank_r << "):  v(" << ib << ") =";
+	for(size_t n=0; n < std::min(static_cast<size_t>(6),W.size()); n++) {
+	  std::cout << " " << C[ib][n];
+	}
+	std::cout << "..." << std::endl;
+#endif
+	
 	for(int jb=0; jb <= ib; jb++) {
 	  InnerProduct(C[jb],HC[ib],H[jb+nb*ib],b_comm);
 	  H[ib+nb*jb] = Conjugate(H[jb+nb*ib]);
@@ -199,18 +214,15 @@ x = 0    1    2    3
 	RealT norm_R;
 	Normalize(R,norm_R,b_comm);
 
-	for(int rank=0; rank < mpi_size_h; rank++) {
-	  if( mpi_rank_b == 0 && mpi_rank_h == rank ) {
-	    std::cout << " Davidson iteration " << it
-		      << "." << ib
-		      << " at h_comm rank " << mpi_rank_h
-		      << ": (tol = " << norm_R << "):";
-	    for(int p=0; p < std::min(ib+1,4); p++) {
-	      std::cout << " " << E[p];
-	    }
-	    std::cout << std::endl;
-	  }
+	std::cout << " Davidson iteration " << it << "." << ib
+		  << " at mpi (h,b,t,r) = ("
+		  << mpi_rank_h << "," << mpi_rank_b << ","
+		  << mpi_rank_t << "," << mpi_rank_r
+		  << "): (tol=" << norm_R << "):";
+	for(int p=0; p < std::min(ib+1,4); p++) {
+	  std::cout << " " << E[p];
 	}
+	std::cout << std::endl;
 	
 	if( norm_R < eps ) {
 	  do_continue = false;

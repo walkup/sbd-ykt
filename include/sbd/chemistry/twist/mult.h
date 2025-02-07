@@ -12,7 +12,7 @@ namespace sbd {
 	    const std::vector<std::vector<size_t>> & ih,
 	    const std::vector<std::vector<size_t>> & jh,
 	    const std::vector<std::vector<ElemT>> & hij,
-	    std::vector<ElemT> & Wk,
+	    const std::vector<ElemT> & Wk,
 	    std::vector<ElemT> & Wb,
 	    size_t bit_length,
 	    MPI_Comm h_comm,
@@ -38,7 +38,9 @@ namespace sbd {
     MPI_Comm_size(r_comm,&mpi_size_r);
 
     // distribute vector by t_comm
-    MpiBcast(Wk,0,t_comm);
+
+    std::vector<ElemT> T(Wk);
+    MpiBcast(T,0,t_comm);
 
 #pragma omp parallel
     {
@@ -47,13 +49,13 @@ namespace sbd {
       
       if( mpi_rank_r == 0 ) {
 #pragma omp for
-	for(size_t i=0; i < Wk.size(); i++) {
-	  Wb[i] += hii[i] * Wk[i];
+	for(size_t i=0; i < T.size(); i++) {
+	  Wb[i] += hii[i] * T[i];
 	}
       }
 
       for(size_t k=0; k < hij[thread_id].size(); k++) {
-	Wb[ih[thread_id][k]] += hij[thread_id][k] * Wk[jh[thread_id][k]];
+	Wb[ih[thread_id][k]] += hij[thread_id][k] * T[jh[thread_id][k]];
       }
     }
     MpiAllreduce(Wb,MPI_SUM,r_comm);

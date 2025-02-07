@@ -88,8 +88,8 @@ namespace sbd {
 #pragma omp parallel
     {
       size_t thread_id = omp_get_thread_num();
-      size_t ib_start = thread_id * chunk_size;
-      size_t ib_end   = (thread_id+1) * chunk_size;
+      size_t ib_start = thread_id * chunk_size + helper.braBetaStart;
+      size_t ib_end   = (thread_id+1) * chunk_size + helper.braBetaStart;
       if( thread_id == num_threads - 1 ) {
 	ib_end = helper.braBetaEnd;
       }
@@ -149,7 +149,7 @@ namespace sbd {
 	  for(size_t j=0; j < helper.SinglesFromAlphaLen[ia-helper.braAlphaStart]; j++) {
 	    size_t ja = helper.SinglesFromAlphaSM[ia-helper.braAlphaStart][j];
 	    for(size_t k=0; k < helper.SinglesFromBetaLen[ib-helper.braBetaStart]; k++) {
-	      size_t jb = helper.SinglesFromBetaSM[ib][k];
+	      size_t jb = helper.SinglesFromBetaSM[ib-helper.braBetaStart][k];
 	      size_t ketIdx = (ja-helper.ketAlphaStart)*ketBetaSize+jb-helper.ketBetaStart;
 	      auto DetJ = DetFromAlphaBeta(adets[ja],bdets[jb],bit_length,norbs);
 	      size_t orbDiff;

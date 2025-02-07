@@ -197,6 +197,7 @@ namespace sbd {
 		       size_t bit_length,
 		       size_t norb,
 		       TwistHelpers & helper,
+		       MPI_Comm h_comm,
 		       MPI_Comm b_comm,
 		       MPI_Comm t_comm,
 		       MPI_Comm r_comm,
@@ -313,8 +314,8 @@ namespace sbd {
     size_t nBeta = helper.SinglesFromBeta.size();
     
     helper.SinglesFromAlphaLen = (size_t*)malloc(nAlpha*sizeof(size_t));
-    helper.SinglesFromBetaLen  = (size_t*)malloc(nBeta*sizeof(size_t));
     helper.DoublesFromAlphaLen = (size_t*)malloc(nAlpha*sizeof(size_t));
+    helper.SinglesFromBetaLen  = (size_t*)malloc(nBeta*sizeof(size_t));
     helper.DoublesFromBetaLen  = (size_t*)malloc(nBeta*sizeof(size_t));
     
     for(size_t i=0; i < nAlpha; ++i) {
