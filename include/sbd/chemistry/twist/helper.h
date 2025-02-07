@@ -49,6 +49,7 @@ namespace sbd {
 
     helper.SinglesFromAlpha.resize(braAlphaEnd-braAlphaStart);
     helper.SinglesFromBeta.resize(braBetaEnd-braBetaStart);
+
     for(size_t ib=braAlphaStart; ib < braAlphaEnd; ib++) {
       int nclosed = getOpenClosed(ADets[ib],bit_length,norb,open,closed);
       for(size_t j=0; j < nclosed; j++) {

@@ -42,13 +42,13 @@ namespace sbd {
     size_t braSize = braAlphaSize*braBetaSize;
     size_t ketSize = ketAlphaSize*ketBetaSize;
     size_t num_threads = 1;
+    hii.resize(braSize,ElemT(0.0));
     
 #pragma omp parallel
     {
       num_threads = omp_get_num_threads();
       if ( helper.braAlphaStart == helper.ketAlphaStart &&
 	   helper.braBetaStart == helper.ketBetaStart ) {
-	hii.resize(braSize,ElemT(0.0));
 #pragma omp for
 	for(size_t ia=helper.braAlphaStart; ia < helper.braAlphaEnd; ia++) {
 	  for(size_t ib=helper.braBetaStart; ib < helper.braBetaEnd; ib++) {
