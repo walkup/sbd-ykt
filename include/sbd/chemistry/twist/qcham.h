@@ -47,16 +47,13 @@ namespace sbd {
 #pragma omp parallel
     {
       num_threads = omp_get_num_threads();
-      if ( helper.braAlphaStart == helper.ketAlphaStart &&
-	   helper.braBetaStart == helper.ketBetaStart ) {
 #pragma omp for
-	for(size_t ia=helper.braAlphaStart; ia < helper.braAlphaEnd; ia++) {
-	  for(size_t ib=helper.braBetaStart; ib < helper.braBetaEnd; ib++) {
-	    size_t k = (ia-helper.braAlphaStart)*braBetaSize+ib-helper.braBetaStart;
-	    if( (k % mpi_size_h) != mpi_rank_h ) continue;
-	    auto det = DetFromAlphaBeta(adets[ia],bdets[ib],bit_length,norbs);
-	    hii[k] = ZeroExcite(det,bit_length,norbs,I0,I1,I2);
-	  }
+      for(size_t ia=helper.braAlphaStart; ia < helper.braAlphaEnd; ia++) {
+	for(size_t ib=helper.braBetaStart; ib < helper.braBetaEnd; ib++) {
+	  size_t k = (ia-helper.braAlphaStart)*braBetaSize+ib-helper.braBetaStart;
+	  if( (k % mpi_size_h) != mpi_rank_h ) continue;
+	  auto det = DetFromAlphaBeta(adets[ia],bdets[ib],bit_length,norbs);
+	  hii[k] = ZeroExcite(det,bit_length,norbs,I0,I1,I2);
 	}
       }
     }
@@ -85,10 +82,18 @@ namespace sbd {
     hij.resize(num_threads);
 
     size_t chunk_size = (helper.braAlphaEnd-helper.braAlphaStart) / num_threads;
+    // size_t chunk_size = (helper.braBetaEnd-helper.braBetaStart) / num_threads;
 #pragma omp parallel
     {
       size_t thread_id = omp_get_thread_num();
-      size_t ia_start = thread_id * chunk_size + helper.braAlphaStart;
+      /*
+      size_t ib_start = thread_id * chunk_size     + helper.braBetaStart;
+      size_t ib_end   = (thread_id+1) * chunk_size + helper.braBetaStart;
+      if( thread_id == num_threads - 1 ) {
+	ib_end = helper.braBetaEnd;
+      }
+      */
+      size_t ia_start = thread_id * chunk_size     + helper.braAlphaStart;
       size_t ia_end   = (thread_id+1) * chunk_size + helper.braAlphaStart;
       if( thread_id == num_threads - 1 ) {
 	ia_end = helper.braAlphaEnd;
@@ -102,6 +107,10 @@ namespace sbd {
 
       for(size_t ia = ia_start; ia < ia_end; ia++) {
 	for(size_t ib = helper.braBetaStart; ib < helper.braBetaEnd; ib++) {
+      /*
+      for(size_t ia = helper.braAlphaStart; ia < helper.braAlphaEnd; ia++) {
+	for(size_t ib = ib_start; ib < ib_end; ib++) {
+      */
 	  size_t braIdx = (ia-helper.braAlphaStart)*braBetaSize
 	                  +ib-helper.braBetaStart;
 	  if( (braIdx % mpi_size_h) != mpi_rank_h ) continue;
@@ -210,8 +219,6 @@ namespace sbd {
       
     } // end pragma paralell
 
-    MpiBcast(hii,0,r_comm); // hii are shared to get diagonal elements for each basis
-    
   } // end function
   
 } // end namespace sbd

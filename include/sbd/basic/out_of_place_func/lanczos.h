@@ -33,7 +33,7 @@ namespace sbd {
 		    ElemT & res,
 		    MPI_Comm comm) {
     ElemT sum = ElemT(0.0);
-#pragma omp parallel for reduction(+:sum)
+#pragma omp parallel for schedule(static) reduction(+:sum)
     for(size_t is=0; is < X.size(); is++) {
       sum += Conjugate(X[is]) * Y[is];
     }
@@ -47,7 +47,7 @@ namespace sbd {
 		 MPI_Comm comm) {
     res = 0.0;
     RealT sum = 0.0;
-#pragma omp parallel for reduction(+:sum)
+#pragma omp parallel for schedule(static) reduction(+:sum)
     for(size_t is=0; is < X.size(); is++) {
       sum += GetReal( Conjugate(X[is]) * X[is] );
     }
@@ -55,7 +55,7 @@ namespace sbd {
     MPI_Allreduce(&sum,&res,1,DataT,MPI_SUM,comm);
     res = std::sqrt(res);
     ElemT factor = ElemT(1.0/res);
-#pragma omp parallel for
+#pragma omp parallel for schedule(static)
     for(size_t is=0; is < X.size(); is++) {
       X[is] *= factor;
     }

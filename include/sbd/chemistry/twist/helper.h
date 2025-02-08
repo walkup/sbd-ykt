@@ -238,9 +238,10 @@ namespace sbd {
     int l = adet_comm_size*bdet_comm_size;
     int x = mpi_rank_b;
     int y = mpi_rank_r;
+    int t = mpi_rank_t;
     
     int bra_rank = x;
-    int ket_rank = (2*l-x-y) % l;
+    int ket_rank = ( l - (2*l-x-y) % l ) % l;
 
     int bra_alpha_rank = bra_rank / bdet_comm_size;
     int ket_alpha_rank = ket_rank / bdet_comm_size;

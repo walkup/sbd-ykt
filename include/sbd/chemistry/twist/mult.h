@@ -57,6 +57,8 @@ namespace sbd {
       for(size_t k=0; k < hij[thread_id].size(); k++) {
 	Wb[ih[thread_id][k]] += hij[thread_id][k] * T[jh[thread_id][k]];
       }
+
+#pragma omp barrier
     }
     MpiAllreduce(Wb,MPI_SUM,r_comm);
     MpiAllreduce(Wb,MPI_SUM,h_comm);

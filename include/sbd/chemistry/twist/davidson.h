@@ -169,14 +169,14 @@ x = 0    1    2    3
 	for(size_t n=0; n < std::min(static_cast<size_t>(6),W.size()); n++) {
 	  std::cout << " " << HC[ib][n];
 	}
-	std::cout << "..." << std::endl;
+	std::cout << " ... " << HC[ib][W.size()-1] << std::endl;
 	std::cout << " (h,b,t,r) = ("
 		  << mpi_rank_h << "," << mpi_rank_b << ","
 		  << mpi_rank_t << "," << mpi_rank_r << "):  v(" << ib << ") =";
 	for(size_t n=0; n < std::min(static_cast<size_t>(6),W.size()); n++) {
 	  std::cout << " " << C[ib][n];
 	}
-	std::cout << "..." << std::endl;
+	std::cout << " ... " << C[ib][W.size()-1] << std::endl;
 #endif
 	
 	for(int jb=0; jb <= ib; jb++) {
@@ -263,7 +263,7 @@ x = 0    1    2    3
 
 	  RealT norm_C;
 	  Normalize(C[ib+1],norm_C,b_comm);
-	  
+
 	}
       } // end for(int ib=0; ib < nb; ib++)
       
