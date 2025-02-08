@@ -138,6 +138,16 @@ x = 0    1    2    3
 
     GetTotalD(hii,dii,h_comm);
 
+#ifdef SBD_DEBUG
+    std::cout << " diagonal term at mpi process (h,b,t,r) = ("
+	      << mpi_rank_h << "," << mpi_rank_b << ","
+	      << mpi_rank_t << "," << mpi_rank_r << "): ";
+    for(size_t id=0; id < std::min(W.size(),static_cast<size_t>(6)); id++) {
+      std::cout << " " << dii[id];
+    }
+    std::cout << std::endl;
+#endif
+
     bool do_continue = true;
 
     for(int it=0; it < max_iteration; it++) {

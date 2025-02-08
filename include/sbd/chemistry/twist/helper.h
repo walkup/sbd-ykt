@@ -287,7 +287,7 @@ namespace sbd {
       for(int x_rank=0; x_rank < l; x_rank++) {
 	if( y_rank == y && x_rank == x ) {
 	  std::cout << " Singles is finished at mpi rank (" << x << "," << y << ")" << std::endl;
-	  for(size_t i=0; i < helper.SinglesFromAlpha.size(); i++) {
+	  for(size_t i=0; i < std::min(helper.SinglesFromAlpha.size(),static_cast<size_t>(6)); i++) {
 	    std::cout << " Size of Singles from alpha ("
 		      << makestring(adets[i+helper.braAlphaStart],bit_length,norb) 
 		      << ") = " << helper.SinglesFromAlpha[i].size() << ":";
@@ -312,7 +312,7 @@ namespace sbd {
       for(int x_rank=0; x_rank < l; x_rank++) {
 	if( y_rank == y && x_rank == x ) {
 	  std::cout << " Doubles is finished at mpi rank (" << x << "," << y << ")" << std::endl;
-	  for(size_t i=0; i < helper.SinglesFromAlpha.size(); i++) {
+	  for(size_t i=0; i < std::min(helper.SinglesFromAlpha.size(),static_cast<size_t>(6)); i++) {
 	    std::cout << " Size of Doubles from alpha["
 		      << makestring(adets[i+helper.braAlphaStart],bit_length,norb)
 		      << "] = " << helper.DoublesFromAlpha[i].size() << std::endl;
