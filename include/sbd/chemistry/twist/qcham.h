@@ -84,14 +84,14 @@ namespace sbd {
     jh.resize(num_threads);
     hij.resize(num_threads);
 
-    size_t chunk_size = (helper.braBetaEnd-helper.braBetaStart) / num_threads;
+    size_t chunk_size = (helper.braAlphaEnd-helper.braAlphaStart) / num_threads;
 #pragma omp parallel
     {
       size_t thread_id = omp_get_thread_num();
-      size_t ib_start = thread_id * chunk_size + helper.braBetaStart;
-      size_t ib_end   = (thread_id+1) * chunk_size + helper.braBetaStart;
+      size_t ia_start = thread_id * chunk_size + helper.braAlphaStart;
+      size_t ia_end   = (thread_id+1) * chunk_size + helper.braAlphaStart;
       if( thread_id == num_threads - 1 ) {
-	ib_end = helper.braBetaEnd;
+	ia_end = helper.braAlphaEnd;
       }
 
       std::vector<size_t> local_ih;
@@ -100,8 +100,8 @@ namespace sbd {
 
       // alpha-beta excitation
 
-      for(size_t ia = helper.braAlphaStart; ia < helper.braAlphaEnd; ia++) {
-	for(size_t ib = ib_start; ib < ib_end; ib++) {
+      for(size_t ia = ia_start; ia < ia_end; ia++) {
+	for(size_t ib = helper.braBetaStart; ib < helper.braBetaEnd; ib++) {
 	  size_t braIdx = (ia-helper.braAlphaStart)*braBetaSize
 	                  +ib-helper.braBetaStart;
 	  if( (braIdx % mpi_size_h) != mpi_rank_h ) continue;

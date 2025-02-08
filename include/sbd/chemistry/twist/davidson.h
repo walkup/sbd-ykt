@@ -279,6 +279,10 @@ x = 0    1    2    3
       
     } // end for(int it=0; it < max_iteration; it++)
 
+    free(H);
+    free(U);
+    free(E);
+
   }
   
 }

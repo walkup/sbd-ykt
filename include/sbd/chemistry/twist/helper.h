@@ -397,6 +397,13 @@ namespace sbd {
 		  helper.DoublesFromBetaLen[i]*sizeof(size_t));
     }
   }
+
+  void FreeHelpers(TwistHelpers & helper) {
+    free(helper.SinglesFromAlphaLen);
+    free(helper.SinglesFromBetaLen);
+    free(helper.DoublesFromAlphaLen);
+    free(helper.DoublesFromBetaLen);
+  }
   
 } // end namespace sbd
 
