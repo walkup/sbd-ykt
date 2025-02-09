@@ -292,7 +292,7 @@ namespace sbd {
 	    std::cout << " Size of Singles from alpha ("
 		      << makestring(adets[i+helper.braAlphaStart],bit_length,norb) 
 		      << ") = " << helper.SinglesFromAlpha[i].size() << ":";
-	    for(size_t k=0; k < helper.SinglesFromAlpha[i].size(); k++) {
+	    for(size_t k=0; k < std::min(helper.SinglesFromAlpha[i].size(),static_cast<size_t>(4)); k++) {
 	      size_t m = helper.SinglesFromAlpha[i][k];
 	      std::cout << " (" << makestring(adets[m],bit_length,norb) << ")";
 	    }
@@ -303,7 +303,6 @@ namespace sbd {
       }
       MPI_Barrier(r_comm);
     }
-    sleep(1);
 #endif
     
     GenerateDoubles(adets,bdets,bit_length,norb,helper);
@@ -314,16 +313,19 @@ namespace sbd {
 	if( y_rank == y && x_rank == x ) {
 	  std::cout << " Doubles is finished at mpi rank (" << x << "," << y << ")" << std::endl;
 	  for(size_t i=0; i < std::min(helper.SinglesFromAlpha.size(),static_cast<size_t>(6)); i++) {
-	    std::cout << " Size of Doubles from alpha["
+	    std::cout << " Size of Doubles from alpha ("
 		      << makestring(adets[i+helper.braAlphaStart],bit_length,norb)
-		      << "] = " << helper.DoublesFromAlpha[i].size() << std::endl;
+		      << ") = " << helper.DoublesFromAlpha[i].size() << std::endl;
+	    for(size_t k=0; k < std::min(helper.DoublesFromAlpha[i].size(),static_cast<size_t>(4)); k++) {
+	      size_t m = helper.DoublesFromAlpha[i][k];
+	      std::cout << " (" << makestring(adets[m],bit_length,norb) << ")";
+	    }
 	  }
 	}
 	MPI_Barrier(b_comm);
       }
       MPI_Barrier(r_comm);
     }
-    sleep(1);
 #endif
     
   }

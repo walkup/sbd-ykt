@@ -498,6 +498,12 @@ namespace sbd {
     return ElemT(0.0);
   }
 
+  void ShuffleDet(std::vector<std::vector<size_t>> & det,
+		  unsigned int seed) {
+    if( det.size() <= 1 ) return;
+    std::mt19937 g(seed);
+    std::shuffle(det.begin()+1,det.end(),g);
+  }
   
 	    
   
