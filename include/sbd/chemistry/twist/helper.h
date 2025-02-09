@@ -189,7 +189,7 @@ namespace sbd {
     int basis_line_size = da_comm_size*db_comm_size;
     int basis_square_size = basis_line_size*basis_line_size;
     int mpi_size_request = basis_square_size*h_comm_size;
-    
+
     if( mpi_size_request != mpi_size ) {
       throw std::invalid_argument("MPI Size of twister is not a square of a integer");
     }
@@ -205,10 +205,10 @@ namespace sbd {
 
     int x = mpi_rank_bs % basis_line_size;
     int y = mpi_rank_bs / basis_line_size;
-    int t = (2*basis_line_size-x-y) % basis_line_size;
-    MPI_Comm_split(comm,t,mpi_rank,&t_comm);
-    MPI_Comm_split(comm,x,mpi_rank,&r_comm);
-    MPI_Comm_split(comm,y,mpi_rank,&b_comm);
+    int t = ( basis_line_size - (2*basis_line_size-x-y) % basis_line_size ) % basis_line_size;
+    MPI_Comm_split(basis_square_comm,t,mpi_rank,&t_comm);
+    MPI_Comm_split(basis_square_comm,x,mpi_rank,&r_comm);
+    MPI_Comm_split(basis_square_comm,y,mpi_rank,&b_comm);
     
   }
   
