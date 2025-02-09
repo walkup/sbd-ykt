@@ -31,6 +31,29 @@ namespace sbd {
     return D;
   }
 
+  void DetFromAlphaBeta(const std::vector<size_t> & A,
+			const std::vector<size_t> & B,
+			const size_t bit_length,
+			const size_t L,
+			std::vector<size_t> & D) {
+    std::fill(D.begin(),D.end(),static_cast<size_t>(0));
+    for(size_t i=0; i < L; ++i) {
+      size_t block = i / bit_length;
+      size_t bit_pos = i % bit_length;
+      size_t new_block_A = (2*i) / bit_length;
+      size_t new_bit_pos_A = (2*i) % bit_length;
+      size_t new_block_B = (2*i+1) / bit_length;
+      size_t new_bit_pos_B = (2*i+1) % bit_length;
+      
+      if ( A[block] & (size_t(1) << bit_pos) ) {
+	D[new_block_A] |= size_t(1) << new_bit_pos_A;
+      }
+      if( B[block] & (size_t(1) << bit_pos) ) {
+	D[new_block_B] |= size_t(1) << new_bit_pos_B;
+      }
+    }
+  }
+
   
   // Set the specified bit (x) in the vector of size_t (bit representation)
   void setocc(std::vector<size_t> & dets, const size_t bit_length, int x, bool y) {
@@ -413,6 +436,69 @@ namespace sbd {
     }
     return ElemT(0.0);
   }
+
+  template <typename ElemT>
+  ElemT Hij(const std::vector<size_t> & DetA,
+	    const std::vector<size_t> & DetB,
+	    const size_t & bit_length,
+	    const size_t & L,
+	    std::vector<int> & c,
+	    std::vector<int> & d,
+	    ElemT & I0,
+	    oneInt<ElemT> & I1,
+	    twoInt<ElemT> & I2,
+	    size_t & orbDiff) {
+    size_t nc=0;
+    size_t nd=0;
+
+    size_t full_words = (2*L) / bit_length;
+    size_t remaining_bits = (2*L) % bit_length;
+
+    for(size_t i=0; i < full_words; ++i) {
+      size_t diff_c = DetA[i] & ~DetB[i];
+      size_t diff_d = DetB[i] & ~DetA[i];
+      for(size_t bit_pos=0; bit_pos < bit_length; ++bit_pos) {
+	if(diff_c & (static_cast<size_t>(1) << bit_pos)) {
+	  c[nc] = i*bit_length+bit_pos;
+	  nc++;
+	}
+	if(diff_d & (static_cast<size_t>(1) << bit_pos)) {
+	  d[nd] = i*bit_length+bit_pos;
+	  nd++;
+	}
+      }
+    }
+
+    if( remaining_bits > 0 ) {
+      size_t mask = (static_cast<size_t>(1) << remaining_bits) -1;
+      size_t diff_c = (DetA[full_words] & ~DetB[full_words]) & mask;
+      size_t diff_d = (DetB[full_words] & ~DetA[full_words]) & mask;
+      for(size_t bit_pos = 0; bit_pos < remaining_bits; ++bit_pos) {
+	if( diff_c & (static_cast<size_t>(1) << bit_pos) ) {
+	  c[nc] = bit_length*full_words+bit_pos;
+	  nc++;
+	}
+	if( diff_d & (static_cast<size_t>(1) << bit_pos) ) {
+	  d[nd] = bit_length*full_words+bit_pos;
+	  nd++;
+	}
+      }
+    }
+
+    if( nc == 0 ) {
+      orbDiff = static_cast<size_t>(0);
+      return ZeroExcite(DetB,bit_length,L,I0,I1,I2);
+    } else if ( nc == 1 ) {
+      orbDiff = static_cast<size_t>(c[0] * L + d[0]);
+      return OneExcite(DetB,bit_length,d[0],c[0],I1,I2);
+    } else if ( nc == 2 ) {
+      orbDiff = static_cast<size_t>(c[1]*L*L*L+d[1]*L*L+c[0]*L+d[0]);
+      return TwoExcite(DetB,bit_length,d[0],d[1],c[0],c[1],I1,I2);
+    }
+    return ElemT(0.0);
+  }
+
+  
 	    
   
 } // end namespace sbd

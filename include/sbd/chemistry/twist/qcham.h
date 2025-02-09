@@ -260,16 +260,18 @@ namespace sbd {
     size_t ketSize = ketAlphaSize*ketBetaSize;
     size_t num_threads = 1;
     hii.resize(braSize,ElemT(0.0));
-    
+
 #pragma omp parallel
     {
       num_threads = omp_get_num_threads();
+      auto det = DetFromAlphaBeta(adets[0],bdets[0],bit_length,norbs);
+      
 #pragma omp for
       for(size_t ia=helper.braAlphaStart; ia < helper.braAlphaEnd; ia++) {
 	for(size_t ib=helper.braBetaStart; ib < helper.braBetaEnd; ib++) {
 	  size_t k = (ia-helper.braAlphaStart)*braBetaSize+ib-helper.braBetaStart;
 	  if( (k % mpi_size_h) != mpi_rank_h ) continue;
-	  auto det = DetFromAlphaBeta(adets[ia],bdets[ib],bit_length,norbs);
+	  DetFromAlphaBeta(adets[ia],bdets[ib],bit_length,norbs,det);
 	  hii[k] = ZeroExcite(det,bit_length,norbs,I0,I1,I2);
 	}
       }
@@ -370,6 +372,11 @@ namespace sbd {
 	ia_end = helper.braAlphaEnd;
       }
 
+      auto DetI = DetFromAlphaBeta(adets[0],bdets[0],bit_length,norbs);
+      auto DetJ = DetI;
+      std::vector<int> c(2,0);
+      std::vector<int> d(2,0);
+      
       size_t address = 0;
       // alpha-beta excitation
 
@@ -380,8 +387,7 @@ namespace sbd {
 	                  +ib-helper.braBetaStart;
 	  if( (braIdx % mpi_size_h) != mpi_rank_h ) continue;
 	  
-	  auto DetI = DetFromAlphaBeta(adets[ia],bdets[ib],
-				       bit_length,norbs);
+	  DetFromAlphaBeta(adets[ia],bdets[ib],bit_length,norbs,DetI);
 
 	  if( helper.braBetaStart == helper.ketBetaStart ) {
 	    
@@ -389,10 +395,10 @@ namespace sbd {
 	    for(size_t j=0; j < helper.SinglesFromAlphaLen[ia-helper.braAlphaStart]; j++) {
 	      size_t ja = helper.SinglesFromAlphaSM[ia-helper.braAlphaStart][j];
 	      size_t ketIdx = (ja-helper.ketAlphaStart)*ketBetaSize+ib-helper.ketBetaStart;
-	      auto DetJ = DetFromAlphaBeta(adets[ja],bdets[ib],bit_length,norbs);
+	      DetFromAlphaBeta(adets[ja],bdets[ib],bit_length,norbs,DetJ);
 	      size_t orbDiff;
 	      ElemT eij = Hij(DetI,DetJ,
-			      bit_length,norbs,I0,I1,I2,orbDiff);
+			      bit_length,norbs,c,d,I0,I1,I2,orbDiff);
 	      ih[thread_id][address] = braIdx;
 	      jh[thread_id][address] = ketIdx;
 	      hij[thread_id][address] = eij;
@@ -402,9 +408,9 @@ namespace sbd {
 	    for(size_t j=0; j < helper.DoublesFromAlphaLen[ia-helper.braAlphaStart]; j++) {
 	      size_t ja = helper.DoublesFromAlphaSM[ia-helper.braAlphaStart][j];
 	      size_t ketIdx = (ja-helper.ketAlphaStart)*ketBetaSize + ib-helper.ketBetaStart;
-	      auto DetJ = DetFromAlphaBeta(adets[ja],bdets[ib],bit_length,norbs);
+	      DetFromAlphaBeta(adets[ja],bdets[ib],bit_length,norbs,DetJ);
 	      size_t orbDiff;
-	      ElemT eij = Hij(DetI,DetJ,bit_length,norbs,I0,I1,I2,orbDiff);
+	      ElemT eij = Hij(DetI,DetJ,bit_length,norbs,c,d,I0,I1,I2,orbDiff);
 	      ih[thread_id][address] = braIdx;
 	      jh[thread_id][address] = ketIdx;
 	      hij[thread_id][address] = eij;
@@ -418,9 +424,9 @@ namespace sbd {
 	    for(size_t k=0; k < helper.SinglesFromBetaLen[ib-helper.braBetaStart]; k++) {
 	      size_t jb = helper.SinglesFromBetaSM[ib-helper.braBetaStart][k];
 	      size_t ketIdx = (ja-helper.ketAlphaStart)*ketBetaSize+jb-helper.ketBetaStart;
-	      auto DetJ = DetFromAlphaBeta(adets[ja],bdets[jb],bit_length,norbs);
+	      DetFromAlphaBeta(adets[ja],bdets[jb],bit_length,norbs,DetJ);
 	      size_t orbDiff;
-	      ElemT eij = Hij(DetI,DetJ,bit_length,norbs,I0,I1,I2,orbDiff);
+	      ElemT eij = Hij(DetI,DetJ,bit_length,norbs,c,d,I0,I1,I2,orbDiff);
 	      ih[thread_id][address] = braIdx;
 	      jh[thread_id][address] = ketIdx;
 	      hij[thread_id][address] = eij;
@@ -433,9 +439,9 @@ namespace sbd {
 	    for(size_t j=0; j < helper.SinglesFromBetaLen[ib-helper.braBetaStart]; j++) {
 	      size_t jb = helper.SinglesFromBetaSM[ib-helper.braBetaStart][j];
 	      size_t ketIdx = (ia-helper.ketAlphaStart) * ketBetaSize + jb - helper.ketBetaStart;
-	      auto DetJ = DetFromAlphaBeta(adets[ia],bdets[jb],bit_length,norbs);
+	      DetFromAlphaBeta(adets[ia],bdets[jb],bit_length,norbs,DetJ);
 	      size_t orbDiff;
-	      ElemT eij = Hij(DetI,DetJ,bit_length,norbs,I0,I1,I2,orbDiff);
+	      ElemT eij = Hij(DetI,DetJ,bit_length,norbs,c,d,I0,I1,I2,orbDiff);
 	      ih[thread_id][address] = braIdx;
 	      jh[thread_id][address] = ketIdx;
 	      hij[thread_id][address] = eij;
@@ -445,9 +451,9 @@ namespace sbd {
 	    for(size_t j=0; j < helper.DoublesFromBetaLen[ib-helper.braBetaStart]; j++) {
 	      size_t jb = helper.DoublesFromBetaSM[ib-helper.braBetaStart][j];
 	      size_t ketIdx = (ia-helper.ketAlphaStart) * ketBetaSize + jb-helper.ketBetaStart;
-	      auto DetJ = DetFromAlphaBeta(adets[ia],bdets[jb],bit_length,norbs);
+	      DetFromAlphaBeta(adets[ia],bdets[jb],bit_length,norbs,DetJ);
 	      size_t orbDiff;
-	      ElemT eij = Hij(DetI,DetJ,bit_length,norbs,I0,I1,I2,orbDiff);
+	      ElemT eij = Hij(DetI,DetJ,bit_length,norbs,c,d,I0,I1,I2,orbDiff);
 	      ih[thread_id][address] = braIdx;
 	      jh[thread_id][address] = ketIdx;
 	      hij[thread_id][address] = eij;
