@@ -124,6 +124,74 @@ namespace sbd {
 
   }
 
+  void GenerateExcitation(const std::vector<std::vector<size_t>> & adets,
+			  const std::vector<std::vector<size_t>> & bdets,
+			  const size_t bit_length,
+			  const size_t norb,
+			  SquareHelpers & helper) {
+    size_t braAlphaStart = helper.braAlphaStart;
+    size_t braAlphaEnd = helper.braAlphaEnd;
+    size_t ketAlphaStart = helper.ketAlphaStart;
+    size_t ketAlphaEnd = helper.ketAlphaEnd;
+    size_t braBetaStart = helper.braBetaStart;
+    size_t braBetaEnd = helper.braBetaEnd;
+    size_t ketBetaStart = helper.ketBetaStart;
+    size_t ketBetaEnd = helper.ketBetaEnd;
+
+    size_t braAlphaSize = braAlphaEnd-braAlphaStart;
+    size_t braBetaSize  = braBetaEnd-braBetaStart;
+    size_t ketAlphaSize = ketAlphaEnd-ketAlphaStart;
+    size_t ketBetaSize  = ketBetaEnd-ketBetaStart;
+    helper.SinglesFromAlpha.resize(braAlphaSize);
+    helper.DoublesFromAlpha.resize(braAlphaSize);
+    helper.SinglesFromBeta.resize(braBetaSize);
+    helper.DoublesFromBeta.resize(braBetaSize);
+
+    /*
+    for(size_t ia=0; ia < braAlphaSize; ia++) {
+      helper.SinglesFromAlpha[ia].reserve(ketAlphaSize);
+      helper.DoublesFromAlpha[ia].reserve(ketAlphaSize);
+    }
+
+    for(size_t ib=0; ib < braBetaSize; ib++) {
+      helper.SinglesFromBeta[ib].reserve(ketBetaSize);
+      helper.DoublesFromBeta[ib].reserve(ketBetaSize);
+    }
+    */
+
+#pragma omp parallel for
+    for(size_t ia=braAlphaStart; ia < braAlphaEnd; ia++) {
+      helper.SinglesFromAlpha[ia-braAlphaStart].reserve(ketAlphaSize);
+      helper.DoublesFromAlpha[ia-braAlphaStart].reserve(ketAlphaSize);
+      for(size_t ja=ketAlphaStart; ja < ketAlphaEnd; ja++) {
+	int d = difference(adets[ia],adets[ja],bit_length,norb);
+	if( d == 2 ) {
+	  helper.SinglesFromAlpha[ia-braAlphaStart].push_back(ja);
+	} else if ( d == 4 ) {
+	  helper.DoublesFromAlpha[ia-braAlphaStart].push_back(ja);
+	}
+      }
+    }
+
+#pragma omp parallel for
+    for(size_t ib=braBetaStart; ib < braBetaEnd; ib++) {
+      helper.SinglesFromBeta[ib-braBetaStart].reserve(ketBetaSize);
+      helper.DoublesFromBeta[ib-braBetaStart].reserve(ketBetaSize);
+      for(size_t jb=ketBetaStart; jb < ketBetaEnd; jb++) {
+	int d = difference(bdets[ib],bdets[jb],bit_length,norb);
+	if( d == 2 ) {
+	  helper.SinglesFromBeta[ib-braBetaStart].push_back(jb);
+	} else if ( d == 4 ) {
+	  helper.DoublesFromBeta[ib-braBetaStart].push_back(jb);
+	}
+      }
+    }
+
+    
+    
+    
+  }
+
   void SquareCommunicator(MPI_Comm comm,
 			  int h_comm_size,
 			  int da_comm_size,
@@ -203,26 +271,12 @@ namespace sbd {
     get_mpi_range(bdet_comm_size,bra_beta_rank,helper.braBetaStart,helper.braBetaEnd);
     get_mpi_range(bdet_comm_size,ket_beta_rank,helper.ketBetaStart,helper.ketBetaEnd);
 
-#ifdef SBD_DEBUG
-    for(int y_rank=0; y_rank < l; y_rank++) {
-      for(int x_rank=0; x_rank < l; x_rank++) {
-	if( y_rank == y && x_rank == x ) {
-	  std::cout << " braAlphaStart, braAlphaEnd, ketAlphaStart, ketAlphaEnd = "
-		    << helper.braAlphaStart << "," << helper.braAlphaEnd << ","
-		    << helper.ketAlphaStart << "," << helper.ketAlphaEnd
-		    << " at mpi rank (" << x << "," << y << ")" << std::endl;
-	  std::cout << " braBetaStart, braBetaEnd, ketBetaStart, ketBetaEnd = "
-		    << helper.braBetaStart << "," << helper.braBetaEnd << ","
-		    << helper.ketBetaStart << "," << helper.ketBetaEnd
-		    << " at mpi rank (" << x << "," << y << ")" << std::endl;
-	}
-	MPI_Barrier(b_comm);
-      }
-      MPI_Barrier(k_comm);
-    }
-#endif
-    
+#ifdef SBD_PREVIOUS
     GenerateSingles(adets,bdets,bit_length,norb,helper);
+    GenerateDoubles(adets,bdets,bit_length,norb,helper);
+#else
+    GenerateExcitation(adets,bdets,bit_length,norb,helper);
+#endif
 
 #ifdef SBD_DEBUG
     for(int y_rank=0; y_rank < l; y_rank++) {
@@ -244,11 +298,6 @@ namespace sbd {
       }
       MPI_Barrier(k_comm);
     }
-#endif
-    
-    GenerateDoubles(adets,bdets,bit_length,norb,helper);
-
-#ifdef SBD_DEBUG
     for(int y_rank=0; y_rank < l; y_rank++) {
       for(int x_rank=0; x_rank < l; x_rank++) {
 	if( y_rank == y && x_rank == x ) {
