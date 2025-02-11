@@ -391,6 +391,30 @@ namespace sbd {
     }
   }
 
+  size_t SizeOfVector(SquareHelpers & helper) {
+    size_t count = 0;
+    for(size_t i=0; i < helper.SinglesFromAlpha.size(); i++) {
+      count += helper.SinglesFromAlpha[i].size();
+    }
+    for(size_t i=0; i < helper.DoublesFromAlpha.size(); i++) {
+      count += helper.DoublesFromAlpha[i].size();
+    }
+    for(size_t i=0; i < helper.SinglesFromBeta.size(); i++) {
+      count += helper.SinglesFromBeta[i].size();
+    }
+    for(size_t i=0; i < helper.DoublesFromBeta.size(); i++) {
+      count += helper.DoublesFromBeta[i].size();
+    }
+    return count*sizeof(size_t);
+  }
+
+  void FreeVectors(SquareHelpers & helper) {
+    helper.SinglesFromAlpha = std::vector<std::vector<size_t>>();
+    helper.DoublesFromAlpha = std::vector<std::vector<size_t>>();
+    helper.SinglesFromBeta = std::vector<std::vector<size_t>>();
+    helper.DoublesFromBeta = std::vector<std::vector<size_t>>();
+  }
+
   void FreeHelpers(SquareHelpers & helper) {
     free(helper.SinglesFromAlphaLen);
     free(helper.SinglesFromBetaLen);

@@ -358,6 +358,14 @@ namespace sbd {
       hij[t] = begin_ElemT + counter_ElemT;
       counter_ElemT += len[t];
     }
+
+    using RealT = typename GetRealType<ElemT>::RealT;
+    size_t total_memory_size_count = counter_int * sizeof(size_t)
+      + counter_ElemT * sizeof(ElemT);
+    RealT total_memory_size = 1.0 * total_memory_size_count / 1073741824.0;
+    std::cout << " Memory size for Hamiltonian = "
+	      << total_memory_size 
+	      << " GiB " << std::endl;
     
     // size_t chunk_size = (helper.braBetaEnd-helper.braBetaStart) / num_threads;
 #pragma omp parallel
