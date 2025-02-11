@@ -471,6 +471,53 @@ namespace sbd {
 
   } // end function
 
+  template <typename ElemT>
+  void makeQChamDiagTerms(const std::vector<std::vector<size_t>> & adets,
+			  const std::vector<std::vector<size_t>> & bdets,
+			  const size_t bit_length,
+			  const size_t norbs,
+			  const SquareHelpers & helper,
+			  ElemT & I0,
+			  oneInt<ElemT> & I1,
+			  twoInt<ElemT> & I2,
+			  std::vector<ElemT> & hii,
+			  MPI_Comm h_comm,
+			  MPI_Comm b_comm,
+			  MPI_Comm k_comm) {
+
+    int mpi_rank_h = 0;
+    int mpi_size_h = 1;
+    MPI_Comm_rank(h_comm,&mpi_rank_h);
+    MPI_Comm_size(h_comm,&mpi_size_h);
+
+    size_t braAlphaSize = helper.braAlphaEnd-helper.braAlphaStart;
+    size_t ketAlphaSize = helper.ketAlphaEnd-helper.ketAlphaStart;
+    size_t braBetaSize = helper.braBetaEnd-helper.braBetaStart;
+    size_t ketBetaSize = helper.ketBetaEnd-helper.ketBetaStart;
+    size_t braSize = braAlphaSize*braBetaSize;
+    size_t ketSize = ketAlphaSize*ketBetaSize;
+    size_t num_threads = 1;
+    
+    hii.resize(braSize,ElemT(0.0));
+
+#pragma omp parallel
+    {
+      num_threads = omp_get_num_threads();
+      auto det = DetFromAlphaBeta(adets[0],bdets[0],bit_length,norbs);
+      
+#pragma omp for
+      for(size_t ia=helper.braAlphaStart; ia < helper.braAlphaEnd; ia++) {
+	for(size_t ib=helper.braBetaStart; ib < helper.braBetaEnd; ib++) {
+	  size_t k = (ia-helper.braAlphaStart)*braBetaSize+ib-helper.braBetaStart;
+	  if( (k % mpi_size_h) != mpi_rank_h ) continue;
+	  DetFromAlphaBeta(adets[ia],bdets[ib],bit_length,norbs,det);
+	  hii[k] = ZeroExcite(det,bit_length,norbs,I0,I1,I2);
+	}
+      }
+    }
+  }
+  
+
   
 } // end namespace sbd
 
