@@ -1,16 +1,15 @@
 /**
-@file sbd/chemistry/square/wfio.h
+@file sbd/chemistry/square/restart.h
 @brief I/O for wavefunction data
 */
-#ifndef SBD_CHEMISTRY_SQUARE_WFIO_H
-#define SBD_CHEMISTRY_SQUARE_WFIO_H
+#ifndef SBD_CHEMISTRY_SQUARE_RESTART_H
+#define SBD_CHEMISTRY_SQUARE_RESTART_H
 
 #include <iomanip>
 #include <sstream>
 #include <fstream>
 
 namespace sbd {
-
 
   std::string to_padded_string(size_t n, size_t d) {
     std::ostringstream oss;
@@ -172,7 +171,10 @@ namespace sbd {
 		  }
 		}
 		int target_rank = adet_rank * bdet_comm_size + bdet_rank;
-		transfer_Idx[target_rank].push_back((ja-adet_start[adet_rank]) * (bdet_end[bdet_rank]-bdet_start[bdet_rank]) + jb - bdet_start[bdet_rank]);
+		size_t target_Idx = (ja-adet_start[adet_rank])
+		  * (bdet_end[bdet_rank]-bdet_start[bdet_rank])
+		  + jb - bdet_start[bdet_rank];
+		transfer_Idx[target_rank].push_back(target_Idx);
 		transfer_W[target_rank].push_back(load_W[ia*load_bdet_size+ib]);
 	      }
 	    }
