@@ -271,12 +271,7 @@ namespace sbd {
     get_mpi_range(bdet_comm_size,bra_beta_rank,helper.braBetaStart,helper.braBetaEnd);
     get_mpi_range(bdet_comm_size,ket_beta_rank,helper.ketBetaStart,helper.ketBetaEnd);
 
-#ifdef SBD_PREVIOUS
-    GenerateSingles(adets,bdets,bit_length,norb,helper);
-    GenerateDoubles(adets,bdets,bit_length,norb,helper);
-#else
     GenerateExcitation(adets,bdets,bit_length,norb,helper);
-#endif
 
 #ifdef SBD_DEBUG
     for(int y_rank=0; y_rank < l; y_rank++) {
