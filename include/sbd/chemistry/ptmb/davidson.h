@@ -76,6 +76,8 @@ x = 0    1    2    3
 		const std::vector<size_t> & tasktype,
 		const std::vector<size_t> & adetshift,
 		const std::vector<size_t> & bdetshift,
+		const size_t adet_comm_size,
+		const size_t bdet_comm_size,
 		std::vector<ElemT> & W,
 		MPI_Comm h_comm,
 		MPI_Comm b_comm,

@@ -347,7 +347,7 @@ namespace sbd {
 
     size_t task_start = 0;
     size_t task_end = type_schedule.size();
-    get_mpi_range(copy_comm_size,b_comm_color,task_start,task_end);
+    get_mpi_range(mpi_size_t,mpi_rank_t,task_start,task_end);
     size_t task_size = task_end-task_start;
     helper.resize(task_size);
 
@@ -507,7 +507,7 @@ namespace sbd {
 
   void MakeHelper(std::vector<TaskHelpers> & helper,
 		  std::vector<std::vector<size_t>> & sharedMemory) {
-    for(int task=0; task < helpers.size(); task++) {
+    for(int task=0; task < helper.size(); task++) {
       MakeHelper(helper[task],sharedMemory[task]);
     }
   }

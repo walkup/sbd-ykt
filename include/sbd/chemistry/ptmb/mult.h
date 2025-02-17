@@ -70,19 +70,19 @@ namespace sbd {
 
     std::vector<size_t> k_start(thread_id,0);
     std::vector<size_t> k_end(len[0]);
-    for(size_t task=0; task < type.size(); task++) {
+    for(size_t task=0; task < tasktype.size(); task++) {
 #pragma omp parallel
       {
 	for(size_t k=k_start[thread_id]; k < k_end[thread_id]; k++) {
 	  Wb[ih[thread_id][k]] += hij[thread_id][k] * T[jh[thread_id][k]];
 	}
 	k_start[thread_id] = k_end[thread_id];
-	if( task != type.size()-1 ) {
+	if( task != tasktype.size()-1 ) {
 	  k_end[thread_id] = len[task+1][thread_id]+k_start[thread_id];
 	}
       }
 #pragma omp barrier
-      if( tasktype[task] == 0 && task != type.size()-1 ) {
+      if( tasktype[task] == 0 && task != tasktype.size()-1 ) {
 	int adetslide = adetshift[task+1]-adetshift[task];
 	int bdetslide = bdetshift[task+1]-bdetshift[task];
 	R.resize(T.size());
@@ -121,7 +121,7 @@ namespace sbd {
 	    const size_t norbs,
 	    const size_t adet_comm_size,
 	    const size_t bdet_comm_size,
-	    const std::vectdor<TaskHelpers> & helper,
+	    const std::vector<TaskHelpers> & helper,
 	    ElemT & I0,
 	    oneInt<ElemT> & I1,
 	    twoInt<ElemT> & I2,
@@ -147,7 +147,7 @@ namespace sbd {
     std::vector<ElemT> T(Wk);
     std::vector<ElemT> R(Wk);
     Mpi2dSlide(Wk,T,adet_comm_size,bdet_comm_size,
-	       adetshift[0],bdetshift[0],b_comm);
+	       helper[0].adetShift,helper[0].bdetShift,b_comm);
     auto time_copy_end = std::chrono::high_resolution_clock::now();
 
     auto time_mult_start = std::chrono::high_resolution_clock::now();
@@ -164,7 +164,7 @@ namespace sbd {
       }
     }
 
-    size_t chunk_size = (helper[task].braBetaEnd-helper[task].braBetaStart) / num_threads;
+    size_t chunk_size = (helper[0].braBetaEnd-helper[0].braBetaStart) / num_threads;
     for(size_t task=0; task < helper.size(); task++) {
       
       size_t ketAlphaSize = helper[task].ketAlphaEnd-helper[task].ketAlphaStart;
