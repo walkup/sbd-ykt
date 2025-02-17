@@ -461,9 +461,9 @@ namespace sbd {
     
     MPI_Isend(size_send.data(),1,SBD_MPI_SIZE_T,
 	      mpi_dest,0,comm,&req_size[0]);
-    MPI_Irecv(size_resv.data(),1,SBD_MPI_SIZE_T,
+    MPI_Irecv(size_recv.data(),1,SBD_MPI_SIZE_T,
 	      mpi_source,0,comm,&req_size[1]);
-    MPI_Witall(2,req_size.data(),sta_size.data());
+    MPI_Waitall(2,req_size.data(),sta_size.data());
 
     size_t send_size = size_send[0];
     size_t recv_size = size_recv[0];
