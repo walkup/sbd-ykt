@@ -112,7 +112,7 @@ x = 0    1    2    3
     GetTotalD(hii,dii,h_comm);
 
 #ifdef SBD_DEBUG
-    std::cout << " diagonal term at mpi process (h,b,w) = ("
+    std::cout << " diagonal term at mpi process (h,b,t) = ("
 	      << mpi_rank_h << "," << mpi_rank_b << ","
 	      << mpi_rank_t << "): ";
     for(size_t id=0; id < std::min(W.size(),static_cast<size_t>(6)); id++) {
@@ -138,14 +138,14 @@ x = 0    1    2    3
 	     C[ib],HC[ib],bit_length,h_comm,b_comm,t_comm);
 
 #ifdef SBD_DEBUG
-	std::cout << " (h,b,w) = ("
+	std::cout << " (h,b,t) = ("
 		  << mpi_rank_h << "," << mpi_rank_b << ","
 		  << mpi_rank_t << "): Hv(" << ib << ") =";
 	for(size_t n=0; n < std::min(static_cast<size_t>(6),W.size()); n++) {
 	  std::cout << " " << HC[ib][n];
 	}
 	std::cout << " ... " << HC[ib][W.size()-1] << std::endl;
-	std::cout << " (h,b,w) = ("
+	std::cout << " (h,b,t) = ("
 		  << mpi_rank_h << "," << mpi_rank_b << ","
 		  << mpi_rank_t << "):  v(" << ib << ") =";
 	for(size_t n=0; n < std::min(static_cast<size_t>(6),W.size()); n++) {

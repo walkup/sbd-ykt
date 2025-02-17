@@ -183,15 +183,16 @@ namespace sbd {
 			int h_comm_size,
 			int adet_comm_size,
 			int bdet_comm_size,
-			int copy_comm_size,
+			int task_comm_size,
 			MPI_Comm & h_comm,
 			MPI_Comm & b_comm,
 			MPI_Comm & t_comm) {
     
     int mpi_size; MPI_Comm_size(comm,&mpi_size);
     int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
+    
     int basis_comm_size = adet_comm_size*bdet_comm_size;
-    int basis_area_size = basis_comm_size*copy_comm_size;
+    int basis_area_size = basis_comm_size*task_comm_size;
     int mpi_size_request = basis_area_size*h_comm_size;
 
     if( mpi_size_request != mpi_size ) {
@@ -354,6 +355,7 @@ namespace sbd {
     int bra_rank = mpi_rank_b;
     int bra_adet_rank = bra_rank / bdet_comm_size;
     int bra_bdet_rank = bra_rank % bdet_comm_size;
+    
     for(size_t task=task_start; task < task_end; task++) {
 
       int ket_adet_rank = (bra_adet_rank + adet_schedule[task]) % adet_comm_size;
@@ -405,7 +407,7 @@ namespace sbd {
       }
       for(int t_rank=0; t_rank < mpi_size_t; t_rank++) {
 	for(int b_rank=0; b_rank < mpi_size_b; b_rank++) {
-	  if( t_rank == mpi_rank_t && b_rank == b ) {
+	  if( t_rank == mpi_rank_t && b_rank == mpi_rank_b ) {
 	    std::cout << " Doubles is finished at mpi rank (" << b_rank << "," << t_rank << ")" << std::endl;
 	    for(size_t i=0; i < std::min(helper[task-task_start].SinglesFromAlpha.size(),static_cast<size_t>(4)); i++) {
 	      std::cout << " Size of Doubles from alpha ("
@@ -507,6 +509,7 @@ namespace sbd {
 
   void MakeHelper(std::vector<TaskHelpers> & helper,
 		  std::vector<std::vector<size_t>> & sharedMemory) {
+    sharedMemory.resize(helper.size());
     for(int task=0; task < helper.size(); task++) {
       MakeHelper(helper[task],sharedMemory[task]);
     }
@@ -527,6 +530,14 @@ namespace sbd {
       count += helper.DoublesFromBeta[i].size();
     }
     return count*sizeof(size_t);
+  }
+
+  size_t SizeOfVector(std::vector<TaskHelpers> & helper) {
+    size_t count = 0;
+    for(size_t task=0; task < helper.size(); task++) {
+      count += SizeOfVector(helper[task]);
+    }
+    return count;
   }
 
   void FreeHelpers(TaskHelpers & helper) {

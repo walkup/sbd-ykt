@@ -60,7 +60,7 @@ namespace sbd {
       num_threads = omp_get_num_threads();
       thread_id = omp_get_thread_num();
       
-      if( mpi_rank_t == mpi_size_t-1 ) {
+      if( mpi_rank_t == 0 ) {
 #pragma omp for
 	for(size_t i=0; i < T.size(); i++) {
 	  Wb[i] += hii[i] * T[i];
@@ -144,10 +144,10 @@ namespace sbd {
     size_t num_threads = 1;
 
     auto time_copy_start = std::chrono::high_resolution_clock::now();
-    std::vector<ElemT> T(Wk);
-    std::vector<ElemT> R(Wk);
+    std::vector<ElemT> T;
     Mpi2dSlide(Wk,T,adet_comm_size,bdet_comm_size,
 	       helper[0].adetShift,helper[0].bdetShift,b_comm);
+    std::vector<ElemT> R(T);
     auto time_copy_end = std::chrono::high_resolution_clock::now();
 
     auto time_mult_start = std::chrono::high_resolution_clock::now();
@@ -156,17 +156,28 @@ namespace sbd {
       num_threads = omp_get_num_threads();
       size_t thread_id = omp_get_thread_num();
       
-      if( mpi_rank_t == mpi_size_t-1 ) {
+      if( mpi_rank_t == 0 ) {
 #pragma omp for
 	for(size_t i=0; i < T.size(); i++) {
 	  Wb[i] += hii[i] * T[i];
 	}
+#ifdef SBD_DEBUG
+    std::cout << " End multiplication of diagonal term at mpi process (h,b,t) = ("
+	      << mpi_rank_h << "," << mpi_rank_b << "," << mpi_rank_t << ")" << std::endl;
+#endif
       }
     }
 
+
     size_t chunk_size = (helper[0].braBetaEnd-helper[0].braBetaStart) / num_threads;
     for(size_t task=0; task < helper.size(); task++) {
+
+#ifdef SBD_DEBUG
+      std::cout << " Start multiplication for task " << task << " at mpi process (h,b,t) = ("
+		<< mpi_rank_h << "," << mpi_rank_b << "," << mpi_rank_t << "): task type = "
+		<< helper[task].taskType << std::endl;
       
+#endif
       size_t ketAlphaSize = helper[task].ketAlphaEnd-helper[task].ketAlphaStart;
       size_t ketBetaSize  = helper[task].ketBetaEnd-helper[task].ketBetaStart;
 #pragma omp parallel
@@ -283,6 +294,21 @@ namespace sbd {
       } // end pragma paralell
       
       if( helper[task].taskType == 0 && task != helper.size()-1 ) {
+#ifdef SBD_DEBUG
+	size_t adet_rank = mpi_rank_b / bdet_comm_size;
+	size_t bdet_rank = mpi_rank_b % bdet_comm_size;
+	size_t adet_rank_task = (adet_rank+helper[task].adetShift) % adet_comm_size;
+	size_t bdet_rank_task = (bdet_rank+helper[task].bdetShift) % bdet_comm_size;
+	size_t adet_rank_next = (adet_rank+helper[task+1].adetShift) % adet_comm_size;
+	size_t bdet_rank_next = (bdet_rank+helper[task+1].bdetShift) % bdet_comm_size;
+	std::cout << " mult: task " << task << " at mpi process (h,b,t) = ("
+		  << mpi_rank_h << "," << mpi_rank_b << "," << mpi_rank_t
+		  << "): two-dimensional slide communication from ("
+		  << adet_rank_task << "," << bdet_rank_task << ") to ("
+		  << adet_rank_next << "," << bdet_rank_next << ")" 
+		  << std::endl;
+	
+#endif
 	int adetslide = helper[task+1].adetShift-helper[task].adetShift;
 	int bdetslide = helper[task+1].bdetShift-helper[task].bdetShift;
 	R.resize(T.size());
