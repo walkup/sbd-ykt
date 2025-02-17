@@ -325,7 +325,68 @@ namespace sbd {
     }
   }
   
+  std::vector<size_t> TaskCostSize(const std::vector<TaskHelpers> & helper,
+				   MPI_Comm h_comm, MPI_Comm b_comm, MPI_Comm t_comm) {
 
+    int mpi_size_h; MPI_Comm_size(h_comm,&mpi_size_h);
+    int mpi_rank_h; MPI_Comm_rank(h_comm,&mpi_rank_h);
+    size_t num_threads = 1;
+#pragma omp parallel
+    {
+      num_threads = omp_get_num_threads();
+    }
+    
+    size_t chunk_size = (helper[0].braAlphaEnd-helper[0].braAlphaStart) / num_threads;
+    std::vector<std::vector<size_t>> len(helper.size(),std::vector<size_t>(num_threads));
+
+    size_t braAlphaSize = helper[0].braAlphaEnd - helper[0].braAlphaStart;
+    size_t braBetaSize  = helper[0].braBetaEnd - helper[0].braBetaStart;
+
+#pragma omp parallel
+    {
+      size_t thread_id = omp_get_thread_num();
+      size_t ia_start = thread_id * chunk_size     + helper[0].braAlphaStart;
+      size_t ia_end   = (thread_id+1) * chunk_size + helper[0].braAlphaStart;
+      if( thread_id == num_threads - 1 ) {
+	ia_end = helper[0].braAlphaEnd;
+      }
+      for(size_t task = 0; task < helper.size(); task++) {
+	for(size_t ia = ia_start; ia < ia_end; ia++) {
+	  for(size_t ib = helper[task].braBetaStart; ib < helper[task].braBetaEnd; ib++) {
+	    size_t braIdx = (ia-helper[task].braAlphaStart)*braBetaSize
+	                    +ib-helper[task].braBetaStart;
+	    if( (braIdx % mpi_size_h) != mpi_rank_h ) continue;
+	    if ( helper[task].taskType == 0 ) {
+	      // two-particle excitation composed of single alpha and single beta
+	      len[task][thread_id] += helper[task].SinglesFromAlphaLen[ia-helper[task].braAlphaStart]
+		                    * helper[task].SinglesFromBetaLen[ib-helper[task].braBetaStart];
+	    }
+	    else if ( helper[task].taskType == 1 ) {
+	      // single alpha excitation
+	      len[task][thread_id] += helper[task].SinglesFromAlphaLen[ia-helper[task].braAlphaStart];
+	      // double alpha excitation
+	      len[task][thread_id] += helper[task].DoublesFromAlphaLen[ia-helper[task].braAlphaStart];
+	    }
+	    else if( helper[task].taskType == 2 ) {
+	      // single beta excitation
+	      len[task][thread_id] += helper[task].SinglesFromBetaLen[ib-helper[task].braBetaStart];
+	      // double beta excitation
+	      len[task][thread_id] += helper[task].DoublesFromBetaLen[ib-helper[task].braBetaStart];
+	    }
+	  } // end ib loop
+	} // end ia loop
+      } // end tasktype loop
+    } // end omp parallel for
+    
+    std::vector<size_t> cost(helper.size());
+    for(size_t task=0; task < helper.size(); task++) {
+      cost[task] = 0.0;
+      for(size_t thread=0; thread < num_threads; thread++) {
+	cost[task] += len[task][thread];
+      }
+    }
+    return cost;
+  }
   
 } // end namespace sbd
 

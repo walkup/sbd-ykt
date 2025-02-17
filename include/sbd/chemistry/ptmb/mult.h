@@ -141,13 +141,23 @@ namespace sbd {
     size_t braAlphaSize = helper[0].braAlphaEnd-helper[0].braAlphaStart;
     size_t braBetaSize  = helper[0].braBetaEnd-helper[0].braBetaStart;
 
+    size_t adet_min = 0;
+    size_t adet_max = adets.size();
+    size_t bdet_min = 0;
+    size_t bdet_max = bdets.size();
+    get_mpi_range(adet_comm_size,0,adet_min,adet_max);
+    get_mpi_range(bdet_comm_size,0,bdet_min,bdet_max);
+    size_t max_det_size = (adet_max-adet_min)*(bdet_max-bdet_min);
+
     size_t num_threads = 1;
 
     auto time_copy_start = std::chrono::high_resolution_clock::now();
     std::vector<ElemT> T;
+    std::vector<ElemT> R;
+    T.reserve(max_det_size);
+    R.reserve(max_det_size);
     Mpi2dSlide(Wk,T,adet_comm_size,bdet_comm_size,
 	       helper[0].adetShift,helper[0].bdetShift,b_comm);
-    std::vector<ElemT> R(T);
     auto time_copy_end = std::chrono::high_resolution_clock::now();
 
     auto time_mult_start = std::chrono::high_resolution_clock::now();
@@ -168,6 +178,7 @@ namespace sbd {
       }
     }
 
+    double time_slid = 0.0;
 
     size_t chunk_size = (helper[0].braBetaEnd-helper[0].braBetaStart) / num_threads;
     for(size_t task=0; task < helper.size(); task++) {
@@ -313,7 +324,11 @@ namespace sbd {
 	int bdetslide = helper[task+1].bdetShift-helper[task].bdetShift;
 	R.resize(T.size());
 	std::memcpy(R.data(),T.data(),T.size()*sizeof(ElemT));
+	auto time_slid_start = std::chrono::high_resolution_clock::now();
 	Mpi2dSlide(R,T,adet_comm_size,bdet_comm_size,adetslide,bdetslide,b_comm);
+	auto time_slid_end = std::chrono::high_resolution_clock::now();
+	auto time_slid_count = std::chrono::duration_cast<std::chrono::microseconds>(time_slid_end-time_slid_start).count();
+	time_slid += 1.0e-6 * time_slid_count;
       }
       
     } // end for(size_t task=0; task < helper.size(); task++)
@@ -334,6 +349,7 @@ namespace sbd {
     double time_comm = 1.0e-6 * time_comm_count;
     std::cout << " mult: time for first copy     = " << time_copy << std::endl;
     std::cout << " mult: time for multiplication = " << time_mult << std::endl;
+    std::cout << " mult: time for 2d slide comm  = " << time_slid << std::endl;
     std::cout << " mult: time for allreduce comm = " << time_comm << std::endl;
 #endif
 
