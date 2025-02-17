@@ -1,9 +1,9 @@
 /**
-@file sbd/chemistry/pwdb/davidson.h
-@brief davidson for parallel worker for distributed basis
+@file sbd/chemistry/ptmb/davidson.h
+@brief davidson for parallel task management for distributed basis
 */
-#ifndef SBD_CHEMISTRY_PWDB_DAVIDSON_H
-#define SBD_CHEMISTRY_PWDB_DAVIDSON_H
+#ifndef SBD_CHEMISTRY_PTMB_DAVIDSON_H
+#define SBD_CHEMISTRY_PTMB_DAVIDSON_H
 
 namespace sbd {
 
@@ -19,7 +19,7 @@ namespace sbd {
     
 x = 0    1    2    3
    
-   --- w_comm --- color rule: x = const
+   --- t_comm --- color rule: x = const
                       y
     o    o    o    o  2
     |    |    |    |
@@ -39,17 +39,17 @@ x = 0    1    2    3
   
   template <typename ElemT>
   void BasisInitVector(std::vector<ElemT> & W,
-		       const std::vector<WorkHelpers> helper,
+		       const std::vector<TaskHelpers> helper,
 		       MPI_Comm h_comm,
 		       MPI_Comm b_comm,
-		       MPI_Comm w_comm,
+		       MPI_Comm t_comm,
 		       int init) {
     int mpi_rank_h; MPI_Comm_rank(h_comm,&mpi_rank_h);
     int mpi_size_h; MPI_Comm_size(h_comm,&mpi_size_h);
     int mpi_rank_b; MPI_Comm_rank(b_comm,&mpi_rank_b);
     int mpi_size_b; MPI_Comm_size(b_comm,&mpi_size_b);
-    int mpi_rank_w; MPI_Comm_rank(w_comm,&mpi_rank_w);
-    int mpi_size_w; MPI_Comm_size(w_comm,&mpi_size_w);
+    int mpi_rank_t; MPI_Comm_rank(t_comm,&mpi_rank_t);
+    int mpi_size_t; MPI_Comm_size(t_comm,&mpi_size_t);
 
     size_t AlphaSize = helper[0].braAlphaEnd - helper[0].braAlphaStart;
     size_t BetaSize  = helper[0].braBetaEnd - helper[0].braBetaStart;
@@ -59,10 +59,10 @@ x = 0    1    2    3
 	W[0] = ElemT(1.0);
       }
     } else if ( init == 1 ) {
-      if( mpi_rank_w == 0 ) {
+      if( mpi_rank_t == 0 ) {
 	Randomize(W,b_comm,h_comm);
       }
-      MpiBcast(W,0,w_comm);
+      MpiBcast(W,0,t_comm);
     }
   }
 
@@ -73,13 +73,13 @@ x = 0    1    2    3
 		const std::vector<size_t*> & jh,
 		const std::vector<ElemT*> & hij,
 		const std::vector<std::vector<size_t>> & len,
-		const std::vector<size_t> & worktype,
+		const std::vector<size_t> & tasktype,
 		const std::vector<size_t> & adetshift,
 		const std::vector<size_t> & bdetshift,
 		std::vector<ElemT> & W,
 		MPI_Comm h_comm,
 		MPI_Comm b_comm,
-		MPI_Comm w_comm,
+		MPI_Comm t_comm,
 		int max_iteration,
 		int num_block,
 		size_t bit_length,
@@ -95,8 +95,8 @@ x = 0    1    2    3
     int mpi_size_h; MPI_Comm_size(h_comm,&mpi_size_h);
     int mpi_rank_b; MPI_Comm_rank(b_comm,&mpi_rank_b);
     int mpi_size_b; MPI_Comm_size(b_comm,&mpi_size_b);
-    int mpi_rank_w; MPI_Comm_rank(w_comm,&mpi_rank_w);
-    int mpi_size_w; MPI_Comm_size(w_comm,&mpi_size_w);
+    int mpi_rank_t; MPI_Comm_rank(t_comm,&mpi_rank_t);
+    int mpi_size_t; MPI_Comm_size(t_comm,&mpi_size_t);
 
     ElemT * H = (ElemT *) calloc(num_block*num_block,sizeof(ElemT));
     ElemT * U = (ElemT *) calloc(num_block*num_block,sizeof(ElemT));
@@ -112,7 +112,7 @@ x = 0    1    2    3
 #ifdef SBD_DEBUG
     std::cout << " diagonal term at mpi process (h,b,w) = ("
 	      << mpi_rank_h << "," << mpi_rank_b << ","
-	      << mpi_rank_w << "): ";
+	      << mpi_rank_t << "): ";
     for(size_t id=0; id < std::min(W.size(),static_cast<size_t>(6)); id++) {
       std::cout << " " << dii[id];
     }
@@ -132,20 +132,20 @@ x = 0    1    2    3
 
 	Zero(HC[ib]);
 	mult(hii,ih,jh,hij,len,
-	     worktype,adetshift,bdetshift,adet_comm_size,bdet_comm_size,
-	     C[ib],HC[ib],bit_length,h_comm,b_comm,w_comm);
+	     tasktype,adetshift,bdetshift,adet_comm_size,bdet_comm_size,
+	     C[ib],HC[ib],bit_length,h_comm,b_comm,t_comm);
 
 #ifdef SBD_DEBUG
 	std::cout << " (h,b,w) = ("
 		  << mpi_rank_h << "," << mpi_rank_b << ","
-		  << mpi_rank_w << "): Hv(" << ib << ") =";
+		  << mpi_rank_t << "): Hv(" << ib << ") =";
 	for(size_t n=0; n < std::min(static_cast<size_t>(6),W.size()); n++) {
 	  std::cout << " " << HC[ib][n];
 	}
 	std::cout << " ... " << HC[ib][W.size()-1] << std::endl;
 	std::cout << " (h,b,w) = ("
 		  << mpi_rank_h << "," << mpi_rank_b << ","
-		  << mpi_rank_w << "):  v(" << ib << ") =";
+		  << mpi_rank_t << "):  v(" << ib << ") =";
 	for(size_t n=0; n < std::min(static_cast<size_t>(6),W.size()); n++) {
 	  std::cout << " " << C[ib][n];
 	}
@@ -200,7 +200,7 @@ x = 0    1    2    3
 	std::cout << " Davidson iteration " << it << "." << ib
 		  << " at mpi (h,b,w) = ("
 		  << mpi_rank_h << "," << mpi_rank_b << ","
-		  << mpi_rank_w << "): (tol=" << norm_R << "):";
+		  << mpi_rank_t << "): (tol=" << norm_R << "):";
 	for(int p=0; p < std::min(ib+1,4); p++) {
 	  std::cout << " " << E[p];
 	}
@@ -266,13 +266,13 @@ x = 0    1    2    3
 		const size_t norbs,
 		const size_t adet_comm_size,
 		const size_t bdet_comm_size,
-		const std::vector<WorkHelpers> & helper,
+		const std::vector<TaskHelpers> & helper,
 		ElemT & I0,
 		oneInt<ElemT> & I1,
 		twoInt<ElemT> & I2,
 		MPI_Comm h_comm,
 		MPI_Comm b_comm,
-		MPI_Comm w_comm,
+		MPI_Comm t_comm,
 		int max_iteration,
 		int num_block,
 		RealT eps) {
@@ -287,8 +287,8 @@ x = 0    1    2    3
     int mpi_size_h; MPI_Comm_size(h_comm,&mpi_size_h);
     int mpi_rank_b; MPI_Comm_rank(b_comm,&mpi_rank_b);
     int mpi_size_b; MPI_Comm_size(b_comm,&mpi_size_b);
-    int mpi_rank_w; MPI_Comm_rank(w_comm,&mpi_rank_w);
-    int mpi_size_w; MPI_Comm_size(w_comm,&mpi_size_w);
+    int mpi_rank_t; MPI_Comm_rank(t_comm,&mpi_rank_t);
+    int mpi_size_t; MPI_Comm_size(t_comm,&mpi_size_t);
 
     ElemT * H = (ElemT *) calloc(num_block*num_block,sizeof(ElemT));
     ElemT * U = (ElemT *) calloc(num_block*num_block,sizeof(ElemT));
@@ -304,7 +304,7 @@ x = 0    1    2    3
 #ifdef SBD_DEBUG
     std::cout << " diagonal term at mpi process (h,b,w) = ("
 	      << mpi_rank_h << "," << mpi_rank_b << ","
-	      << mpi_rank_w << "): ";
+	      << mpi_rank_t << "): ";
     for(size_t id=0; id < std::min(W.size(),static_cast<size_t>(6)); id++) {
       std::cout << " " << dii[id];
     }
@@ -327,19 +327,19 @@ x = 0    1    2    3
 	     adets,bdets,bit_length,norbs,
 	     adet_comm_size,bdet_comm_size,
 	     helper,I0,I1,I2,
-	     h_comm,b_comm,w_comm);
+	     h_comm,b_comm,t_comm);
 
 #ifdef SBD_DEBUG
 	std::cout << " (h,b,w) = ("
 		  << mpi_rank_h << "," << mpi_rank_b << ","
-		  << mpi_rank_w << "): Hv(" << ib << ") =";
+		  << mpi_rank_t << "): Hv(" << ib << ") =";
 	for(size_t n=0; n < std::min(static_cast<size_t>(6),W.size()); n++) {
 	  std::cout << " " << HC[ib][n];
 	}
 	std::cout << " ... " << HC[ib][W.size()-1] << std::endl;
 	std::cout << " (h,b,w) = ("
 		  << mpi_rank_h << "," << mpi_rank_b << ","
-		  << mpi_rank_w << "):  v(" << ib << ") =";
+		  << mpi_rank_t << "):  v(" << ib << ") =";
 	for(size_t n=0; n < std::min(static_cast<size_t>(6),W.size()); n++) {
 	  std::cout << " " << C[ib][n];
 	}
@@ -394,7 +394,7 @@ x = 0    1    2    3
 	std::cout << " Davidson iteration " << it << "." << ib
 		  << " at mpi (h,b,w) = ("
 		  << mpi_rank_h << "," << mpi_rank_b << ","
-		  << mpi_rank_w << "): (tol=" << norm_R << "):";
+		  << mpi_rank_t << "): (tol=" << norm_R << "):";
 	for(int p=0; p < std::min(ib+1,4); p++) {
 	  std::cout << " " << E[p];
 	}

@@ -1,13 +1,13 @@
 /**
-@file sbd/chemistry/pwdb/helpers.h
-@brief Helper array to construct Hamiltonian for parallel workers for distributed basis
+@file sbd/chemistry/ptmb/helpers.h
+@brief Helper array to construct Hamiltonian for parallel taskers for distributed basis
  */
-#ifndef SBD_CHEMISTRY_PWDB_HELPER_H
-#define SBD_CHEMISTRY_PWDB_HELPER_H
+#ifndef SBD_CHEMISTRY_PTMB_HELPER_H
+#define SBD_CHEMISTRY_PTMB_HELPER_H
 
 namespace sbd {
   
-  struct WorkHelpers {
+  struct TaskHelpers {
     size_t braAlphaStart;
     size_t braAlphaEnd;
     size_t ketAlphaStart;
@@ -16,7 +16,7 @@ namespace sbd {
     size_t braBetaEnd;
     size_t ketBetaStart;
     size_t ketBetaEnd;
-    size_t workType;
+    size_t taskType;
     size_t adetShift;
     size_t bdetShift;
     std::vector<std::vector<size_t>> SinglesFromAlpha;
@@ -37,7 +37,7 @@ namespace sbd {
 		       const std::vector<std::vector<size_t>> & BDets,
 		       const size_t bit_length,
 		       const size_t norb,
-		       WorkHelpers & helper) {
+		       TaskHelpers & helper) {
     size_t braAlphaStart = helper.braAlphaStart;
     size_t braAlphaEnd = helper.braAlphaEnd;
     size_t ketAlphaStart = helper.ketAlphaStart;
@@ -96,7 +96,7 @@ namespace sbd {
 		       const std::vector<std::vector<size_t>> & BDets,
 		       const size_t bit_length,
 		       const size_t norb,
-		       WorkHelpers & helper) {
+		       TaskHelpers & helper) {
     size_t braAlphaStart = helper.braAlphaStart;
     size_t braAlphaEnd = helper.braAlphaEnd;
     size_t ketAlphaStart = helper.ketAlphaStart;
@@ -131,7 +131,7 @@ namespace sbd {
 			  const std::vector<std::vector<size_t>> & bdets,
 			  const size_t bit_length,
 			  const size_t norb,
-			  WorkHelpers & helper) {
+			  TaskHelpers & helper) {
     size_t braAlphaStart = helper.braAlphaStart;
     size_t braAlphaEnd = helper.braAlphaEnd;
     size_t ketAlphaStart = helper.ketAlphaStart;
@@ -179,14 +179,14 @@ namespace sbd {
     }
   }
 
-  void WorkCommunicator(MPI_Comm comm,
+  void TaskCommunicator(MPI_Comm comm,
 			int h_comm_size,
 			int adet_comm_size,
 			int bdet_comm_size,
 			int copy_comm_size,
 			MPI_Comm & h_comm,
 			MPI_Comm & b_comm,
-			MPI_Comm & w_comm) {
+			MPI_Comm & t_comm) {
     
     int mpi_size; MPI_Comm_size(comm,&mpi_size);
     int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
@@ -207,9 +207,9 @@ namespace sbd {
     int mpi_size_area; MPI_Comm_size(basis_area_comm,&mpi_size_area);
     int mpi_rank_area; MPI_Comm_rank(basis_area_comm,&mpi_rank_area);
 
-    int w_comm_color = mpi_rank_area % basis_comm_size;
+    int t_comm_color = mpi_rank_area % basis_comm_size;
     int b_comm_color = mpi_rank_area / basis_comm_size;
-    MPI_Comm_split(basis_area_comm,w_comm_color,mpi_rank,&w_comm);
+    MPI_Comm_split(basis_area_comm,t_comm_color,mpi_rank,&t_comm);
     MPI_Comm_split(basis_area_comm,b_comm_color,mpi_rank,&b_comm);
     
   }
@@ -219,181 +219,181 @@ namespace sbd {
   // for adet_size = 4, bdet_size = 4, r_comm_size = 1
   // 
   //                                                   basis_comm_ranks  
-  // work 0  (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3)
-  // work 1  (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3)
-  // work 2  (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3)
-  // work 3  (0,1) (0,2) (0,3) (0,1) (1,1) (1,2) (1,3) (1,0) (2,1) (2,2) (2,3) (2,0) (3,1) (3,2) (3,3) (3,0)
-  // work 4  (0,1) (0,2) (0,3) (0,1) (1,1) (1,2) (1,3) (1,0) (2,1) (2,2) (2,3) (2,0) (3,1) (3,2) (3,3) (3,0)
-  // work 5  (0,2) (0,3) (0,1) (0,1) (1,2) (1,3) (1,0) (1,1) (2,2) (2,3) (2,0) (2,1) (3,2) (3,3) (3,0) (3,1)
-  // work 6  (0,2) (0,3) (0,1) (0,1) (1,2) (1,3) (1,0) (1,1) (2,2) (2,3) (2,0) (2,1) (3,2) (3,3) (3,0) (3,1)
-  // work 7  (0,3) (0,1) (0,1) (0,2) (1,3) (1,0) (1,1) (1,2) (2,3) (2,0) (2,1) (2,2) (3,3) (3,0) (3,1) (3,2)
-  // work 8  (0,3) (0,1) (0,1) (0,2) (1,3) (1,0) (1,1) (1,2) (2,3) (2,0) (2,1) (2,2) (3,3) (3,0) (3,1) (3,2)
-  // work 9  (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3)
-  // work 10 (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3)
-  // work 11 (1,1) (1,2) (1,3) (1,1) (2,1) (2,2) (2,3) (2,0) (3,1) (3,2) (3,3) (3,0) (0,1) (0,2) (0,3) (0,0)
-  // work 12 (1,2) (1,3) (1,1) (1,1) (2,2) (2,3) (2,0) (2,1) (3,2) (3,3) (3,0) (3,1) (0,2) (0,3) (0,0) (0,1)
-  // work 13 (1,3) (1,1) (1,1) (1,2) (2,3) (2,0) (2,1) (2,2) (3,3) (3,0) (3,1) (3,2) (0,3) (0,0) (0,1) (0,2)
-  // work 14 (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3)
-  // work 15 (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3)
-  // work 16 (2,1) (2,2) (2,3) (2,1) (3,1) (3,2) (3,3) (3,0) (0,1) (0,2) (0,3) (0,0) (1,1) (1,2) (1,3) (1,0)
-  // work 17 (2,2) (2,3) (2,1) (2,1) (3,2) (3,3) (3,0) (3,1) (0,2) (0,3) (0,0) (0,1) (1,2) (1,3) (1,0) (1,1)
-  // work 18 (2,3) (2,1) (2,1) (2,2) (3,3) (3,0) (3,1) (3,2) (0,3) (0,0) (0,1) (0,2) (1,3) (1,0) (1,1) (1,2)
-  // work 19 (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3)
-  // work 20 (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3)
-  // work 21 (3,1) (3,2) (3,3) (3,1) (0,1) (0,2) (0,3) (0,0) (1,1) (1,2) (1,3) (1,0) (2,1) (2,2) (2,3) (2,0)
-  // work 22 (3,2) (3,3) (3,1) (3,1) (0,2) (0,3) (0,0) (0,1) (1,2) (1,3) (1,0) (1,1) (2,2) (2,3) (2,0) (2,1)
-  // work 23 (3,3) (3,1) (3,1) (3,2) (0,3) (0,0) (0,1) (0,2) (1,3) (1,0) (1,1) (1,2) (2,3) (2,0) (2,1) (2,2)
+  // task 0  (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3)
+  // task 1  (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3)
+  // task 2  (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3)
+  // task 3  (0,1) (0,2) (0,3) (0,1) (1,1) (1,2) (1,3) (1,0) (2,1) (2,2) (2,3) (2,0) (3,1) (3,2) (3,3) (3,0)
+  // task 4  (0,1) (0,2) (0,3) (0,1) (1,1) (1,2) (1,3) (1,0) (2,1) (2,2) (2,3) (2,0) (3,1) (3,2) (3,3) (3,0)
+  // task 5  (0,2) (0,3) (0,1) (0,1) (1,2) (1,3) (1,0) (1,1) (2,2) (2,3) (2,0) (2,1) (3,2) (3,3) (3,0) (3,1)
+  // task 6  (0,2) (0,3) (0,1) (0,1) (1,2) (1,3) (1,0) (1,1) (2,2) (2,3) (2,0) (2,1) (3,2) (3,3) (3,0) (3,1)
+  // task 7  (0,3) (0,1) (0,1) (0,2) (1,3) (1,0) (1,1) (1,2) (2,3) (2,0) (2,1) (2,2) (3,3) (3,0) (3,1) (3,2)
+  // task 8  (0,3) (0,1) (0,1) (0,2) (1,3) (1,0) (1,1) (1,2) (2,3) (2,0) (2,1) (2,2) (3,3) (3,0) (3,1) (3,2)
+  // task 9  (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3)
+  // task 10 (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3)
+  // task 11 (1,1) (1,2) (1,3) (1,1) (2,1) (2,2) (2,3) (2,0) (3,1) (3,2) (3,3) (3,0) (0,1) (0,2) (0,3) (0,0)
+  // task 12 (1,2) (1,3) (1,1) (1,1) (2,2) (2,3) (2,0) (2,1) (3,2) (3,3) (3,0) (3,1) (0,2) (0,3) (0,0) (0,1)
+  // task 13 (1,3) (1,1) (1,1) (1,2) (2,3) (2,0) (2,1) (2,2) (3,3) (3,0) (3,1) (3,2) (0,3) (0,0) (0,1) (0,2)
+  // task 14 (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3)
+  // task 15 (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3)
+  // task 16 (2,1) (2,2) (2,3) (2,1) (3,1) (3,2) (3,3) (3,0) (0,1) (0,2) (0,3) (0,0) (1,1) (1,2) (1,3) (1,0)
+  // task 17 (2,2) (2,3) (2,1) (2,1) (3,2) (3,3) (3,0) (3,1) (0,2) (0,3) (0,0) (0,1) (1,2) (1,3) (1,0) (1,1)
+  // task 18 (2,3) (2,1) (2,1) (2,2) (3,3) (3,0) (3,1) (3,2) (0,3) (0,0) (0,1) (0,2) (1,3) (1,0) (1,1) (1,2)
+  // task 19 (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3)
+  // task 20 (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3)
+  // task 21 (3,1) (3,2) (3,3) (3,1) (0,1) (0,2) (0,3) (0,0) (1,1) (1,2) (1,3) (1,0) (2,1) (2,2) (2,3) (2,0)
+  // task 22 (3,2) (3,3) (3,1) (3,1) (0,2) (0,3) (0,0) (0,1) (1,2) (1,3) (1,0) (1,1) (2,2) (2,3) (2,0) (2,1)
+  // task 23 (3,3) (3,1) (3,1) (3,2) (0,3) (0,0) (0,1) (0,2) (1,3) (1,0) (1,1) (1,2) (2,3) (2,0) (2,1) (2,2)
   
   // for adet_size = 4, bdet_size = 4, r_comm_size = 3
   //                             r_comm_rank = 0
-  // work 0  (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3)
-  // work 1  (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3)
-  // work 2  (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3)
-  // work 3  (0,1) (0,2) (0,3) (0,1) (1,1) (1,2) (1,3) (1,0) (2,1) (2,2) (2,3) (2,0) (3,1) (3,2) (3,3) (3,0)
-  // work 4  (0,1) (0,2) (0,3) (0,1) (1,1) (1,2) (1,3) (1,0) (2,1) (2,2) (2,3) (2,0) (3,1) (3,2) (3,3) (3,0)
-  // work 5  (0,2) (0,3) (0,1) (0,1) (1,2) (1,3) (1,0) (1,1) (2,2) (2,3) (2,0) (2,1) (3,2) (3,3) (3,0) (3,1)
-  // work 6  (0,2) (0,3) (0,1) (0,1) (1,2) (1,3) (1,0) (1,1) (2,2) (2,3) (2,0) (2,1) (3,2) (3,3) (3,0) (3,1)
-  // work 7  (0,3) (0,1) (0,1) (0,2) (1,3) (1,0) (1,1) (1,2) (2,3) (2,0) (2,1) (2,2) (3,3) (3,0) (3,1) (3,2)
+  // task 0  (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3)
+  // task 1  (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3)
+  // task 2  (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3)
+  // task 3  (0,1) (0,2) (0,3) (0,1) (1,1) (1,2) (1,3) (1,0) (2,1) (2,2) (2,3) (2,0) (3,1) (3,2) (3,3) (3,0)
+  // task 4  (0,1) (0,2) (0,3) (0,1) (1,1) (1,2) (1,3) (1,0) (2,1) (2,2) (2,3) (2,0) (3,1) (3,2) (3,3) (3,0)
+  // task 5  (0,2) (0,3) (0,1) (0,1) (1,2) (1,3) (1,0) (1,1) (2,2) (2,3) (2,0) (2,1) (3,2) (3,3) (3,0) (3,1)
+  // task 6  (0,2) (0,3) (0,1) (0,1) (1,2) (1,3) (1,0) (1,1) (2,2) (2,3) (2,0) (2,1) (3,2) (3,3) (3,0) (3,1)
+  // task 7  (0,3) (0,1) (0,1) (0,2) (1,3) (1,0) (1,1) (1,2) (2,3) (2,0) (2,1) (2,2) (3,3) (3,0) (3,1) (3,2)
   // 
   //                             r_comm_rank = 1
-  // work 0  (0,3) (0,1) (0,1) (0,2) (1,3) (1,0) (1,1) (1,2) (2,3) (2,0) (2,1) (2,2) (3,3) (3,0) (3,1) (3,2)
-  // work 1  (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3)
-  // work 2  (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3)
-  // work 3  (1,1) (1,2) (1,3) (1,1) (2,1) (2,2) (2,3) (2,0) (3,1) (3,2) (3,3) (3,0) (0,1) (0,2) (0,3) (0,0)
-  // work 4  (1,2) (1,3) (1,1) (1,1) (2,2) (2,3) (2,0) (2,1) (3,2) (3,3) (3,0) (3,1) (0,2) (0,3) (0,0) (0,1)
-  // work 5  (1,3) (1,1) (1,1) (1,2) (2,3) (2,0) (2,1) (2,2) (3,3) (3,0) (3,1) (3,2) (0,3) (0,0) (0,1) (0,2)
-  // work 6  (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3)
-  // work 7  (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3)
+  // task 0  (0,3) (0,1) (0,1) (0,2) (1,3) (1,0) (1,1) (1,2) (2,3) (2,0) (2,1) (2,2) (3,3) (3,0) (3,1) (3,2)
+  // task 1  (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3)
+  // task 2  (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3)
+  // task 3  (1,1) (1,2) (1,3) (1,1) (2,1) (2,2) (2,3) (2,0) (3,1) (3,2) (3,3) (3,0) (0,1) (0,2) (0,3) (0,0)
+  // task 4  (1,2) (1,3) (1,1) (1,1) (2,2) (2,3) (2,0) (2,1) (3,2) (3,3) (3,0) (3,1) (0,2) (0,3) (0,0) (0,1)
+  // task 5  (1,3) (1,1) (1,1) (1,2) (2,3) (2,0) (2,1) (2,2) (3,3) (3,0) (3,1) (3,2) (0,3) (0,0) (0,1) (0,2)
+  // task 6  (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3)
+  // task 7  (2,0) (2,1) (2,2) (2,3) (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3)
   // 
   //                             r_comm_rank = 2
-  // work 0  (2,1) (2,2) (2,3) (2,1) (3,1) (3,2) (3,3) (3,0) (0,1) (0,2) (0,3) (0,0) (1,1) (1,2) (1,3) (1,0)
-  // work 1  (2,2) (2,3) (2,1) (2,1) (3,2) (3,3) (3,0) (3,1) (0,2) (0,3) (0,0) (0,1) (1,2) (1,3) (1,0) (1,1)
-  // work 2  (2,3) (2,1) (2,1) (2,2) (3,3) (3,0) (3,1) (3,2) (0,3) (0,0) (0,1) (0,2) (1,3) (1,0) (1,1) (1,2)
-  // work 3  (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3)
-  // work 4  (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3)
-  // work 5  (3,1) (3,2) (3,3) (3,1) (0,1) (0,2) (0,3) (0,0) (1,1) (1,2) (1,3) (1,0) (2,1) (2,2) (2,3) (2,0)
-  // work 6  (3,2) (3,3) (3,1) (3,1) (0,2) (0,3) (0,0) (0,1) (1,2) (1,3) (1,0) (1,1) (2,2) (2,3) (2,0) (2,1)
-  // work 7  (3,3) (3,1) (3,1) (3,2) (0,3) (0,0) (0,1) (0,2) (1,3) (1,0) (1,1) (1,2) (2,3) (2,0) (2,1) (2,2)
+  // task 0  (2,1) (2,2) (2,3) (2,1) (3,1) (3,2) (3,3) (3,0) (0,1) (0,2) (0,3) (0,0) (1,1) (1,2) (1,3) (1,0)
+  // task 1  (2,2) (2,3) (2,1) (2,1) (3,2) (3,3) (3,0) (3,1) (0,2) (0,3) (0,0) (0,1) (1,2) (1,3) (1,0) (1,1)
+  // task 2  (2,3) (2,1) (2,1) (2,2) (3,3) (3,0) (3,1) (3,2) (0,3) (0,0) (0,1) (0,2) (1,3) (1,0) (1,1) (1,2)
+  // task 3  (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3)
+  // task 4  (3,0) (3,1) (3,2) (3,3) (0,0) (0,1) (0,2) (0,3) (1,0) (1,1) (1,2) (1,3) (2,0) (2,1) (2,2) (2,3)
+  // task 5  (3,1) (3,2) (3,3) (3,1) (0,1) (0,2) (0,3) (0,0) (1,1) (1,2) (1,3) (1,0) (2,1) (2,2) (2,3) (2,0)
+  // task 6  (3,2) (3,3) (3,1) (3,1) (0,2) (0,3) (0,0) (0,1) (1,2) (1,3) (1,0) (1,1) (2,2) (2,3) (2,0) (2,1)
+  // task 7  (3,3) (3,1) (3,1) (3,2) (0,3) (0,0) (0,1) (0,2) (1,3) (1,0) (1,1) (1,2) (2,3) (2,0) (2,1) (2,2)
   
   void PopulateHelpers(const std::vector<std::vector<size_t>> & adets,
 		       const std::vector<std::vector<size_t>> & bdets,
 		       size_t bit_length,
 		       size_t norb,
-		       std::vector<WorkHelpers> & helper,
+		       std::vector<TaskHelpers> & helper,
 		       MPI_Comm h_comm,
 		       MPI_Comm b_comm,
-		       MPI_Comm w_comm,
+		       MPI_Comm t_comm,
 		       size_t adet_comm_size,
 		       size_t bdet_comm_size) {
     
     int mpi_size_b; MPI_Comm_size(b_comm,&mpi_size_b);
     int mpi_rank_b; MPI_Comm_rank(b_comm,&mpi_rank_b);
-    int mpi_size_w; MPI_Comm_size(w_comm,&mpi_size_w);
-    int mpi_rank_w; MPI_Comm_rank(w_comm,&mpi_rank_w);
+    int mpi_size_t; MPI_Comm_size(t_comm,&mpi_size_t);
+    int mpi_rank_t; MPI_Comm_rank(t_comm,&mpi_rank_t);
 
-    size_t total_work = adet_comm_size * bdet_comm_size
+    size_t total_task = adet_comm_size * bdet_comm_size
       + adet_comm_size + bdet_comm_size;
 
-    std::vector<size_t> adet_schedule(total_work);
-    std::vector<size_t> bdet_schedule(total_work);
-    std::vector<size_t> type_schedule(total_work);
-    size_t work_count = 0;
+    std::vector<size_t> adet_schedule(total_task);
+    std::vector<size_t> bdet_schedule(total_task);
+    std::vector<size_t> type_schedule(total_task);
+    size_t task_count = 0;
     for(int na=0; na < adet_comm_size; na++) {
       for(int nb=0; nb < bdet_comm_size; nb++) {
 	if( na == 0 ) {
 	  if( nb == 0 ) {
-	    adet_schedule[work_count] = na;
-	    bdet_schedule[work_count] = nb;
-	    type_schedule[work_count] = 2;
-	    work_count++;
-	    adet_schedule[work_count] = na;
-	    bdet_schedule[work_count] = nb;
-	    type_schedule[work_count] = 1;
-	    work_count++;
-	    adet_schedule[work_count] = na;
-	    bdet_schedule[work_count] = nb;
-	    type_schedule[work_count] = 0;
-	    work_count++;
+	    adet_schedule[task_count] = na;
+	    bdet_schedule[task_count] = nb;
+	    type_schedule[task_count] = 2;
+	    task_count++;
+	    adet_schedule[task_count] = na;
+	    bdet_schedule[task_count] = nb;
+	    type_schedule[task_count] = 1;
+	    task_count++;
+	    adet_schedule[task_count] = na;
+	    bdet_schedule[task_count] = nb;
+	    type_schedule[task_count] = 0;
+	    task_count++;
 	  } else {
-	    adet_schedule[work_count] = na;
-	    bdet_schedule[work_count] = nb;
-	    type_schedule[work_count] = 1;
-	    work_count++;
-	    adet_schedule[work_count] = na;
-	    bdet_schedule[work_count] = nb;
-	    type_schedule[work_count] = 0;
-	    work_count++;
+	    adet_schedule[task_count] = na;
+	    bdet_schedule[task_count] = nb;
+	    type_schedule[task_count] = 1;
+	    task_count++;
+	    adet_schedule[task_count] = na;
+	    bdet_schedule[task_count] = nb;
+	    type_schedule[task_count] = 0;
+	    task_count++;
 	  }
 	} else {
 	  if( nb == 0 ) {
-	    adet_schedule[work_count] = na;
-	    bdet_schedule[work_count] = nb;
-	    type_schedule[work_count] = 2;
-	    work_count++;
-	    adet_schedule[work_count] = na;
-	    bdet_schedule[work_count] = nb;
-	    type_schedule[work_count] = 0;
-	    work_count++;
+	    adet_schedule[task_count] = na;
+	    bdet_schedule[task_count] = nb;
+	    type_schedule[task_count] = 2;
+	    task_count++;
+	    adet_schedule[task_count] = na;
+	    bdet_schedule[task_count] = nb;
+	    type_schedule[task_count] = 0;
+	    task_count++;
 	  } else {
-	    adet_schedule[work_count] = na;
-	    bdet_schedule[work_count] = nb;
-	    type_schedule[work_count] = 0;
-	    work_count++;
+	    adet_schedule[task_count] = na;
+	    bdet_schedule[task_count] = nb;
+	    type_schedule[task_count] = 0;
+	    task_count++;
 	  }
 	}
       }
     }
 
 
-    size_t work_start = 0;
-    size_t work_end = type_schedule.size();
-    get_mpi_range(copy_comm_size,b_comm_color,work_start,work_end);
-    size_t work_size = work_end-work_start;
-    helper.resize(work_size);
+    size_t task_start = 0;
+    size_t task_end = type_schedule.size();
+    get_mpi_range(copy_comm_size,b_comm_color,task_start,task_end);
+    size_t task_size = task_end-task_start;
+    helper.resize(task_size);
 
     int bra_rank = mpi_rank_b;
     int bra_adet_rank = bra_rank / bdet_comm_size;
     int bra_bdet_rank = bra_rank % bdet_comm_size;
-    for(size_t work=work_start; work < work_end; work++) {
+    for(size_t task=task_start; task < task_end; task++) {
 
-      int ket_adet_rank = (bra_adet_rank + adet_schedule[work]) % adet_comm_size;
-      int ket_bdet_rank = (bra_bdet_rank + bdet_schedule[work]) % bdet_comm_size;
-      helper[work-work_start].braAlphaStart = 0;
-      helper[work-work_start].braAlphaEnd   = adets.size();
-      helper[work-work_start].braBetaStart  = 0;
-      helper[work-work_start].braBetaEnd    = bdets.size();
-      helper[work-work_start].ketAlphaStart = 0;
-      helper[work-work_start].ketAlphaEnd   = adets.size();
-      helper[work-work_start].ketBetaStart  = 0;
-      helper[work-work_start].ketBetaEnd    = bdets.size();
+      int ket_adet_rank = (bra_adet_rank + adet_schedule[task]) % adet_comm_size;
+      int ket_bdet_rank = (bra_bdet_rank + bdet_schedule[task]) % bdet_comm_size;
+      helper[task-task_start].braAlphaStart = 0;
+      helper[task-task_start].braAlphaEnd   = adets.size();
+      helper[task-task_start].braBetaStart  = 0;
+      helper[task-task_start].braBetaEnd    = bdets.size();
+      helper[task-task_start].ketAlphaStart = 0;
+      helper[task-task_start].ketAlphaEnd   = adets.size();
+      helper[task-task_start].ketBetaStart  = 0;
+      helper[task-task_start].ketBetaEnd    = bdets.size();
       get_mpi_range(adet_comm_size,bra_adet_rank,
-		    helper[work-work_start].braAlphaStart,
-		    helper[work-work_start].braAlphaEnd);
+		    helper[task-task_start].braAlphaStart,
+		    helper[task-task_start].braAlphaEnd);
       get_mpi_range(bdet_comm_size,bra_bdet_rank,
-		    helper[work-work_start].braBetaStart,
-		    helper[work-work_start].braBetaEnd);
+		    helper[task-task_start].braBetaStart,
+		    helper[task-task_start].braBetaEnd);
       get_mpi_range(adet_comm_size,ket_adet_rank,
-		    helper[work-work_start].ketAlphaStart,
-		    helper[work-work_start].ketAlphaEnd);
+		    helper[task-task_start].ketAlphaStart,
+		    helper[task-task_start].ketAlphaEnd);
       get_mpi_range(bdet_comm_size,ket_bdet_rank,
-		    helper[work-work_start].ketBetaStart,
-		    helper[work-work_start].ketBetaEnd);
-      helper[work-work_start].workType  = type_schedule[work];
-      helper[work-work_start].adetShift = adet_schedule[work];
-      helper[work-work_start].bdetShift = bdet_schedule[work];
-      GenerateExcitation(adets,bdets,bit_length,norb,helper[work-work_start]);
+		    helper[task-task_start].ketBetaStart,
+		    helper[task-task_start].ketBetaEnd);
+      helper[task-task_start].taskType  = type_schedule[task];
+      helper[task-task_start].adetShift = adet_schedule[task];
+      helper[task-task_start].bdetShift = bdet_schedule[task];
+      GenerateExcitation(adets,bdets,bit_length,norb,helper[task-task_start]);
 
 #ifdef SBD_DEBUG
-      for(int w_rank=0; w_rank < mpi_size_w; w_rank++) {
+      for(int t_rank=0; t_rank < mpi_size_t; t_rank++) {
 	for(int b_rank=0; b_rank < mpi_size_b; b_rank++) {
-	  if( w_rank == mpi_rank_w && b_rank == mpi_rank_b ) {
-	    std::cout << " Singles is finished at mpi rank (" << b_rank << "," << w_rank << ")" << std::endl;
-	    for(size_t i=0; i < std::min(helper[work-work_start].SinglesFromAlpha.size(),static_cast<size_t>(4)); i++) {
+	  if( t_rank == mpi_rank_t && b_rank == mpi_rank_b ) {
+	    std::cout << " Singles is finished at mpi rank (" << b_rank << "," << t_rank << ")" << std::endl;
+	    for(size_t i=0; i < std::min(helper[task-task_start].SinglesFromAlpha.size(),static_cast<size_t>(4)); i++) {
 	      std::cout << " Size of Singles from alpha ("
-			<< makestring(adets[i+helper[work-work_start].braAlphaStart],bit_length,norb) 
-			<< ") = " << helper[work-work_start].SinglesFromAlpha[i].size() << ":";
-	      for(size_t k=0; k < std::min(helper[work-work_start].SinglesFromAlpha[i].size(),static_cast<size_t>(4)); k++) {
-		size_t m = helper[work-work_start].SinglesFromAlpha[i][k];
+			<< makestring(adets[i+helper[task-task_start].braAlphaStart],bit_length,norb) 
+			<< ") = " << helper[task-task_start].SinglesFromAlpha[i].size() << ":";
+	      for(size_t k=0; k < std::min(helper[task-task_start].SinglesFromAlpha[i].size(),static_cast<size_t>(4)); k++) {
+		size_t m = helper[task-task_start].SinglesFromAlpha[i][k];
 		std::cout << " (" << makestring(adets[m],bit_length,norb) << ")";
 	      }
 	      std::cout << std::endl;
@@ -401,39 +401,39 @@ namespace sbd {
 	  }
 	  MPI_Barrier(b_comm);
 	}
-	MPI_Barrier(w_comm);
+	MPI_Barrier(t_comm);
       }
-      for(int w_rank=0; w_rank < mpi_size_w; w_rank++) {
+      for(int t_rank=0; t_rank < mpi_size_t; t_rank++) {
 	for(int b_rank=0; b_rank < mpi_size_b; b_rank++) {
-	  if( w_rank == mpi_rank_w && b_rank == b ) {
-	    std::cout << " Doubles is finished at mpi rank (" << b_rank << "," << w_rank << ")" << std::endl;
-	    for(size_t i=0; i < std::min(helper[work-work_start].SinglesFromAlpha.size(),static_cast<size_t>(4)); i++) {
+	  if( t_rank == mpi_rank_t && b_rank == b ) {
+	    std::cout << " Doubles is finished at mpi rank (" << b_rank << "," << t_rank << ")" << std::endl;
+	    for(size_t i=0; i < std::min(helper[task-task_start].SinglesFromAlpha.size(),static_cast<size_t>(4)); i++) {
 	      std::cout << " Size of Doubles from alpha ("
-			<< makestring(adets[i+helper[work-work_start].braAlphaStart],bit_length,norb)
-			<< ") = " << helper[work-work_start].DoublesFromAlpha[i].size() << std::endl;
-	      for(size_t k=0; k < std::min(helper[work-work_start].DoublesFromAlpha[i].size(),static_cast<size_t>(4)); k++) {
-		size_t m = helper[work-work_start].DoublesFromAlpha[i][k];
+			<< makestring(adets[i+helper[task-task_start].braAlphaStart],bit_length,norb)
+			<< ") = " << helper[task-task_start].DoublesFromAlpha[i].size() << std::endl;
+	      for(size_t k=0; k < std::min(helper[task-task_start].DoublesFromAlpha[i].size(),static_cast<size_t>(4)); k++) {
+		size_t m = helper[task-task_start].DoublesFromAlpha[i][k];
 		std::cout << " (" << makestring(adets[m],bit_length,norb) << ")";
 	      }
 	    }
 	  }
 	  MPI_Barrier(b_comm);
 	}
-	MPI_Barrier(w_comm);
+	MPI_Barrier(t_comm);
       }
 #endif
-    } // end helpers for different works
+    } // end helpers for different tasks
     
   }
 
-  void FreeVectors(WorkHelpers & helper) {
+  void FreeVectors(TaskHelpers & helper) {
     helper.SinglesFromAlpha = std::vector<std::vector<size_t>>();
     helper.DoublesFromAlpha = std::vector<std::vector<size_t>>();
     helper.SinglesFromBeta = std::vector<std::vector<size_t>>();
     helper.DoublesFromBeta = std::vector<std::vector<size_t>>();
   }
 
-  void MakeHelper(WorkHelpers & helper,
+  void MakeHelper(TaskHelpers & helper,
 		  std::vector<size_t> & sharedMemory) {
     
     size_t nAlpha = helper.SinglesFromAlpha.size();
@@ -505,14 +505,14 @@ namespace sbd {
     FreeVectors(helper);
   }
 
-  void MakeHelper(std::vector<WorkHelpers> & helper,
+  void MakeHelper(std::vector<TaskHelpers> & helper,
 		  std::vector<std::vector<size_t>> & sharedMemory) {
-    for(int work=0; work < helpers.size(); work++) {
-      MakeHelper(helper[work],sharedMemory[work]);
+    for(int task=0; task < helpers.size(); task++) {
+      MakeHelper(helper[task],sharedMemory[task]);
     }
   }
 
-  size_t SizeOfVector(WorkHelpers & helper) {
+  size_t SizeOfVector(TaskHelpers & helper) {
     size_t count = 0;
     for(size_t i=0; i < helper.SinglesFromAlpha.size(); i++) {
       count += helper.SinglesFromAlpha[i].size();
@@ -529,16 +529,16 @@ namespace sbd {
     return count*sizeof(size_t);
   }
 
-  void FreeHelpers(WorkHelpers & helper) {
+  void FreeHelpers(TaskHelpers & helper) {
     free(helper.SinglesFromAlphaLen);
     free(helper.SinglesFromBetaLen);
     free(helper.DoublesFromAlphaLen);
     free(helper.DoublesFromBetaLen);
   }
 
-  void FreeHelpers(std::vector<WorkHelpers> & helper) {
-    for(size_t work=0; work < helper.size(); work++) {
-      FreeHelpers(helper[work]);
+  void FreeHelpers(std::vector<TaskHelpers> & helper) {
+    for(size_t task=0; task < helper.size(); task++) {
+      FreeHelpers(helper[task]);
     }
   }
   

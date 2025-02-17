@@ -1,9 +1,9 @@
 /**
-@file sbd/chemistry/pwdb/qcham.h
-@brief Function to make Hamiltonian for parallel workers for distributed basis
+@file sbd/chemistry/ptmb/qcham.h
+@brief Function to make Hamiltonian for parallel taskers for distributed basis
 */
-#ifndef SBD_CHEMISTRY_PWDB_QCHAM_H
-#define SBD_CHEMISTRY_PWDB_QCHAM_H
+#ifndef SBD_CHEMISTRY_PTMB_QCHAM_H
+#define SBD_CHEMISTRY_PTMB_QCHAM_H
 
 namespace sbd {
 
@@ -12,7 +12,7 @@ namespace sbd {
 		 const std::vector<std::vector<size_t>> & bdets,
 		 const size_t bit_length,
 		 const size_t norbs,
-		 const std::vector<ScheduleHelpers> & helper,
+		 const std::vector<TaskHelpers> & helper,
 		 ElemT & I0,
 		 oneInt<ElemT> & I1,
 		 twoInt<ElemT> & I2,
@@ -21,14 +21,14 @@ namespace sbd {
 		 std::vector<size_t*> & jh,
 		 std::vector<ElemT*> & hij,
 		 std::vector<std::vector<size_t>> & len,
-		 std::vector<size_t> & worktype,
+		 std::vector<size_t> & tasktype,
 		 std::vector<size_t> & adetshift,
 		 std::vector<size_t> & bdetshift,
 		 std::vector<size_t> & sharedInt,
 		 std::vector<ElemT> & sharedElemT,
 		 MPI_Comm h_comm,
 		 MPI_Comm b_comm,
-		 MPI_Comm w_comm) {
+		 MPI_Comm t_comm) {
 
     int mpi_rank_h = 0;
     int mpi_size_h = 1;
@@ -37,8 +37,8 @@ namespace sbd {
 
     int mpi_size_x; MPI_Comm_size(b_comm,&mpi_size_x);
     int mpi_rank_x; MPI_Comm_rank(b_comm,&mpi_rank_x);
-    int mpi_size_y; MPI_Comm_size(w_comm,&mpi_size_y);
-    int mpi_rank_y; MPI_Comm_rank(w_comm,&mpi_rank_y);
+    int mpi_size_y; MPI_Comm_size(t_comm,&mpi_size_y);
+    int mpi_rank_y; MPI_Comm_rank(t_comm,&mpi_rank_y);
 
     size_t braAlphaSize = helper[0].braAlphaEnd-helper[0].braAlphaStart;
     size_t braBetaSize = helper[0].braBetaEnd-helper[0].braBetaStart;
@@ -63,26 +63,26 @@ namespace sbd {
     }
     
 #ifdef SBD_DEBUG
-    for(int work=0; work < helper.size(); work++) {
+    for(int task=0; task < helper.size(); task++) {
       for(int rank_y=0; rank_y < mpi_size_y; rank_y++) {
 	for(int rank_x=0; rank_x < mpi_size_x; rank_x++) {
 	  if( mpi_rank_x == rank_x && mpi_rank_y == rank_y ) {
 	    std::cout << " mpi rank (" << rank_x << "," << rank_y << ")";
 	    std::cout << " braAlphaRange, braBetaRange, ketAlphaRange, ketBetaRange = "
-		      << "(" << helper[work].braAlphaStart << "," << helper[work].braAlphaEnd
-		      << "), (" << helper[work].braBetaStart << "," << helper[work].braBetaEnd
-		      << "), (" << helper[work].ketAlphaStart << "," << helper[work].ketAlphaEnd
-		      << "), (" << helper[work].ketBetaStart << "," << helper[work].ketBetaEnd
-		      << "), work type = " << helper[work].workType << std::endl;
+		      << "(" << helper[task].braAlphaStart << "," << helper[task].braAlphaEnd
+		      << "), (" << helper[task].braBetaStart << "," << helper[task].braBetaEnd
+		      << "), (" << helper[task].ketAlphaStart << "," << helper[task].ketAlphaEnd
+		      << "), (" << helper[task].ketBetaStart << "," << helper[task].ketBetaEnd
+		      << "), task type = " << helper[task].taskType << std::endl;
 	  }
 	  MPI_Barrier(b_comm);
 	}
-	MPI_Barrier(w_comm);
+	MPI_Barrier(t_comm);
       }
     }
 #endif
 
-    worktype.resize(helper.size());
+    tasktype.resize(helper.size());
     adetshift.resize(helper.size());
     bdetshift.resize(helper.size());
     len.resize(helper.size(),std::vector<size_t>(num_threads));
@@ -101,35 +101,35 @@ namespace sbd {
       if( thread_id == num_threads - 1 ) {
 	ia_end = helper[0].braAlphaEnd;
       }
-      for(size_t iw = 0; iw < helper.size(); iw++) {
+      for(size_t task = 0; task < helper.size(); task++) {
 	for(size_t ia = ia_start; ia < ia_end; ia++) {
-	  for(size_t ib = helper[iw].braBetaStart; ib < helper[iw].braBetaEnd; ib++) {
-	    size_t braIdx = (ia-helper[iw].braAlphaStart)*braBetaSize
-	                    +ib-helper[iw].braBetaStart;
+	  for(size_t ib = helper[task].braBetaStart; ib < helper[task].braBetaEnd; ib++) {
+	    size_t braIdx = (ia-helper[task].braAlphaStart)*braBetaSize
+	                    +ib-helper[task].braBetaStart;
 	    if( (braIdx % mpi_size_h) != mpi_rank_h ) continue;
-	    if ( helper[iw].workType == 0 ) {
+	    if ( helper[task].taskType == 0 ) {
 	      // two-particle excitation composed of single alpha and single beta
-	      len[iw][thread_id] += helper[iw].SinglesFromAlphaLen[ia-helper.braAlphaStart]
+	      len[task][thread_id] += helper[task].SinglesFromAlphaLen[ia-helper.braAlphaStart]
 		* helper.SinglesFromBetaLen[ib-helper.braBetaStart];
 	    }
-	    else if ( helper[iw].workType == 1 ) {
+	    else if ( helper[task].taskType == 1 ) {
 	      // single alpha excitation
-	      len[iw][thread_id] += helper[iw].SinglesFromAlphaLen[ia-helper.braAlphaStart];
+	      len[task][thread_id] += helper[task].SinglesFromAlphaLen[ia-helper.braAlphaStart];
 	      // double alpha excitation
-	      len[iw][thread_id] += helper[iw].DoublesFromAlphaLen[ia-helper.braAlphaStart];
+	      len[task][thread_id] += helper[task].DoublesFromAlphaLen[ia-helper.braAlphaStart];
 	    }
-	    else if( helper[iw].workType == 2 ) {
+	    else if( helper[task].taskType == 2 ) {
 	      // single beta excitation
-	      len[iw][thread_id] += helper.SinglesFromBetaLen[ib-helper.braBetaStart];
+	      len[task][thread_id] += helper.SinglesFromBetaLen[ib-helper.braBetaStart];
 	      // double beta excitation
-	      len[iw][thread_id] += helper.DoublesFromBetaLen[ib-helper.braBetaStart];
+	      len[task][thread_id] += helper.DoublesFromBetaLen[ib-helper.braBetaStart];
 	    }
 	  } // end ib loop
 	} // end ia loop
-	worktype[iw] = helper[iw].workType;
-	adetshift[iw] = helper[iw].adetShift;
-	bdetshift[iw] = helper[iw].bdetShift;
-      } // end worktype loop
+	tasktype[task] = helper[task].taskType;
+	adetshift[task] = helper[task].adetShift;
+	bdetshift[task] = helper[task].bdetShift;
+      } // end tasktype loop
     } // end omp parallel for
 
     size_t sharedElemT_size = 0;
@@ -186,24 +186,24 @@ namespace sbd {
       size_t address = 0;
       // alpha-beta excitation
 
-      for(size_t iw = 0; iw < helper.size(); iw++) {
+      for(size_t task = 0; task < helper.size(); task++) {
 	for(size_t ia = ia_start; ia < ia_end; ia++) {
-	  for(size_t ib = helper[iw].braBetaStart; ib < helper[iw].braBetaEnd; ib++) {
+	  for(size_t ib = helper[task].braBetaStart; ib < helper[task].braBetaEnd; ib++) {
 
-	    size_t braIdx = (ia-helper[iw].braAlphaStart)*braBetaSize
-	                    +ib-helper[iw].braBetaStart;
+	    size_t braIdx = (ia-helper[task].braAlphaStart)*braBetaSize
+	                    +ib-helper[task].braBetaStart;
 	    if( (braIdx % mpi_size_h) != mpi_rank_h ) continue;
 	  
 	    DetFromAlphaBeta(adets[ia],bdets[ib],bit_length,norbs,DetI);
 
 	    // two-particle excitation composed of single alpha and single beta
-	    if( helper[iw].workType == 0 ) {
+	    if( helper[task].taskType == 0 ) {
 	      
-	      for(size_t j=0; j < helper[iw].SinglesFromAlphaLen[ia-helper[iw].braAlphaStart]; j++) {
-		size_t ja = helper[iw].SinglesFromAlphaSM[ia-helper[iw].braAlphaStart][j];
-		for(size_t k=0; k < helper[iw].SinglesFromBetaLen[ib-helper[iw].braBetaStart]; k++) {
-		  size_t jb = helper[iw].SinglesFromBetaSM[ib-helper[iw].braBetaStart][k];
-		  size_t ketIdx = (ja-helper[iw].ketAlphaStart)*ketBetaSize+jb-helper[iw].ketBetaStart;
+	      for(size_t j=0; j < helper[task].SinglesFromAlphaLen[ia-helper[task].braAlphaStart]; j++) {
+		size_t ja = helper[task].SinglesFromAlphaSM[ia-helper[task].braAlphaStart][j];
+		for(size_t k=0; k < helper[task].SinglesFromBetaLen[ib-helper[task].braBetaStart]; k++) {
+		  size_t jb = helper[task].SinglesFromBetaSM[ib-helper[task].braBetaStart][k];
+		  size_t ketIdx = (ja-helper[task].ketAlphaStart)*ketBetaSize+jb-helper[task].ketBetaStart;
 		  DetFromAlphaBeta(adets[ja],bdets[jb],bit_length,norbs,DetJ);
 		  size_t orbDiff;
 		  ElemT eij = Hij(DetI,DetJ,bit_length,norbs,c,d,I0,I1,I2,orbDiff);
@@ -215,12 +215,12 @@ namespace sbd {
 	      }
 	    }
 	    
-	    if( helper[iw].workType == 1 ) {
+	    if( helper[task].taskType == 1 ) {
 	    
 	      // single alpha excitation
-	      for(size_t j=0; j < helper[iw].SinglesFromAlphaLen[ia-helper[iw].braAlphaStart]; j++) {
-		size_t ja = helper[iw].SinglesFromAlphaSM[ia-helper[iw].braAlphaStart][j];
-		size_t ketIdx = (ja-helper[iw].ketAlphaStart)*ketBetaSize+ib-helper[iw].ketBetaStart;
+	      for(size_t j=0; j < helper[task].SinglesFromAlphaLen[ia-helper[task].braAlphaStart]; j++) {
+		size_t ja = helper[task].SinglesFromAlphaSM[ia-helper[task].braAlphaStart][j];
+		size_t ketIdx = (ja-helper[task].ketAlphaStart)*ketBetaSize+ib-helper[task].ketBetaStart;
 		DetFromAlphaBeta(adets[ja],bdets[ib],bit_length,norbs,DetJ);
 		size_t orbDiff;
 		ElemT eij = Hij(DetI,DetJ,
@@ -231,9 +231,9 @@ namespace sbd {
 		address++;
 	      }
 	      // double alpha excitation
-	      for(size_t j=0; j < helper[iw].DoublesFromAlphaLen[ia-helper[iw].braAlphaStart]; j++) {
-		size_t ja = helper[iw].DoublesFromAlphaSM[ia-helper[iw].braAlphaStart][j];
-		size_t ketIdx = (ja-helper[iw].ketAlphaStart)*ketBetaSize + ib-helper[iw].ketBetaStart;
+	      for(size_t j=0; j < helper[task].DoublesFromAlphaLen[ia-helper[task].braAlphaStart]; j++) {
+		size_t ja = helper[task].DoublesFromAlphaSM[ia-helper[task].braAlphaStart][j];
+		size_t ketIdx = (ja-helper[task].ketAlphaStart)*ketBetaSize + ib-helper[task].ketBetaStart;
 		DetFromAlphaBeta(adets[ja],bdets[ib],bit_length,norbs,DetJ);
 		size_t orbDiff;
 		ElemT eij = Hij(DetI,DetJ,bit_length,norbs,c,d,I0,I1,I2,orbDiff);
@@ -244,11 +244,11 @@ namespace sbd {
 	      }
 	    }
 	    
-	    if( helper[iw].workType == 2 ) {
+	    if( helper[task].taskType == 2 ) {
 	      // single beta excitation
-	      for(size_t j=0; j < helper[iw].SinglesFromBetaLen[ib-helper[iw].braBetaStart]; j++) {
-		size_t jb = helper[iw].SinglesFromBetaSM[ib-helper[iw].braBetaStart][j];
-		size_t ketIdx = (ia-helper[iw].ketAlphaStart) * ketBetaSize + jb - helper[iw].ketBetaStart;
+	      for(size_t j=0; j < helper[task].SinglesFromBetaLen[ib-helper[task].braBetaStart]; j++) {
+		size_t jb = helper[task].SinglesFromBetaSM[ib-helper[task].braBetaStart][j];
+		size_t ketIdx = (ia-helper[task].ketAlphaStart) * ketBetaSize + jb - helper[task].ketBetaStart;
 		DetFromAlphaBeta(adets[ia],bdets[jb],bit_length,norbs,DetJ);
 		size_t orbDiff;
 		ElemT eij = Hij(DetI,DetJ,bit_length,norbs,c,d,I0,I1,I2,orbDiff);
@@ -258,9 +258,9 @@ namespace sbd {
 		address++;
 	      }
 	      // double beta excitation
-	      for(size_t j=0; j < helper[iw].DoublesFromBetaLen[ib-helper[iw].braBetaStart]; j++) {
-		size_t jb = helper[iw].DoublesFromBetaSM[ib-helper[iw].braBetaStart][j];
-		size_t ketIdx = (ia-helper[iw].ketAlphaStart) * ketBetaSize + jb-helper[iw].ketBetaStart;
+	      for(size_t j=0; j < helper[task].DoublesFromBetaLen[ib-helper[task].braBetaStart]; j++) {
+		size_t jb = helper[task].DoublesFromBetaSM[ib-helper[task].braBetaStart][j];
+		size_t ketIdx = (ia-helper[task].ketAlphaStart) * ketBetaSize + jb-helper[task].ketBetaStart;
 		DetFromAlphaBeta(adets[ia],bdets[jb],bit_length,norbs,DetJ);
 		size_t orbDiff;
 		ElemT eij = Hij(DetI,DetJ,bit_length,norbs,c,d,I0,I1,I2,orbDiff);
@@ -271,8 +271,8 @@ namespace sbd {
 	      }
 	    }
 	  } // end for(size_t ib=ib_start; ib < ib_end; ib++)
-	} // end for(size_t ia=helper[iw].braAlphaStart; ia < helper[iw].braAlphaEnd; ia++)
-      } // end for(size_t iw=0; iw < helper.size(); iw++)
+	} // end for(size_t ia=helper[task].braAlphaStart; ia < helper[task].braAlphaEnd; ia++)
+      } // end for(size_t task=0; task < helper.size(); task++)
     } // end pragma paralell
   } // end function
 
@@ -281,14 +281,14 @@ namespace sbd {
 			  const std::vector<std::vector<size_t>> & bdets,
 			  const size_t bit_length,
 			  const size_t norbs,
-			  const std::vector<ScheduleHelpers> & helper,
+			  const std::vector<TaskHelpers> & helper,
 			  ElemT & I0,
 			  oneInt<ElemT> & I1,
 			  twoInt<ElemT> & I2,
 			  std::vector<ElemT> & hii,
 			  MPI_Comm h_comm,
 			  MPI_Comm b_comm,
-			  MPI_Comm w_comm) {
+			  MPI_Comm t_comm) {
 
     int mpi_rank_h = 0;
     int mpi_size_h = 1;
