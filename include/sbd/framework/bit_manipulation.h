@@ -188,13 +188,14 @@ Function for finding the state index of target bit string
     while( do_bisection ) {
       size_t index_c = (index_a + index_b)/2;
       if( config[index_c] < target_config ) {
-	index_a = index_c;
-      } else if ( config[index_c]> target_config ) {
-	index_b = index_c;
+	index_a = index_c+1;
+      } else if ( config[index_c] > target_config ) {
+	index_b = index_c-1;
       } else {
 	index = index_c;
 	do_bisection = false;
 	exist = true;
+	return;
       }
       if( (index_b - index_a) < 2 && do_bisection ) {
 	do_bisection = false;
@@ -205,6 +206,7 @@ Function for finding the state index of target bit string
 	  index = index_a;
 	  exist = true;
 	} else if ( target_config < config[index_a] ) {
+	  std::cout << " here ? " << std::endl;
 	  index = index_a;
 	  exist = false;
 	} else if( target_config < config[index_b] ) {
@@ -278,8 +280,7 @@ Function for finding the state index of target bit string
 
   void bitadvance(std::vector<size_t> & a, int bit_length) {
     size_t x;
-    size_t d = (((size_t) 1) >> bit_length);
-    d = d-1;
+    size_t d = (((size_t) 1) << bit_length) - 1;
     size_t v = (size_t) 1;
     for(size_t n=0; n < a.size(); n++) {
       x = a[n]+v;

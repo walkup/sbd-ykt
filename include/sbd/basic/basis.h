@@ -128,6 +128,9 @@ Reordering to the lexographical order
 */
     void Reordering() {
       mpi_sort_bitarray(config_,config_begin_,config_end_,index_begin_,index_end_,SBD_BIT_LENGTH,comm_);
+      if( mpi_size_ == 1 ) {
+	bitadvance(config_end_[mpi_rank_],SBD_BIT_LENGTH);
+      }
     }
 
 /**

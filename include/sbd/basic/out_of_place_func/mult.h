@@ -395,7 +395,7 @@ namespace sbd {
 			int data_width,
 			bool sign) {
     // Diagonal part
-    size_t size_t_one = 1;
+    size_t size_t_one = static_cast<size_t>(1);
     size_t ns_rank = B.Size();
     hii.resize(ns_rank);
     size_t num_threads = 1;
@@ -482,7 +482,7 @@ namespace sbd {
 	if( thread_id == num_threads - 1 ) {
 	  end_idx = ns_rank;
 	}
-	
+
 	std::vector<size_t> local_ih;
 	std::vector<size_t> local_jh;
 	std::vector<size_t> local_tr;
@@ -491,6 +491,7 @@ namespace sbd {
 	for(size_t is=start_idx; is < end_idx; is++) {
 	  v = B.Config(is);
 	  for(size_t n=0; n < H.o_.size(); n++) {
+
 	    sign_count = 1;
 	    w = v;
 	    check = false;
@@ -536,12 +537,18 @@ namespace sbd {
 	      }
 	    }
 	    if( check ) continue;
+
+	    
 	    Bp[d_target].IndexSearch(w,js,check);
+
 	    if( check ) {
+	      std::cout << " added " << std::endl;
 	      local_ih.push_back(is);
 	      local_jh.push_back(js-B.BeginIndex(target_rank));
 	      local_tr.push_back(d_target);
 	      local_hij.push_back(H.c_[n]*ElemT(sign_count));
+	    } else {
+	      std::cout << " not added " << std::endl;
 	    }
 	  } // end for(size_t n=0; n < H.o_.size(); n++)
 	} // end for(size_t is=0; is < ns_rank; is++)
