@@ -542,13 +542,10 @@ namespace sbd {
 	    Bp[d_target].IndexSearch(w,js,check);
 
 	    if( check ) {
-	      std::cout << " added " << std::endl;
 	      local_ih.push_back(is);
 	      local_jh.push_back(js-B.BeginIndex(target_rank));
 	      local_tr.push_back(d_target);
 	      local_hij.push_back(H.c_[n]*ElemT(sign_count));
-	    } else {
-	      std::cout << " not added " << std::endl;
 	    }
 	  } // end for(size_t n=0; n < H.o_.size(); n++)
 	} // end for(size_t is=0; is < ns_rank; is++)
