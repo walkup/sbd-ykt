@@ -340,11 +340,12 @@ namespace sbd {
     std::vector<MPI_Request> req_data(2);
     std::vector<MPI_Status> sta_data(2);
 
+    MPI_Datatype DataT = GetMpiType<ElemT>::MpiT;
     if( send_size != 0 ) {
-      MPI_Isend(A.data(),send_size,SBD_MPI_SIZE_T,mpi_dest,1,comm,&req_data[0]);
+      MPI_Isend(A.data(),send_size,DataT,mpi_dest,1,comm,&req_data[0]);
     }
     if( recv_size != 0 ) {
-      MPI_Irecv(B.data(),recv_size,SBD_MPI_SIZE_T,mpi_source,1,comm,&req_data[1]);
+      MPI_Irecv(B.data(),recv_size,DataT,mpi_source,1,comm,&req_data[1]);
     }
 
     if( send_size != 0 && recv_size != 0 ) {
