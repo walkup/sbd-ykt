@@ -7,6 +7,11 @@
 
 namespace sbd {
 
+  /*
+    Essentially same with ptmb method
+  */
+
+  /*
   template <typename ElemT>
   void OccupationDensity(const std::vector<int> & oIdx,
 			 const std::vector<ElemT> & W,
@@ -93,6 +98,7 @@ namespace sbd {
     MpiAllreduce(res,MPI_SUM,b_comm);
     
   }
+  */
 			   
   
 }

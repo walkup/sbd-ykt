@@ -217,13 +217,6 @@ namespace sbd {
 	fciDump.header[key] = value;
       }
     }
-
-#ifdef SBD_DEBUG
-    std::cout << "Deserialized Header:" << std::endl;
-    for (const auto& [key, value] : fciDump.header) {
-      std::cout << key << " = " << value << std::endl;
-    }
-#endif
     
     return fciDump;
     

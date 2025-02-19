@@ -8,7 +8,9 @@
 namespace sbd {
 
   /*
-    Essentially, function is same with RDM for square-parallelization
+    Essentially, function is same with RDM for square-parallelization.
+  */
+    
     
   template <typename ElemT>
   void OccupationDensity(const std::vector<int> & oIdx,
@@ -97,7 +99,6 @@ namespace sbd {
     
   }
 
-  */
   
 }
 #endif
