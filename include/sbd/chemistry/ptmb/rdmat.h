@@ -85,7 +85,6 @@ namespace sbd {
     for(size_t i=0; i < adet_size; i++) {
       sum += D[sortIdx[i]];
       S[i] = sum;
-      std::cout << i << " " << D[sortIdx[i]] << " " << S[i] << std::endl;
     }
 
     RealT target = 1.0 - threshold;
