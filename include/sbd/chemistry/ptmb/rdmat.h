@@ -48,7 +48,7 @@ namespace sbd {
     for(size_t ia=adet_start; ia < adet_end; ia++) {
       D[ia] = 0.0;
       for(size_t ib=bdet_start; ib < bdet_end; ib++) {
-	D[ia] += GetReal(Conjug(W[(ia-adet_start)*bdet_range+ib-bdet_start])
+	D[ia] += GetReal(Conjugate(W[(ia-adet_start)*bdet_range+ib-bdet_start])
 			 *W[(ia-adet_start)*bdet_range+ib-bdet_start]);
       }
     }
@@ -83,8 +83,9 @@ namespace sbd {
 
     RealT sum = 0.0;
     for(size_t i=0; i < adet_size; i++) {
-      sum += D[index[i]];
+      sum += D[sortIdx[i]];
       S[i] = sum;
+      std::cout << i << " " << D[sortIdx[i]] << " " << S[i] << std::endl;
     }
 
     RealT target = 1.0 - threshold;
