@@ -1,17 +1,12 @@
 /**
-@file sbd/chemistry/square/rdm.h
+@file sbd/chemistry/ptmb/occupation.h
 @brief function to evaluate occupation density (one-particle reduced density matrix in quantum chemistry)
  */
-#ifndef SBD_CHEMISTRY_SQUARE_RDM_H
-#define SBD_CHEMISTRY_SQUARE_RDM_H
+#ifndef SBD_CHEMISTRY_PTMB_OCCUPATION_H
+#define SBD_CHEMISTRY_PTMB_OCCUPATION_H
 
 namespace sbd {
-
-  /*
-    Essentially same with ptmb method
-  */
-
-  /*
+    
   template <typename ElemT>
   void OccupationDensity(const std::vector<int> & oIdx,
 			 const std::vector<ElemT> & W,
@@ -30,7 +25,7 @@ namespace sbd {
     }
 
     int adet_rank = mpi_rank_b / bdet_comm_size;
-    int bdet_rank  = mpi_rank_b % bdet_comm_size;
+    int bdet_rank = mpi_rank_b % bdet_comm_size;
     size_t ia_start = 0;
     size_t ia_end   = adet.size();
     size_t ib_start = 0;
@@ -98,8 +93,7 @@ namespace sbd {
     MpiAllreduce(res,MPI_SUM,b_comm);
     
   }
-  */
-			   
+
   
 }
 #endif

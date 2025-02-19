@@ -5,6 +5,6 @@
 #include "sbd/chemistry/ptmb/qcham.h"
 #include "sbd/chemistry/ptmb/mult.h"
 #include "sbd/chemistry/ptmb/davidson.h"
-#include "sbd/chemistry/ptmb/rdm.h"
+#include "sbd/chemistry/ptmb/occupation.h"
 
 #endif

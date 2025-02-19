@@ -5,6 +5,6 @@
 #include "sbd/chemistry/square/qcham.h"
 #include "sbd/chemistry/square/mult.h"
 #include "sbd/chemistry/square/davidson.h"
-#include "sbd/chemistry/square/rdm.h"
+#include "sbd/chemistry/square/occupation.h"
 
 #endif
