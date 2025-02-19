@@ -11,12 +11,6 @@
 
 namespace sbd {
 
-  std::string to_padded_string(size_t n, size_t d) {
-    std::ostringstream oss;
-    oss << std::setw(d) << std::setfill('0') << n;
-    return oss.str();
-  }
-
   template <typename ElemT>
   void SaveWavefunction(const std::string & file,
 			const std::vector<std::vector<size_t>> & adet,
@@ -108,7 +102,7 @@ namespace sbd {
 	    ifile.read(reinterpret_cast<char *>(load_bdet[i].data()),sizeof(size_t)*load_det_length);
 	  }
 	  load_W.resize(load_adet_size*load_bdet_size,ElemT(0.0));
-	  ifile.read(reinterpret_cast<char *>(W.data()),sizeof(ElemT)*load_adet_size*load_bdet_size);
+	  ifile.read(reinterpret_cast<char *>(load_W.data()),sizeof(ElemT)*load_adet_size*load_bdet_size);
 	  ifile.close();
 	  load_det_size[0] = load_adet_size;
 	  load_det_size[1] = load_bdet_size;

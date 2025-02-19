@@ -96,6 +96,41 @@ namespace sbd {
     }
   }
 
+  template <typename ElemT, typename RealT>
+  void CarryOverAlphaDet(const std::vector<ElemT> & W,
+			 const std::vector<std::vector<size_t>> & adet,
+			 const std::vector<std::vector<size_t>> & bdet,
+			 const size_t adet_comm_size,
+			 const size_t bdet_comm_size,
+			 MPI_Comm b_comm,
+			 size_t kept,
+			 std::vector<std::vector<size_t>> & rdet,
+			 RealT & discarted_weight) {
+    
+    size_t adet_size = adet.size();
+    size_t bdet_size = bdet.size();
+    std::vector<RealT> D(adet_size);
+    DiagonalReducedDensityMatrix(W,adet_size,bdet_size,adet_comm_size,bdet_comm_size,b_comm,D);
+
+    std::vector<size_t> sortIdx(adet_size);
+    std::iota(sortIdx.begin(),sortIdx.end(),0);
+    std::sort(sortIdx.begin(),sortIdx.end(),
+	      [&](int i, int j) {
+		return D[i] > D[j];
+	      });
+    
+    rdet.resize(kept,std::vector<size_t>(adet[0].size()));
+    for(size_t k=0; k < kept; k++) {
+      rdet[k] = adet[sortIdx[k]];
+    }
+    
+    RealT sum = 0.0;
+    for(size_t i=0; i < kept; i++) {
+      sum += D[sortIdx[i]];
+    }
+    discarted_weight = 1.0-sum;
+  }
+
   
 }
 
