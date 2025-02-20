@@ -7,5 +7,6 @@
 #include "sbd/chemistry/ptmb/davidson.h"
 #include "sbd/chemistry/ptmb/occupation.h"
 #include "sbd/chemistry/ptmb/rdmat.h"
+#include "sbd/chemistry/ptmb/restart.h"
 
 #endif
