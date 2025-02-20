@@ -119,6 +119,7 @@ namespace sbd {
 	std::ifstream ifile(filename,std::ios::binary);
 
 	if( ifile.is_open() ) {
+	  std::cout << " open file " << filename << std::endl;
 	  ifile.read(reinterpret_cast<char *>(&load_adet_size),sizeof(size_t));
 	  ifile.read(reinterpret_cast<char *>(&load_bdet_size),sizeof(size_t));
 	  ifile.read(reinterpret_cast<char *>(&load_det_length),sizeof(size_t));
@@ -158,6 +159,8 @@ namespace sbd {
       }
       size_t load_mpi_size_b = 0;
       MPI_Allreduce(&load_det,&load_mpi_size_b,1,SBD_MPI_SIZE_T,MPI_SUM,b_comm);
+
+      std::cout << " number of loaded det file = " << load_mpi_size_b << std::endl;
 
       size_t load_rank_start = 0;
       size_t load_rank_end   = load_mpi_size_b;
