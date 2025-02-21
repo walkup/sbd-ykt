@@ -31,8 +31,6 @@ namespace sbd {
     int mpi_rank_b; MPI_Comm_rank(b_comm,&mpi_rank_b);
     int mpi_size_b; MPI_Comm_size(b_comm,&mpi_size_b);
     int mpi_rank_t; MPI_Comm_rank(t_comm,&mpi_rank_t);
-    size_t mpi_rank_s = static_cast<size_t>(mpi_rank_b);
-    size_t mpi_size_s = static_cast<size_t>(mpi_size_b);
 
     size_t det_length = adet[0].size();
     int adet_rank = mpi_rank_b / bdet_comm_size;
@@ -80,8 +78,6 @@ namespace sbd {
     int mpi_size_t; MPI_Comm_size(t_comm,&mpi_size_t);
     int mpi_rank_b; MPI_Comm_rank(b_comm,&mpi_rank_b);
     int mpi_size_b; MPI_Comm_size(b_comm,&mpi_size_b);
-    size_t mpi_rank_s = static_cast<size_t>(mpi_rank_b);
-    size_t mpi_size_s = static_cast<size_t>(mpi_size_b);
 
     // information of current basis
     std::vector<size_t> adet_start(adet_comm_size);
@@ -100,6 +96,7 @@ namespace sbd {
       get_mpi_range(bdet_comm_size,rank,bdet_start[rank],bdet_end[rank]);
     }
 
+#ifdef SBD_DEBUG_RESTART
     if( mpi_rank_h == 0 ) {
       for(int rank_t=0; rank_t < mpi_size_t; rank_t++) {
 	if( mpi_rank_t == rank_t ) {
@@ -122,6 +119,7 @@ namespace sbd {
 	MPI_Barrier(t_comm);
       }
     }
+#endif
     
     size_t this_adet_rank = mpi_rank_b / bdet_comm_size;
     size_t this_bdet_rank = mpi_rank_b % bdet_comm_size;
@@ -130,6 +128,7 @@ namespace sbd {
     W.resize(this_adet_range*this_bdet_range,ElemT(0.0));
 
     if( mpi_rank_h == 0 ) {
+      
       size_t load_adet_size;
       size_t load_bdet_size;
       size_t load_det_length;
@@ -168,38 +167,44 @@ namespace sbd {
 
       MPI_Bcast(load_det_size.data(),2,SBD_MPI_SIZE_T,0,t_comm);
 
-      size_t load_det = 0;
+      if( mpi_rank_t != 0 ) {
+	load_adet_size = load_det_size[0];
+	load_bdet_size = load_det_size[1];
+      }
+
+      size_t load_det_count = 0;
       if( load_det_size[0]*load_det_size[1] != 0 ) {
 	MpiBcast(load_adet,0,t_comm);
 	MpiBcast(load_bdet,0,t_comm);
 	MpiBcast(load_W,0,t_comm);
-	load_det = 1;
+	load_det_count = 1;
       } else {
 	load_adet.resize(0);
 	load_bdet.resize(0);
 	load_W.resize(0);
-	load_det = 0;
+	load_det_count = 0;
       }
       size_t load_mpi_size_b = 0;
-      MPI_Allreduce(&load_det,&load_mpi_size_b,1,SBD_MPI_SIZE_T,MPI_SUM,b_comm);
+      MPI_Allreduce(&load_det_count,&load_mpi_size_b,1,SBD_MPI_SIZE_T,MPI_SUM,b_comm);
 
-      
+#ifdef SBD_DEBUG_RESTART
       std::cout << " number of loaded det file = " << load_mpi_size_b << std::endl;
-
       for(int rank_t=0; rank_t < mpi_size_t; rank_t++) {
 	if( rank_t == mpi_rank_t ) {
 	  for(int rank_b=0; rank_b < mpi_size_b; rank_b++) {
 	    if( rank_b == mpi_rank_b ) {
-	      std::cout << " LoadWavefunction: load size at (h,b,t) = (" << mpi_rank_h
+	      std::cout << " LoadWavefunction at (h,b,t) = (" << mpi_rank_h
 			<< "," << mpi_rank_b << "," << mpi_rank_t << ") ";
-	      std::cout << " size(adet) = " << load_det_size[0];
+	      std::cout << ": size(adet) = " << load_det_size[0];
 	      for(int k=0; k < std::min(load_adet.size(),static_cast<size_t>(4)); k++) {
-		std::cout << " " << makestring(load_adet[k],20,36);
+		std::cout << " (" << makestring(load_adet[k],20,36) << ")";
 	      }
 	      std::cout << std::endl;
-	      std::cout << " size(bdet) = " << load_det_size[1];
-	      for(int k=0; k < std::min(load_adet.size(),static_cast<size_t>(4)); k++) {
-		std::cout << " " << makestring(load_adet[k],20,36);
+	      std::cout << " LoadWavefunction at (h,b,t) = (" << mpi_rank_h
+			<< "," << mpi_rank_b << "," << mpi_rank_t << ") ";
+	      std::cout << ": size(bdet) = " << load_det_size[1];
+	      for(int k=0; k < std::min(load_bdet.size(),static_cast<size_t>(4)); k++) {
+		std::cout << " (" << makestring(load_bdet[k],20,36) << ")";
 	      }
 	      std::cout << std::endl;
 	    }
@@ -208,14 +213,16 @@ namespace sbd {
 	}
 	MPI_Barrier(t_comm);
       }
-
+#endif
       
       size_t load_rank_start = 0;
       size_t load_rank_end   = load_mpi_size_b;
       get_mpi_range(mpi_size_t,mpi_rank_t,load_rank_start,load_rank_end);
 
+#ifdef SBD_DEBUG_RESTART
       std::cout << " LoadWavefunction at (" << mpi_rank_h << "," << mpi_rank_b << "," << mpi_rank_t
 		<< "): load_rank_start, load_rank_end = " << load_rank_start << ", " << load_rank_end << std::endl;
+#endif
 
       std::vector<std::vector<size_t>> send_I(mpi_size_b);
       std::vector<std::vector<ElemT>>  send_W(mpi_size_b);
@@ -248,11 +255,13 @@ namespace sbd {
 		  size_t target_I = (ja-adet_start[adet_rank])
 		    * ( bdet_end[bdet_rank]-bdet_start[bdet_rank] )
 		    + jb - bdet_start[bdet_rank];
+#ifdef SBD_DEBUG_RESTART
 		  std::cout << " Found: target rank at ("
 			    << mpi_rank_h << "," << mpi_rank_b << ","
 			    << mpi_rank_t << ") = " << target_rank
 			    << " for index " << target_I << " = (" << ja << "," << jb
 			    << "), weight = " << load_W[ia*load_bdet_size+ib] << std::endl;
+#endif
 		  send_I[target_rank].push_back(target_I);
 		  send_W[target_rank].push_back(load_W[ia*load_bdet_size+ib]);
 		}
@@ -262,9 +271,10 @@ namespace sbd {
 	}
       } // end preparation of send data
 
+#ifdef SBD_DEBUG_RESTART
       for(int rank_t=0; rank_t < mpi_size_t; rank_t++) {
 	if( rank_t == mpi_rank_t ) {
-	  for(int rank_b=0; rank_b < mpi_size_b; rank_b++) {
+	  for(int rank_b=load_rank_start; rank_b < load_rank_end; rank_b++) {
 	    if( rank_b == mpi_rank_b ) {
 	      std::cout << " LoadWavefunction at (h,b,t) = (" << mpi_rank_h
 			<< "," << mpi_rank_b << "," << mpi_rank_t << "): ";
@@ -273,23 +283,24 @@ namespace sbd {
 		for(int k=0; k < std::min(send_I[rank_s].size(),static_cast<size_t>(4)); k++) {
 		  std::cout << " " << send_I[rank_s][k];
 		}
-		std::cout << std::endl;
+		std::cout << " ... (size " << send_I[rank_s].size() << ")";
 	      }
+	      std::cout << std::endl;
 	    }
 	    MPI_Barrier(b_comm);
 	  }
 	}
 	MPI_Barrier(t_comm);
       }
-      
+#endif
 
       std::vector<std::vector<size_t>> recv_I(load_rank_end-load_rank_start);
-      std::vector<std::vector<ElemT>> recv_W(load_rank_end-load_rank_start);
+      std::vector<std::vector<ElemT>>  recv_W(load_rank_end-load_rank_start);
 
       MPI_Datatype DataT = GetMpiType<ElemT>::MpiT;
 
       for(int send_rank=load_rank_start; send_rank < load_rank_end; send_rank++) {
-	for(int recv_rank=0; recv_rank < mpi_rank_b; recv_rank++) {
+	for(int recv_rank=0; recv_rank < mpi_size_b; recv_rank++) {
 	  if( send_rank != recv_rank ) {
 	    if( mpi_rank_b == send_rank ) {
 	      size_t send_size = send_I[recv_rank].size();
@@ -311,17 +322,45 @@ namespace sbd {
 	    }
 	  } else {
 	    if( mpi_rank_b == send_rank ) {
-	      recv_I[send_rank-load_rank_start] = send_I[send_rank];
-	      recv_W[send_rank-load_rank_start] = send_W[send_rank];
+	      recv_I[send_rank-load_rank_start] = send_I[recv_rank];
+	      recv_W[send_rank-load_rank_start] = send_W[recv_rank];
 	    }
 	  }
 	}
       }
+
+#ifdef SBD_DEBUG_RESTART
+      for(int rank_t=0; rank_t < mpi_size_t; rank_t++) {
+	if( rank_t == mpi_rank_t ) {
+	  for(int rank_b=0; rank_b < mpi_size_b; rank_b++) {
+	    if( rank_b == mpi_rank_b ) {
+	      std::cout << " LoadWavefunction at (" << mpi_rank_h
+			<< "," << mpi_rank_b << "," << mpi_rank_t
+			<< "):";
+	      for(int rank_r=0; rank_r < recv_I.size(); rank_r++) {
+		std::cout << " recv_I[" << rank_r+load_rank_start << "] =";
+		for(size_t k=0;  k < std::min(recv_I[rank_r].size(),static_cast<size_t>(4)); k++) {
+		  std::cout << " " << recv_I[rank_r][k];
+		}
+		std::cout << " ... (size " << recv_I[rank_r].size() << ")";
+	      }
+	      std::cout << std::endl;
+	    }
+	    MPI_Barrier(b_comm);
+	  }
+	}
+	MPI_Barrier(t_comm);
+      }
+#endif
+      
       for(int rank=0; rank < recv_I.size(); rank++) {
 	for(size_t k=0; k < recv_I[rank].size(); k++) {
 	  W[recv_I[rank][k]] += recv_W[rank][k];
 	}
       }
+
+      MpiAllreduce(W,MPI_SUM,t_comm);
+      
     } // end read-in and distribution of wave function within h_comm_rank == 0
     MpiAllreduce(W,MPI_SUM,h_comm);
   }

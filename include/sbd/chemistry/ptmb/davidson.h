@@ -200,7 +200,7 @@ x = 0    1    2    3
 	Normalize(R,norm_R,b_comm);
 
 	std::cout << " Davidson iteration " << it << "." << ib
-		  << " at mpi (h,b,w) = ("
+		  << " at mpi (h,b,t) = ("
 		  << mpi_rank_h << "," << mpi_rank_b << ","
 		  << mpi_rank_t << "): (tol=" << norm_R << "):";
 	for(int p=0; p < std::min(ib+1,4); p++) {
@@ -304,7 +304,7 @@ x = 0    1    2    3
     GetTotalD(hii,dii,h_comm);
 
 #ifdef SBD_DEBUG
-    std::cout << " diagonal term at mpi process (h,b,w) = ("
+    std::cout << " diagonal term at mpi process (h,b,t) = ("
 	      << mpi_rank_h << "," << mpi_rank_b << ","
 	      << mpi_rank_t << "): ";
     for(size_t id=0; id < std::min(W.size(),static_cast<size_t>(6)); id++) {
