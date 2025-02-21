@@ -73,6 +73,9 @@ namespace sbd {
 			const MPI_Comm b_comm,
 			const MPI_Comm t_comm,
 			std::vector<ElemT> & W) {
+
+    using RealT = typename GetRealType<ElemT>::RealT;
+
     int mpi_rank_h; MPI_Comm_rank(h_comm,&mpi_rank_h);
     int mpi_rank_t; MPI_Comm_rank(t_comm,&mpi_rank_t);
     int mpi_size_t; MPI_Comm_size(t_comm,&mpi_size_t);
@@ -255,13 +258,6 @@ namespace sbd {
 		  size_t target_I = (ja-adet_start[adet_rank])
 		    * ( bdet_end[bdet_rank]-bdet_start[bdet_rank] )
 		    + jb - bdet_start[bdet_rank];
-#ifdef SBD_DEBUG_RESTART
-		  std::cout << " Found: target rank at ("
-			    << mpi_rank_h << "," << mpi_rank_b << ","
-			    << mpi_rank_t << ") = " << target_rank
-			    << " for index " << target_I << " = (" << ja << "," << jb
-			    << "), weight = " << load_W[ia*load_bdet_size+ib] << std::endl;
-#endif
 		  send_I[target_rank].push_back(target_I);
 		  send_W[target_rank].push_back(load_W[ia*load_bdet_size+ib]);
 		}
@@ -363,6 +359,10 @@ namespace sbd {
       
     } // end read-in and distribution of wave function within h_comm_rank == 0
     MpiAllreduce(W,MPI_SUM,h_comm);
+
+    RealT norm_W;
+    Normalize(W,norm_W,b_comm);
+    
   }
 
   
