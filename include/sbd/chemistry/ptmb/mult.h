@@ -47,7 +47,7 @@ namespace sbd {
     std::vector<ElemT> T(Wk);
     std::vector<ElemT> R(Wk);
     Mpi2dSlide(Wk,T,adet_comm_size,bdet_comm_size,
-	       adetshift[0],bdetshift[0],b_comm);
+	       -adetshift[0],-bdetshift[0],b_comm);
     
     auto time_copy_end = std::chrono::high_resolution_clock::now();
 
