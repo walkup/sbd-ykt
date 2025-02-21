@@ -171,7 +171,7 @@ namespace sbd {
 	for(size_t i=0; i < T.size(); i++) {
 	  Wb[i] += hii[i] * T[i];
 	}
-#ifdef SBD_DEBUG
+#ifdef SBD_DEBUG_MULT
     std::cout << " End multiplication of diagonal term at mpi process (h,b,t) = ("
 	      << mpi_rank_h << "," << mpi_rank_b << "," << mpi_rank_t << ")" << std::endl;
 #endif
@@ -183,11 +183,14 @@ namespace sbd {
     size_t chunk_size = (helper[0].braBetaEnd-helper[0].braBetaStart) / num_threads;
     for(size_t task=0; task < helper.size(); task++) {
 
-#ifdef SBD_DEBUG
+#ifdef SBD_DEBUG_MULT
       std::cout << " Start multiplication for task " << task << " at mpi process (h,b,t) = ("
 		<< mpi_rank_h << "," << mpi_rank_b << "," << mpi_rank_t << "): task type = "
-		<< helper[task].taskType << std::endl;
-      
+		<< helper[task].taskType << ", bra-adet range = ["
+		<< helper[task].braAlphaStart << "," << helper[task].braAlphaEnd << "), bra-bdet range = ["
+		<< helper[task].braBetaStart << "," << helper[task].braBetaEnd << "), ket-adet range = ["
+		<< helper[task].ketAlphaStart << "," << helper[task].ketAlphaEnd << "), ket-bdet range = ["
+		<< helper[task].ketBetaStart << "," << helper[task].ketBetaEnd << ")" << std::endl;
 #endif
       size_t ketAlphaSize = helper[task].ketAlphaEnd-helper[task].ketAlphaStart;
       size_t ketBetaSize  = helper[task].ketBetaEnd-helper[task].ketBetaStart;
@@ -219,7 +222,8 @@ namespace sbd {
 	      // single alpha excitation
 	      for(size_t j=0; j < helper[task].SinglesFromAlphaLen[ia-helper[task].braAlphaStart]; j++) {
 		size_t ja = helper[task].SinglesFromAlphaSM[ia-helper[task].braAlphaStart][j];
-		size_t ketIdx = (ja-helper[task].ketAlphaStart)*ketBetaSize+ib-helper[task].ketBetaStart;
+		size_t ketIdx = (ja-helper[task].ketAlphaStart)*ketBetaSize
+		                +ib-helper[task].ketBetaStart;
 		DetFromAlphaBeta(adets[ja],bdets[ib],bit_length,norbs,DetJ);
 		size_t orbDiff;
 		ElemT eij = Hij(DetI,DetJ,bit_length,norbs,
@@ -229,7 +233,8 @@ namespace sbd {
 	      // double alpha excitation
 	      for(size_t j=0; j < helper[task].DoublesFromAlphaLen[ia-helper[task].braAlphaStart]; j++) {
 		size_t ja = helper[task].DoublesFromAlphaSM[ia-helper[task].braAlphaStart][j];
-		size_t ketIdx = (ja-helper[task].ketAlphaStart)*ketBetaSize + ib-helper[task].ketBetaStart;
+		size_t ketIdx = (ja-helper[task].ketAlphaStart)*ketBetaSize
+		               + ib-helper[task].ketBetaStart;
 		DetFromAlphaBeta(adets[ja],bdets[ib],bit_length,norbs,DetJ);
 		size_t orbDiff;
 		ElemT eij = Hij(DetI,DetJ,bit_length,norbs,c,d,I0,I1,I2,orbDiff);
@@ -280,7 +285,7 @@ namespace sbd {
 	    for(size_t ib = helper[task].braBetaStart; ib < helper[task].braBetaEnd; ib++) {
 	      
 	      size_t braIdx = (ia-helper[task].braAlphaStart)*braBetaSize
-		+ib-helper[task].braBetaStart;
+		              +ib-helper[task].braBetaStart;
 	      if( (braIdx % mpi_size_h) != mpi_rank_h ) continue;
 	    
 	      DetFromAlphaBeta(adets[ia],bdets[ib],bit_length,norbs,DetI);
@@ -305,7 +310,7 @@ namespace sbd {
       } // end pragma paralell
       
       if( helper[task].taskType == 0 && task != helper.size()-1 ) {
-#ifdef SBD_DEBUG
+#ifdef SBD_DEBUG_MULT
 	size_t adet_rank = mpi_rank_b / bdet_comm_size;
 	size_t bdet_rank = mpi_rank_b % bdet_comm_size;
 	size_t adet_rank_task = (adet_rank+helper[task].adetShift) % adet_comm_size;
@@ -339,7 +344,7 @@ namespace sbd {
     MpiAllreduce(Wb,MPI_SUM,h_comm);
     auto time_comm_end = std::chrono::high_resolution_clock::now();
 
-#ifdef SBD_DEBUG
+#ifdef SBD_DEBUG_MULT
     auto time_copy_count = std::chrono::duration_cast<std::chrono::microseconds>(time_copy_end-time_copy_start).count();
     auto time_mult_count = std::chrono::duration_cast<std::chrono::microseconds>(time_mult_end-time_mult_start).count();
     auto time_comm_count = std::chrono::duration_cast<std::chrono::microseconds>(time_comm_end-time_comm_start).count();

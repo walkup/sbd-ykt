@@ -332,14 +332,14 @@ x = 0    1    2    3
 	     h_comm,b_comm,t_comm);
 
 #ifdef SBD_DEBUG
-	std::cout << " (h,b,w) = ("
+	std::cout << " (h,b,t) = ("
 		  << mpi_rank_h << "," << mpi_rank_b << ","
 		  << mpi_rank_t << "): Hv(" << ib << ") =";
 	for(size_t n=0; n < std::min(static_cast<size_t>(6),W.size()); n++) {
 	  std::cout << " " << HC[ib][n];
 	}
 	std::cout << " ... " << HC[ib][W.size()-1] << std::endl;
-	std::cout << " (h,b,w) = ("
+	std::cout << " (h,b,t) = ("
 		  << mpi_rank_h << "," << mpi_rank_b << ","
 		  << mpi_rank_t << "):  v(" << ib << ") =";
 	for(size_t n=0; n < std::min(static_cast<size_t>(6),W.size()); n++) {
@@ -394,7 +394,7 @@ x = 0    1    2    3
 	Normalize(R,norm_R,b_comm);
 
 	std::cout << " Davidson iteration " << it << "." << ib
-		  << " at mpi (h,b,w) = ("
+		  << " at mpi (h,b,t) = ("
 		  << mpi_rank_h << "," << mpi_rank_b << ","
 		  << mpi_rank_t << "): (tol=" << norm_R << "):";
 	for(int p=0; p < std::min(ib+1,4); p++) {

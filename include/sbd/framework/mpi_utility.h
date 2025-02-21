@@ -448,12 +448,18 @@ namespace sbd {
 
     int x_dist = ( x_rank + x_slide + x_size ) % x_size;
     int y_dist = ( y_rank + y_slide + y_size ) % y_size;
-    int mpi_dest = x_dist * y_size + y_dist;
+    int mpi_dist = x_dist * y_size + y_dist;
 
     int x_source = ( x_rank - x_slide + x_size ) % x_size;
     int y_source = ( y_rank - y_slide + y_size ) % y_size;
     int mpi_source = x_source * y_size + y_source;
 
+#ifdef SBD_DEBUG_MPI_UTILITY
+    std::cout << " Mpi2dSlide at rank " << mpi_rank << " = (" << x_rank << "," << y_rank
+	      << "): distination rank = " << mpi_dist << " = (" << x_dist << "," << y_dist
+	      << "), source rank = " << mpi_source << " = (" << x_source << "," << y_source
+	      << ")" << std::endl;
+#endif
     std::vector<MPI_Request> req_size(2);
     std::vector<MPI_Status> sta_size(2);
     std::vector<size_t> size_send(1);
@@ -461,7 +467,7 @@ namespace sbd {
     size_send[0] = A.size();
     
     MPI_Isend(size_send.data(),1,SBD_MPI_SIZE_T,
-	      mpi_dest,0,comm,&req_size[0]);
+	      mpi_dist,0,comm,&req_size[0]);
     MPI_Irecv(size_recv.data(),1,SBD_MPI_SIZE_T,
 	      mpi_source,0,comm,&req_size[1]);
     MPI_Waitall(2,req_size.data(),sta_size.data());
@@ -472,11 +478,12 @@ namespace sbd {
     std::vector<MPI_Request> req_data(2);
     std::vector<MPI_Status> sta_data(2);
 
+    MPI_Datatype DataT = GetMpiType<ElemT>::MpiT;
     if( send_size != 0 ) {
-      MPI_Isend(A.data(),send_size,SBD_MPI_SIZE_T,mpi_dest,1,comm,&req_data[0]);
+      MPI_Isend(A.data(),send_size,DataT,mpi_dist,1,comm,&req_data[0]);
     }
     if( recv_size != 0 ) {
-      MPI_Irecv(B.data(),recv_size,SBD_MPI_SIZE_T,mpi_source,1,comm,&req_data[1]);
+      MPI_Irecv(B.data(),recv_size,DataT,mpi_source,1,comm,&req_data[1]);
     }
 
     if( send_size != 0 && recv_size != 0 ) {
