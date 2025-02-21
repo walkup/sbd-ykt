@@ -83,8 +83,8 @@ namespace sbd {
       }
 #pragma omp barrier
       if( tasktype[task] == 0 && task != tasktype.size()-1 ) {
-	int adetslide = adetshift[task+1]-adetshift[task];
-	int bdetslide = bdetshift[task+1]-bdetshift[task];
+	int adetslide = adetshift[task]-adetshift[task+1];
+	int bdetslide = bdetshift[task]-bdetshift[task+1];
 	R.resize(T.size());
 	std::memcpy(R.data(),T.data(),T.size()*sizeof(ElemT));
 	Mpi2dSlide(R,T,adet_comm_size,bdet_comm_size,adetslide,bdetslide,b_comm);
@@ -157,7 +157,7 @@ namespace sbd {
     T.reserve(max_det_size);
     R.reserve(max_det_size);
     Mpi2dSlide(Wk,T,adet_comm_size,bdet_comm_size,
-	       helper[0].adetShift,helper[0].bdetShift,b_comm);
+	       -helper[0].adetShift,-helper[0].bdetShift,b_comm);
     auto time_copy_end = std::chrono::high_resolution_clock::now();
 
     auto time_mult_start = std::chrono::high_resolution_clock::now();
@@ -180,17 +180,21 @@ namespace sbd {
 
     double time_slid = 0.0;
 
-    size_t chunk_size = (helper[0].braBetaEnd-helper[0].braBetaStart) / num_threads;
+    size_t chunk_size = (helper[0].braAlphaEnd-helper[0].braAlphaStart) / num_threads;
     for(size_t task=0; task < helper.size(); task++) {
 
 #ifdef SBD_DEBUG_MULT
-      std::cout << " Start multiplication for task " << task << " at mpi process (h,b,t) = ("
+      std::cout << " Start multiplication for task " << task << " at (h,b,t) = ("
 		<< mpi_rank_h << "," << mpi_rank_b << "," << mpi_rank_t << "): task type = "
 		<< helper[task].taskType << ", bra-adet range = ["
 		<< helper[task].braAlphaStart << "," << helper[task].braAlphaEnd << "), bra-bdet range = ["
 		<< helper[task].braBetaStart << "," << helper[task].braBetaEnd << "), ket-adet range = ["
 		<< helper[task].ketAlphaStart << "," << helper[task].ketAlphaEnd << "), ket-bdet range = ["
-		<< helper[task].ketBetaStart << "," << helper[task].ketBetaEnd << ")" << std::endl;
+		<< helper[task].ketBetaStart << "," << helper[task].ketBetaEnd << "), ket wf =";
+      for(size_t i=0; i < std::min(static_cast<size_t>(4),T.size()); i++) {
+	std::cout << " " << T[i];
+      }
+      std::cout << std::endl;
 #endif
       size_t ketAlphaSize = helper[task].ketAlphaEnd-helper[task].ketAlphaStart;
       size_t ketBetaSize  = helper[task].ketBetaEnd-helper[task].ketBetaStart;
@@ -325,8 +329,8 @@ namespace sbd {
 		  << std::endl;
 	
 #endif
-	int adetslide = helper[task+1].adetShift-helper[task].adetShift;
-	int bdetslide = helper[task+1].bdetShift-helper[task].bdetShift;
+	int adetslide = helper[task].adetShift-helper[task+1].adetShift;
+	int bdetslide = helper[task].bdetShift-helper[task+1].bdetShift;
 	R.resize(T.size());
 	std::memcpy(R.data(),T.data(),T.size()*sizeof(ElemT));
 	auto time_slid_start = std::chrono::high_resolution_clock::now();
