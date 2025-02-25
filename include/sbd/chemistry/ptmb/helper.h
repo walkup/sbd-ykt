@@ -5,6 +5,8 @@
 #ifndef SBD_CHEMISTRY_PTMB_HELPER_H
 #define SBD_CHEMISTRY_PTMB_HELPER_H
 
+#include <algorithm>
+
 namespace sbd {
   
   struct TaskHelpers {
@@ -557,6 +559,158 @@ namespace sbd {
     } // end helpers for different tasks
     
   }
+
+  std::vector<size_t> TaskCostSize(const std::vector<TaskHelpers> & helper,
+				   MPI_Comm h_comm, MPI_Comm b_comm, MPI_Comm t_comm) {
+
+    int mpi_size_h; MPI_Comm_size(h_comm,&mpi_size_h);
+    int mpi_rank_h; MPI_Comm_rank(h_comm,&mpi_rank_h);
+    size_t num_threads = 1;
+#pragma omp parallel
+    {
+      num_threads = omp_get_num_threads();
+    }
+    
+    size_t chunk_size = (helper[0].braAlphaEnd-helper[0].braAlphaStart) / num_threads;
+    std::vector<std::vector<size_t>> len(helper.size(),std::vector<size_t>(num_threads));
+
+    size_t braAlphaSize = helper[0].braAlphaEnd - helper[0].braAlphaStart;
+    size_t braBetaSize  = helper[0].braBetaEnd - helper[0].braBetaStart;
+
+#pragma omp parallel
+    {
+      size_t thread_id = omp_get_thread_num();
+      size_t ia_start = thread_id * chunk_size     + helper[0].braAlphaStart;
+      size_t ia_end   = (thread_id+1) * chunk_size + helper[0].braAlphaStart;
+      if( thread_id == num_threads - 1 ) {
+	ia_end = helper[0].braAlphaEnd;
+      }
+      for(size_t task = 0; task < helper.size(); task++) {
+	for(size_t ia = ia_start; ia < ia_end; ia++) {
+	  for(size_t ib = helper[task].braBetaStart; ib < helper[task].braBetaEnd; ib++) {
+	    size_t braIdx = (ia-helper[task].braAlphaStart)*braBetaSize
+	                    +ib-helper[task].braBetaStart;
+	    if( (braIdx % mpi_size_h) != mpi_rank_h ) continue;
+	    if ( helper[task].taskType == 0 ) {
+	      // two-particle excitation composed of single alpha and single beta
+	      len[task][thread_id] += helper[task].SinglesFromAlphaLen[ia-helper[task].braAlphaStart]
+		                    * helper[task].SinglesFromBetaLen[ib-helper[task].braBetaStart];
+	    }
+	    else if ( helper[task].taskType == 1 ) {
+	      // single alpha excitation
+	      len[task][thread_id] += helper[task].SinglesFromAlphaLen[ia-helper[task].braAlphaStart];
+	      // double alpha excitation
+	      len[task][thread_id] += helper[task].DoublesFromAlphaLen[ia-helper[task].braAlphaStart];
+	    }
+	    else if( helper[task].taskType == 2 ) {
+	      // single beta excitation
+	      len[task][thread_id] += helper[task].SinglesFromBetaLen[ib-helper[task].braBetaStart];
+	      // double beta excitation
+	      len[task][thread_id] += helper[task].DoublesFromBetaLen[ib-helper[task].braBetaStart];
+	    }
+	  } // end ib loop
+	} // end ia loop
+      } // end tasktype loop
+    } // end omp parallel for
+    
+    std::vector<size_t> cost(helper.size());
+    for(size_t task=0; task < helper.size(); task++) {
+      cost[task] = 0.0;
+      for(size_t thread=0; thread < num_threads; thread++) {
+	cost[task] += len[task][thread];
+      }
+    }
+    return cost;
+  }
+
+  /*
+  void RemakeHelpers(const std::vector<std::vector<size_t>> & adet,
+		     const std::vector<std::vector<size_t>> & bdet,
+		     size_t bit_length,
+		     size_t norb,
+		     std::vector<TaskHelpers> & helper,
+		     std::vector<std::vector<size_t>> & sharedMemory,
+		     MPI_Comm h_comm,
+		     MPI_Comm b_comm,
+		     MPI_Comm t_comm,
+		     size_t adet_comm_size,
+		     size_t bdet_comm_size) {
+
+    int mpi_size_h; MPI_Comm_size(h_comm,&mpi_size_h);
+    int mpi_rank_h; MPI_Comm_rank(h_comm,&mpi_rank_h);
+    int mpi_size_b; MPI_Comm_size(b_comm,&mpi_size_b);
+    int mpi_rank_b; MPI_Comm_rank(b_comm,&mpi_rank_b);
+    int mpi_size_t; MPI_Comm_size(t_comm,&mpi_size_t);
+    int mpi_rank_t; MPI_Comm_rank(t_comm,&mpi_rank_t);
+    
+    std::vector<size_t> task_start(mpi_size_t);
+    std::vector<size_t> task_end(mpi_size_t);
+
+    if( mpi_rank_h == 0 ) {
+      if( mpi_rank_b == 0 ) {
+	std::vector<size_t> num_helper_rank(mpi_size_t);
+	num_helper_rank[mpi_rank_t] = helper.size();
+	std::vector<size_t> num_helper(mpi_size_t);
+	MPI_Allreduce(&num_helper_rank,&num_helper,1,SBD_MPI_SIZE_T,MPI_SUM,t_comm);
+	size_t total_helper=0;
+	for(size_t rank_t=0; rank_t < mpi_size_t; rank_t++) {
+	  total_helper += num_helper[rank_t];
+	}
+	std::vector<double> cost_rank = TaskCostSize(helper,h_comm,b_comm,t_comm);
+	std::vector<double> cost(total_helper,0);
+	std::vector<size_t> cost_send(total_helper,0);
+	size_t k_start = 0;
+	for(int rank_t=0; rank_t < mpi_rank_t; rank_t++) {
+	  k_start += num_helper[rank_t];
+	}
+	size_t k_end = num_helper[mpi_rank_t] + k_start;
+	for(size_t k=k_start; k < k_end; k++) {
+	  cost_send[k] = 1.0*cost_rank[k-k_start];
+	}
+	MPI_Allreduce(cost_send.data(),cost.data(),total_helper,MPI_DOUBLE,MPI_SUM,t_comm);
+	auto itkmin = std::min_element(cost.begin(),cost.end());
+	double volC = 1.0/(1.0+(*itkmin));
+	double sumC = 0.0;
+	for(size_t k=0; k < total_helper; k++) {
+	  cost[k] *= volC;
+	  sumC += cost[k];
+	}
+	double regC = sumC / mpi_size_t;
+	std::vector<double> cumsum(helper.size(),0.0);
+	std::vector<double> devreg(helper.size(),0.0);
+	size_t s_start = 0;
+	size_t s_end = helper.size();
+	for(int rank_t=0; rank_t < mpi_size_t; rank_t++) {
+	  cumsum[s_start] = cost[s_start];
+	  for(size_t s=s_start+1; s < s_end; s++) {
+	    cumsum[s] += cumsum[s-1] + cost[s];
+	    devreg[s] = (cumsum[s]-regC)*(cumsum[s]-regC);
+	  }
+	  auto itsm = std::min_element(devreg.begin()+s_start,devreg.begin()+s_end);
+	  task_start[rank_t] = s_start;
+	  task_end[rank_t]   = static_cast<size_t>(std::distance(devreg.begin(),itsm));
+	  s_start = task_end[rank_t];
+	  sumC = 0.0;
+	  for(size_t s=s_start; s < s_end; s++) {
+	    sumC += cost[s];
+	  }
+	  if( rank_t != mpi_size_t-1 ) {
+	    regC = sumC / (mpi_size_t - rank_t - 1);
+	  }
+	}
+      }
+      MPI_Bcast(task_start.data(),mpi_size_t,SBD_MPI_SIZE_T,0,b_comm);
+      MPI_Bcast(task_end.data(),mpi_size_t,SBD_MPI_SIZE_T,0,b_comm);
+    }
+    MPI_Bcast(task_start.data(),mpi_size_h,SBD_MPI_SIZE_T,0,h_comm);
+    MPI_Bcast(task_end.data(),mpi_size_h,SBD_MPI_SIZE_T,0,h_comm);
+
+    
+    
+  }
+  */
+		  
+  
 
   void FreeHelpers(TaskHelpers & helper) {
     free(helper.SinglesFromAlphaLen);
