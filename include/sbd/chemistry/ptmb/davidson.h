@@ -478,7 +478,6 @@ x = 0    1    2    3
      @param[in] max_time: Maximum time allowed to perform the calculation
    */
 
-  /*
   template <typename ElemT, typename RealT>
   void Davidson(const std::vector<ElemT> & hii,
 		std::vector<ElemT> & W,
@@ -536,6 +535,9 @@ x = 0    1    2    3
 
     bool do_continue = true;
 
+    std::vector<double> onestep_times(num_block*max_iteration,0.0);
+    auto start_time = std::chrono::high_resolution_clock::now();
+
     for(int it=0; it < max_iteration; it++) {
 
 #pragma omp parallel for
@@ -544,6 +546,8 @@ x = 0    1    2    3
       }
 
       for(int ib=0; ib < nb; ib++) {
+
+	auto step_start = std::chrono::high_resolution_clock::now();
 
 	Zero(HC[ib]);
 	mult(hii,C[ib],HC[ib],
@@ -654,6 +658,32 @@ x = 0    1    2    3
 	  Normalize(C[ib+1],norm_C,b_comm);
 
 	}
+
+	auto step_end = std::chrono::high_resolution_clock::now();
+	onestep_times[it*nb+ib] = std::chrono::duration<double>(step_end-step_start).count();
+	double ave_time_per_step = 0.0;
+	for(int ks=0; ks <= it*nb+ib; ks++) {
+	  ave_time_per_step += onestep_times[ks];
+	}
+	ave_time_per_step /= (it*nb+ib+1);
+
+	auto current_time = std::chrono::high_resolution_clock::now();
+	double total_elapsed = std::chrono::duration<double>(current_time - start_time).count();
+	double predicted_next_end = total_elapsed + ave_time_per_step;
+	if( mpi_rank_h == 0 ) {
+	  if( mpi_rank_t == 0 ) {
+	    MPI_Bcast(&predicted_next_end,1,MPI_DOUBLE,0,b_comm);
+	  }
+	  MPI_Bcast(&predicted_next_end,1,MPI_DOUBLE,0,t_comm);
+	}
+	MPI_Bcast(&predicted_next_end,1,MPI_DOUBLE,0,h_comm);
+
+	if( predicted_next_end > max_time ) {
+	  do_continue = false;
+	  break;
+	}
+	
+	
       } // end for(int ib=0; ib < nb; ib++)
       
       if( !do_continue ) {
@@ -673,8 +703,6 @@ x = 0    1    2    3
     free(E);
 
   }
-  
-  */
 
   
 }
