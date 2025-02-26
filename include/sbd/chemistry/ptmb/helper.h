@@ -584,19 +584,30 @@ namespace sbd {
       num_threads = omp_get_num_threads();
     }
     
-    size_t chunk_size = (helper[0].braAlphaEnd-helper[0].braAlphaStart) / num_threads;
+    size_t chunk_size = 0;
+    if( helper.size() != 0 ) {
+      chunk_size = (helper[0].braAlphaEnd-helper[0].braAlphaStart) / num_threads;
+    }
     std::vector<std::vector<size_t>> len(helper.size(),std::vector<size_t>(num_threads));
 
-    size_t braAlphaSize = helper[0].braAlphaEnd - helper[0].braAlphaStart;
-    size_t braBetaSize  = helper[0].braBetaEnd - helper[0].braBetaStart;
+    size_t braAlphaSize = 0;
+    size_t braBetaSize  = 0;
+    if( helper.size() != 0 ) {
+      braAlphaSize = helper[0].braAlphaEnd - helper[0].braAlphaStart;
+      braBetaSize  = helper[0].braBetaEnd - helper[0].braBetaStart;
+    }
 
 #pragma omp parallel
     {
       size_t thread_id = omp_get_thread_num();
-      size_t ia_start = thread_id * chunk_size     + helper[0].braAlphaStart;
-      size_t ia_end   = (thread_id+1) * chunk_size + helper[0].braAlphaStart;
-      if( thread_id == num_threads - 1 ) {
-	ia_end = helper[0].braAlphaEnd;
+      size_t ia_start = 0;
+      size_t ia_end   = 0;
+      if( helper.size() != 0 ) {
+	ia_start = thread_id * chunk_size     + helper[0].braAlphaStart;
+	ia_end   = (thread_id+1) * chunk_size + helper[0].braAlphaStart;
+	if( thread_id == num_threads - 1 ) {
+	  ia_end = helper[0].braAlphaEnd;
+	}
       }
       for(size_t task = 0; task < helper.size(); task++) {
 	for(size_t ia = ia_start; ia < ia_end; ia++) {
@@ -664,30 +675,60 @@ namespace sbd {
     if( mpi_rank_h == 0 ) {
       if( mpi_rank_b == 0 ) {
 	// Evaluate total number of helpers
-	std::vector<size_t> num_helper_rank(mpi_size_t);
+	std::vector<size_t> num_helper_rank(mpi_size_t,static_cast<size_t>(0));
 	num_helper_rank[mpi_rank_t] = helper.size();
-	std::vector<size_t> num_helper(mpi_size_t);
-	MPI_Allreduce(&num_helper_rank,&num_helper,1,SBD_MPI_SIZE_T,MPI_SUM,t_comm);
+	std::vector<size_t> num_helper(mpi_size_t,static_cast<size_t>(0));
+	MPI_Allreduce(num_helper_rank.data(),num_helper.data(),mpi_size_t,SBD_MPI_SIZE_T,MPI_SUM,t_comm);
 	size_t total_helper=0;
 	for(size_t rank_t=0; rank_t < mpi_size_t; rank_t++) {
 	  total_helper += num_helper[rank_t];
 	}
+#ifdef SBD_DEBUG_HELPER
+	for(int rank_t=0; rank_t < mpi_size_t; rank_t++) {
+	  if( rank_t == mpi_rank_t ) {
+	    std::cout << " RemakeHelper at rank = (" << mpi_rank_h
+		      << "," << mpi_rank_b << "," << mpi_rank_t
+		      << "): num_helper = ";
+	    for(int rank=0; rank < mpi_size_t; rank++) {
+	      std::cout << " " << num_helper[rank];
+	    }
+	    std::cout << std::endl;
+	  }
+	  MPI_Barrier(t_comm);
+	}
+#endif
 	if( total_task != total_helper ) {
 	  std::cout << " RemakeHelper:: total_helper != total_task obaseved " << std::endl;
 	}
 	// Distribute the cost for all helpers
 	std::vector<size_t> cost_rank = TaskCostSize(helper,h_comm,b_comm,t_comm);
-	std::vector<double> cost(total_helper,0);
-	std::vector<double> cost_send(total_helper,0);
+#ifdef SBD_DEBUG_HELPER
+	for(int rank_t=0; rank_t < mpi_size_t; rank_t++) {
+	  if( rank_t == mpi_rank_t ) {
+	    std::cout << " RemakeHelper at rank = (" << mpi_rank_h
+		      << "," << mpi_rank_b << "," << mpi_rank_t
+		      << "): cost at this rank = ";
+	    for(int k=0; k < cost_rank.size(); k++) {
+	      std::cout << " " << cost_rank[k];
+	    }
+	    std::cout << ", total_helper = " << total_helper << std::endl;
+	  }
+	  MPI_Barrier(t_comm);
+	}
+#endif
+	
+	std::vector<double> cost(total_helper,0.0);
+	std::vector<double> cost_send(total_helper,0.0);
 	size_t k_start = 0;
 	for(int rank_t=0; rank_t < mpi_rank_t; rank_t++) {
 	  k_start += num_helper[rank_t];
 	}
 	size_t k_end = num_helper[mpi_rank_t] + k_start;
 	for(size_t k=k_start; k < k_end; k++) {
-	  cost_send[k] = 1.0*cost_rank[k-k_start];
+	  cost_send[k] = 1.0 * cost_rank[k-k_start];
 	}
 	MPI_Allreduce(cost_send.data(),cost.data(),total_helper,MPI_DOUBLE,MPI_SUM,t_comm);
+	
 	auto itkmin = std::min_element(cost.begin(),cost.end());
 	double volC = 1.0/(1.0+(*itkmin));
 	double sumC = 0.0;
@@ -695,20 +736,57 @@ namespace sbd {
 	  cost[k] *= volC;
 	  sumC += cost[k];
 	}
-	double regC = sumC / mpi_size_t;
-	std::vector<double> cumsum(helper.size(),0.0);
-	std::vector<double> devreg(helper.size(),0.0);
-	size_t s_start = 0;
-	size_t s_end = helper.size();
+	
+#ifdef SBD_DEBUG_HELPER
 	for(int rank_t=0; rank_t < mpi_size_t; rank_t++) {
-	  cumsum[s_start] = cost[s_start];
-	  for(size_t s=s_start+1; s < s_end; s++) {
-	    cumsum[s] += cumsum[s-1] + cost[s];
+	  if( rank_t == mpi_rank_t ) {
+	    std::cout << " RemakeHelper at rank = (" << mpi_rank_h
+		      << "," << mpi_rank_b << "," << mpi_rank_t
+		      << "): cost = ";
+	    for(int k=0; k < cost.size(); k++) {
+	      std::cout << " " << cost[k];
+	    }
+	    std::cout << " total = " << sumC << std::endl;
+	  }
+	  MPI_Barrier(t_comm);
+	}
+#endif
+	
+	double regC = sumC / mpi_size_t;
+	std::vector<double> cumsum(total_helper+1,0.0);
+	std::vector<double> devreg(total_helper+1,0.0);
+	size_t s_start = 0;
+	size_t s_end   = total_helper;
+	for(int rank_t=0; rank_t < mpi_size_t; rank_t++) {
+	  std::fill(cumsum.begin(),cumsum.end(),0.0);
+	  for(size_t s=s_start+1; s <= s_end; s++) {
+	    cumsum[s] += cumsum[s-1] + cost[s-1];
 	    devreg[s] = (cumsum[s]-regC)*(cumsum[s]-regC);
 	  }
-	  auto itsm = std::min_element(devreg.begin()+s_start,devreg.begin()+s_end);
+#ifdef SBD_DEBUG_HELPER
+	  for(int rank_t=0; rank_t < mpi_size_t; rank_t++) {
+	    if( mpi_rank_t == rank_t ) {
+	      std::cout << " RemakeHelper at rank = (" << mpi_rank_h
+			<< "," << mpi_rank_b << "," << mpi_rank_t
+			<< "): devreg =";
+	      for(size_t s=s_start; s <= s_end; s++) {
+		std::cout << " " << devreg[s] << "(" << cumsum[s] << ")";
+	      }
+	      std::cout << ", min = " << std::distance(devreg.begin(),
+					      std::min_element(devreg.begin()+s_start+1,
+							       devreg.begin()+s_end+1))
+			<< ", regC = " << regC << std::endl;
+	    }
+	    MPI_Barrier(t_comm);
+	  }
+#endif
+	  
+	  auto itsm = std::min_element(devreg.begin()+s_start+1,devreg.begin()+s_end+1);
 	  task_start[rank_t] = s_start;
 	  task_end[rank_t]   = static_cast<size_t>(std::distance(devreg.begin(),itsm));
+	  if( rank_t == mpi_size_t-1 ) {
+	    task_end[rank_t] = total_helper;
+	  }
 	  s_start = task_end[rank_t];
 	  sumC = 0.0;
 	  for(size_t s=s_start; s < s_end; s++) {
@@ -724,6 +802,29 @@ namespace sbd {
     }
     MPI_Bcast(task_start.data(),mpi_size_h,SBD_MPI_SIZE_T,0,h_comm);
     MPI_Bcast(task_end.data(),mpi_size_h,SBD_MPI_SIZE_T,0,h_comm);
+
+#ifdef SBD_DEBUG_HELPER
+    for(int rank_h=0; rank_h < mpi_size_h; rank_h++) {
+      if( mpi_rank_h == rank_h ) {
+	for(int rank_t=0; rank_t < mpi_size_t; rank_t++) {
+	  if( mpi_rank_t == rank_t ) {
+	    for(int rank_b=0; rank_b < mpi_size_b; rank_b++) {
+	      if( mpi_rank_b == rank_b ) {
+		std::cout << " RemakeHelpers at rank (" << mpi_rank_h
+			  << "," << mpi_rank_t << "," << mpi_rank_b
+			  << "): task_start = " << task_start[mpi_rank_t]
+			  << ", tasnk_end = " << task_end[mpi_rank_t]
+			  << std::endl;
+	      }
+	      MPI_Barrier(b_comm);
+	    }
+	  }
+	  MPI_Barrier(t_comm);
+	}
+      }
+      MPI_Barrier(h_comm);
+    }
+#endif
 
     /**
        Free every helpers
@@ -780,7 +881,6 @@ namespace sbd {
 	}
       }
     }
-
 
     size_t task_size = task_end[mpi_rank_t]-task_start[mpi_rank_t];
     helper.resize(task_size);
