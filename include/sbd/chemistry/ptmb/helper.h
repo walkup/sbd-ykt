@@ -336,6 +336,19 @@ namespace sbd {
     helper.DoublesFromBeta = std::vector<std::vector<size_t>>();
   }
 
+  void FreeHelpers(TaskHelpers & helper) {
+    free(helper.SinglesFromAlphaLen);
+    free(helper.SinglesFromBetaLen);
+    free(helper.DoublesFromAlphaLen);
+    free(helper.DoublesFromBetaLen);
+  }
+
+  void FreeHelpers(std::vector<TaskHelpers> & helper) {
+    for(size_t task=0; task < helper.size(); task++) {
+      FreeHelpers(helper[task]);
+    }
+  }
+
   void MakeSmartHelper(TaskHelpers & helper,
 		       std::vector<size_t> & sharedMemory) {
     
@@ -623,7 +636,6 @@ namespace sbd {
     return cost;
   }
 
-  /*
   void RemakeHelpers(const std::vector<std::vector<size_t>> & adet,
 		     const std::vector<std::vector<size_t>> & bdet,
 		     size_t bit_length,
@@ -643,11 +655,15 @@ namespace sbd {
     int mpi_size_t; MPI_Comm_size(t_comm,&mpi_size_t);
     int mpi_rank_t; MPI_Comm_rank(t_comm,&mpi_rank_t);
     
+    size_t total_task = adet_comm_size * bdet_comm_size
+                      + adet_comm_size + bdet_comm_size;
+
     std::vector<size_t> task_start(mpi_size_t);
     std::vector<size_t> task_end(mpi_size_t);
 
     if( mpi_rank_h == 0 ) {
       if( mpi_rank_b == 0 ) {
+	// Evaluate total number of helpers
 	std::vector<size_t> num_helper_rank(mpi_size_t);
 	num_helper_rank[mpi_rank_t] = helper.size();
 	std::vector<size_t> num_helper(mpi_size_t);
@@ -656,9 +672,13 @@ namespace sbd {
 	for(size_t rank_t=0; rank_t < mpi_size_t; rank_t++) {
 	  total_helper += num_helper[rank_t];
 	}
-	std::vector<double> cost_rank = TaskCostSize(helper,h_comm,b_comm,t_comm);
+	if( total_task != total_helper ) {
+	  std::cout << " RemakeHelper:: total_helper != total_task obaseved " << std::endl;
+	}
+	// Distribute the cost for all helpers
+	std::vector<size_t> cost_rank = TaskCostSize(helper,h_comm,b_comm,t_comm);
 	std::vector<double> cost(total_helper,0);
-	std::vector<size_t> cost_send(total_helper,0);
+	std::vector<double> cost_send(total_helper,0);
 	size_t k_start = 0;
 	for(int rank_t=0; rank_t < mpi_rank_t; rank_t++) {
 	  k_start += num_helper[rank_t];
@@ -705,25 +725,134 @@ namespace sbd {
     MPI_Bcast(task_start.data(),mpi_size_h,SBD_MPI_SIZE_T,0,h_comm);
     MPI_Bcast(task_end.data(),mpi_size_h,SBD_MPI_SIZE_T,0,h_comm);
 
+    /**
+       Free every helpers
+     */
+    FreeHelpers(helper);
+    sharedMemory = std::vector<std::vector<size_t>>();
+
+    std::vector<size_t> adet_schedule(total_task);
+    std::vector<size_t> bdet_schedule(total_task);
+    std::vector<size_t> type_schedule(total_task);
+    size_t task_count = 0;
+    for(int na=0; na < adet_comm_size; na++) {
+      for(int nb=0; nb < bdet_comm_size; nb++) {
+	if( na == 0 ) {
+	  if( nb == 0 ) {
+	    adet_schedule[task_count] = na;
+	    bdet_schedule[task_count] = nb;
+	    type_schedule[task_count] = 2;
+	    task_count++;
+	    adet_schedule[task_count] = na;
+	    bdet_schedule[task_count] = nb;
+	    type_schedule[task_count] = 1;
+	    task_count++;
+	    adet_schedule[task_count] = na;
+	    bdet_schedule[task_count] = nb;
+	    type_schedule[task_count] = 0;
+	    task_count++;
+	  } else {
+	    adet_schedule[task_count] = na;
+	    bdet_schedule[task_count] = nb;
+	    type_schedule[task_count] = 1;
+	    task_count++;
+	    adet_schedule[task_count] = na;
+	    bdet_schedule[task_count] = nb;
+	    type_schedule[task_count] = 0;
+	    task_count++;
+	  }
+	} else {
+	  if( nb == 0 ) {
+	    adet_schedule[task_count] = na;
+	    bdet_schedule[task_count] = nb;
+	    type_schedule[task_count] = 2;
+	    task_count++;
+	    adet_schedule[task_count] = na;
+	    bdet_schedule[task_count] = nb;
+	    type_schedule[task_count] = 0;
+	    task_count++;
+	  } else {
+	    adet_schedule[task_count] = na;
+	    bdet_schedule[task_count] = nb;
+	    type_schedule[task_count] = 0;
+	    task_count++;
+	  }
+	}
+      }
+    }
+
+
+    size_t task_size = task_end[mpi_rank_t]-task_start[mpi_rank_t];
+    helper.resize(task_size);
+    sharedMemory.resize(task_size);
+
+    int bra_rank = mpi_rank_b;
+    int bra_adet_rank = bra_rank / bdet_comm_size;
+    int bra_bdet_rank = bra_rank % bdet_comm_size;
+
+    double total_smart_memory_size = 0.0;
     
+    for(size_t task=task_start[mpi_rank_t]; task < task_end[mpi_rank_t]; task++) {
+
+      int ket_adet_rank = (bra_adet_rank + adet_schedule[task]) % adet_comm_size;
+      int ket_bdet_rank = (bra_bdet_rank + bdet_schedule[task]) % bdet_comm_size;
+      helper[task-task_start[mpi_rank_t]].braAlphaStart = 0;
+      helper[task-task_start[mpi_rank_t]].braAlphaEnd   = adet.size();
+      helper[task-task_start[mpi_rank_t]].braBetaStart  = 0;
+      helper[task-task_start[mpi_rank_t]].braBetaEnd    = bdet.size();
+      helper[task-task_start[mpi_rank_t]].ketAlphaStart = 0;
+      helper[task-task_start[mpi_rank_t]].ketAlphaEnd   = adet.size();
+      helper[task-task_start[mpi_rank_t]].ketBetaStart  = 0;
+      helper[task-task_start[mpi_rank_t]].ketBetaEnd    = bdet.size();
+      get_mpi_range(adet_comm_size,bra_adet_rank,
+		    helper[task-task_start[mpi_rank_t]].braAlphaStart,
+		    helper[task-task_start[mpi_rank_t]].braAlphaEnd);
+      get_mpi_range(bdet_comm_size,bra_bdet_rank,
+		    helper[task-task_start[mpi_rank_t]].braBetaStart,
+		    helper[task-task_start[mpi_rank_t]].braBetaEnd);
+      get_mpi_range(adet_comm_size,ket_adet_rank,
+		    helper[task-task_start[mpi_rank_t]].ketAlphaStart,
+		    helper[task-task_start[mpi_rank_t]].ketAlphaEnd);
+      get_mpi_range(bdet_comm_size,ket_bdet_rank,
+		    helper[task-task_start[mpi_rank_t]].ketBetaStart,
+		    helper[task-task_start[mpi_rank_t]].ketBetaEnd);
+      helper[task-task_start[mpi_rank_t]].taskType  = type_schedule[task];
+      helper[task-task_start[mpi_rank_t]].adetShift = adet_schedule[task];
+      helper[task-task_start[mpi_rank_t]].bdetShift = bdet_schedule[task];
+      GenerateExcitation(adet,bdet,bit_length,norb,helper[task-task_start[mpi_rank_t]]);
+
+#ifdef SBD_DEBUG
+      size_t helper_vector_capacity_count = CapacityOfVector(helper);
+      size_t helper_vector_size_count = SizeOfVector(helper);
+      double helper_vector_capacity = 1.0 * helper_vector_capacity_count / (1024.0*1024.0*1024.0);
+      double helper_vector_size = 1.0 * helper_vector_size_count / (1024.0*1024.0*1024.0);
+      std::cout << " capacity of task " << task << " helper = " << helper_vector_capacity
+		<< " (GiB), size = " << helper_vector_size
+		<< " (GiB) before the serialization " << std::endl;
+#endif
+      
+      MakeSmartHelper(helper[task-task_start[mpi_rank_t]],sharedMemory[task-task_start[mpi_rank_t]]);
+      FreeVectors(helper[task-task_start[mpi_rank_t]]);
+
+#ifdef SBD_DEBUG
+      size_t smart_memory_count = sharedMemory[task-task_start[mpi_rank_t]].size() * sizeof(size_t);
+      double smart_memory_size = 1.0 * smart_memory_count / (1024.0*1024.0*1024.0);
+      helper_vector_capacity_count = CapacityOfVector(helper);
+      helper_vector_size_count = SizeOfVector(helper);
+      helper_vector_capacity = 1.0 * helper_vector_capacity_count / (1024.0*1024.0*1024.0);
+      helper_vector_size = 1.0 * helper_vector_size_count / (1024.0*1024.0*1024.0);
+      std::cout << " smart memory size of task " << task << " helper = "
+		<< smart_memory_size << " (GiB), capacity of vector = "
+		<< helper_vector_capacity
+		<< " (GiB), size of vector = " << helper_vector_size
+		<< " (GiB) after the serialization " << std::endl;
+#endif
+
+    } // end helpers for different tasks
     
   }
-  */
-		  
   
 
-  void FreeHelpers(TaskHelpers & helper) {
-    free(helper.SinglesFromAlphaLen);
-    free(helper.SinglesFromBetaLen);
-    free(helper.DoublesFromAlphaLen);
-    free(helper.DoublesFromBetaLen);
-  }
-
-  void FreeHelpers(std::vector<TaskHelpers> & helper) {
-    for(size_t task=0; task < helper.size(); task++) {
-      FreeHelpers(helper[task]);
-    }
-  }
 
   
 } // end namespace sbd
