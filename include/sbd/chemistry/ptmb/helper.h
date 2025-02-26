@@ -800,8 +800,8 @@ namespace sbd {
       MPI_Bcast(task_start.data(),mpi_size_t,SBD_MPI_SIZE_T,0,b_comm);
       MPI_Bcast(task_end.data(),mpi_size_t,SBD_MPI_SIZE_T,0,b_comm);
     }
-    MPI_Bcast(task_start.data(),mpi_size_h,SBD_MPI_SIZE_T,0,h_comm);
-    MPI_Bcast(task_end.data(),mpi_size_h,SBD_MPI_SIZE_T,0,h_comm);
+    MPI_Bcast(task_start.data(),mpi_size_t,SBD_MPI_SIZE_T,0,h_comm);
+    MPI_Bcast(task_end.data(),mpi_size_t,SBD_MPI_SIZE_T,0,h_comm);
 
 #ifdef SBD_DEBUG_HELPER
     for(int rank_h=0; rank_h < mpi_size_h; rank_h++) {
@@ -921,7 +921,7 @@ namespace sbd {
       helper[task-task_start[mpi_rank_t]].bdetShift = bdet_schedule[task];
       GenerateExcitation(adet,bdet,bit_length,norb,helper[task-task_start[mpi_rank_t]]);
 
-#ifdef SBD_DEBUG
+#ifdef SBD_DEBUG_HELPER
       size_t helper_vector_capacity_count = CapacityOfVector(helper);
       size_t helper_vector_size_count = SizeOfVector(helper);
       double helper_vector_capacity = 1.0 * helper_vector_capacity_count / (1024.0*1024.0*1024.0);
@@ -934,7 +934,7 @@ namespace sbd {
       MakeSmartHelper(helper[task-task_start[mpi_rank_t]],sharedMemory[task-task_start[mpi_rank_t]]);
       FreeVectors(helper[task-task_start[mpi_rank_t]]);
 
-#ifdef SBD_DEBUG
+#ifdef SBD_DEBUG_HELPER
       size_t smart_memory_count = sharedMemory[task-task_start[mpi_rank_t]].size() * sizeof(size_t);
       double smart_memory_size = 1.0 * smart_memory_count / (1024.0*1024.0*1024.0);
       helper_vector_capacity_count = CapacityOfVector(helper);
