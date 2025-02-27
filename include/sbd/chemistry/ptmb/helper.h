@@ -542,7 +542,7 @@ namespace sbd {
       helper[task-task_start].bdetShift = bdet_schedule[task];
       GenerateExcitation(adets,bdets,bit_length,norb,helper[task-task_start]);
 
-#ifdef SBD_DEBUG
+#ifdef SBD_DEBUG_HELPER
       size_t helper_vector_capacity_count = CapacityOfVector(helper);
       size_t helper_vector_size_count = SizeOfVector(helper);
       double helper_vector_capacity = 1.0 * helper_vector_capacity_count / (1024.0*1024.0*1024.0);
@@ -555,7 +555,7 @@ namespace sbd {
       MakeSmartHelper(helper[task-task_start],sharedMemory[task-task_start]);
       FreeVectors(helper[task-task_start]);
 
-#ifdef SBD_DEBUG
+#ifdef SBD_DEBUG_HELPER
       size_t smart_memory_count = sharedMemory[task-task_start].size() * sizeof(size_t);
       double smart_memory_size = 1.0 * smart_memory_count / (1024.0*1024.0*1024.0);
       helper_vector_capacity_count = CapacityOfVector(helper);

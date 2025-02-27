@@ -111,7 +111,7 @@ x = 0    1    2    3
 
     GetTotalD(hii,dii,h_comm);
 
-#ifdef SBD_DEBUG
+#ifdef SBD_DEBUG_DAVIDSON
     std::cout << " diagonal term at mpi process (h,b,t) = ("
 	      << mpi_rank_h << "," << mpi_rank_b << ","
 	      << mpi_rank_t << "): ";
@@ -137,7 +137,7 @@ x = 0    1    2    3
 	     tasktype,adetshift,bdetshift,adet_comm_size,bdet_comm_size,
 	     C[ib],HC[ib],bit_length,h_comm,b_comm,t_comm);
 
-#ifdef SBD_DEBUG
+#ifdef SBD_DEBUG_DAVIDSON
 	std::cout << " (h,b,t) = ("
 		  << mpi_rank_h << "," << mpi_rank_b << ","
 		  << mpi_rank_t << "): Hv(" << ib << ") =";
@@ -199,13 +199,21 @@ x = 0    1    2    3
 	RealT norm_R;
 	Normalize(R,norm_R,b_comm);
 
+#ifdef SBD_DEBUG_DAVIDSON
+	std::cout << " Davidson iteration " << it << "." << ib
+		  << " at mpi (h,b,t) = ("
+		  << mpi_rank_h << "," << mpi_rank_b << ","
+		  << mpi_rank_t << "): (tol=" << norm_R << "):";
+	for(int p=0; p < std::min(ib+1,4); p++) {
+	  std::cout << " " << E[p];
+	}
+	std::cout << std::endl;
+#else
 	if( mpi_rank_h == 0 ) {
 	  if( mpi_rank_t == 0 ) {
 	    if( mpi_rank_b == 0 ) {
 	      std::cout << " Davidson iteration " << it << "." << ib
-			<< " at mpi (h,b,t) = ("
-			<< mpi_rank_h << "," << mpi_rank_b << ","
-			<< mpi_rank_t << "): (tol=" << norm_R << "):";
+			<< " (tol=" << norm_R << "):";
 	      for(int p=0; p < std::min(ib+1,4); p++) {
 		std::cout << " " << E[p];
 	      }
@@ -213,6 +221,7 @@ x = 0    1    2    3
 	    }	
 	  }
 	}
+#endif
 	
 	if( norm_R < eps ) {
 	  do_continue = false;
@@ -309,7 +318,7 @@ x = 0    1    2    3
 
     GetTotalD(hii,dii,h_comm);
 
-#ifdef SBD_DEBUG
+#ifdef SBD_DEBUG_DAVIDSON
     std::cout << " diagonal term at mpi process (h,b,t) = ("
 	      << mpi_rank_h << "," << mpi_rank_b << ","
 	      << mpi_rank_t << "): ";
@@ -337,7 +346,7 @@ x = 0    1    2    3
 	     helper,I0,I1,I2,
 	     h_comm,b_comm,t_comm);
 
-#ifdef SBD_DEBUG
+#ifdef SBD_DEBUG_DAVIDSON
 	std::cout << " (h,b,t) = ("
 		  << mpi_rank_h << "," << mpi_rank_b << ","
 		  << mpi_rank_t << "): Hv(" << ib << ") =";
@@ -399,13 +408,21 @@ x = 0    1    2    3
 	RealT norm_R;
 	Normalize(R,norm_R,b_comm);
 
+#ifdef SBD_DEBUG_DAVIDSON
+	std::cout << " Davidson iteration " << it << "." << ib
+		  << " at mpi (h,b,t) = ("
+		  << mpi_rank_h << "," << mpi_rank_b << ","
+		  << mpi_rank_t << "): (tol=" << norm_R << "):";
+	for(int p=0; p < std::min(ib+1,4); p++) {
+	  std::cout << " " << E[p];
+	}
+	std::cout << std::endl;
+#else
 	if( mpi_rank_h == 0 ) {
 	  if( mpi_rank_t == 0 ) {
 	    if( mpi_rank_b == 0  ) {
 	      std::cout << " Davidson iteration " << it << "." << ib
-			<< " at mpi (h,b,t) = ("
-			<< mpi_rank_h << "," << mpi_rank_b << ","
-			<< mpi_rank_t << "): (tol=" << norm_R << "):";
+			<< " (tol=" << norm_R << "):";
 	      for(int p=0; p < std::min(ib+1,4); p++) {
 		std::cout << " " << E[p];
 	      }
@@ -413,6 +430,7 @@ x = 0    1    2    3
 	    }
 	  }
 	}
+#endif
 	
 	if( norm_R < eps ) {
 	  do_continue = false;
@@ -535,7 +553,7 @@ x = 0    1    2    3
 
     GetTotalD(hii,dii,h_comm);
 
-#ifdef SBD_DEBUG
+#ifdef SBD_DEBUG_DAVIDSON
     std::cout << " diagonal term at mpi process (h,b,t) = ("
 	      << mpi_rank_h << "," << mpi_rank_b << ","
 	      << mpi_rank_t << "): ";
@@ -568,7 +586,7 @@ x = 0    1    2    3
 	     helper,I0,I1,I2,
 	     h_comm,b_comm,t_comm);
 
-#ifdef SBD_DEBUG
+#ifdef SBD_DEBUG_DAVIDSON
 	std::cout << " (h,b,t) = ("
 		  << mpi_rank_h << "," << mpi_rank_b << ","
 		  << mpi_rank_t << "): Hv(" << ib << ") =";
@@ -630,20 +648,29 @@ x = 0    1    2    3
 	RealT norm_R;
 	Normalize(R,norm_R,b_comm);
 
+#ifdef SBD_DEBUG_DAVIDSON
+	std::cout << " Davidson iteration " << it << "." << ib
+		  << " at mpi (h,b,t) = ("
+		  << mpi_rank_h << "," << mpi_rank_b << ","
+		  << mpi_rank_t << "): (tol=" << norm_R << "):";
+	for(int p=0; p < std::min(ib+1,4); p++) {
+	  std::cout << " " << E[p];
+	}
+	std::cout << std::endl;
+#else
 	if( mpi_rank_h == 0 ) {
 	  if( mpi_rank_t == 0 ) {
 	    if( mpi_rank_b == 0 ) {
 	      std::cout << " Davidson iteration " << it << "." << ib
-			<< " at mpi (h,b,t) = ("
-			<< mpi_rank_h << "," << mpi_rank_b << ","
-			<< mpi_rank_t << "): (tol=" << norm_R << "):";
+			<< " (tol=" << norm_R << "):";
 	      for(int p=0; p < std::min(ib+1,4); p++) {
 		std::cout << " " << E[p];
 	      }
 	      std::cout << std::endl;
-	    }
+	    }	
 	  }
 	}
+#endif
 	
 	if( norm_R < eps ) {
 	  do_continue = false;

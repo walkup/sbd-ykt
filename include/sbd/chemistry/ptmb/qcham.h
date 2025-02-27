@@ -62,7 +62,7 @@ namespace sbd {
       }
     }
     
-#ifdef SBD_DEBUG
+#ifdef SBD_DEBUG_QCHAM
     for(int task=0; task < helper.size(); task++) {
       for(int rank_y=0; rank_y < mpi_size_y; rank_y++) {
 	for(int rank_x=0; rank_x < mpi_size_x; rank_x++) {
