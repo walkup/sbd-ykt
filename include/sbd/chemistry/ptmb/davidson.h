@@ -199,14 +199,20 @@ x = 0    1    2    3
 	RealT norm_R;
 	Normalize(R,norm_R,b_comm);
 
-	std::cout << " Davidson iteration " << it << "." << ib
-		  << " at mpi (h,b,t) = ("
-		  << mpi_rank_h << "," << mpi_rank_b << ","
-		  << mpi_rank_t << "): (tol=" << norm_R << "):";
-	for(int p=0; p < std::min(ib+1,4); p++) {
-	  std::cout << " " << E[p];
+	if( mpi_rank_h == 0 ) {
+	  if( mpi_rank_t == 0 ) {
+	    if( mpi_rank_b == 0 ) {
+	      std::cout << " Davidson iteration " << it << "." << ib
+			<< " at mpi (h,b,t) = ("
+			<< mpi_rank_h << "," << mpi_rank_b << ","
+			<< mpi_rank_t << "): (tol=" << norm_R << "):";
+	      for(int p=0; p < std::min(ib+1,4); p++) {
+		std::cout << " " << E[p];
+	      }
+	      std::cout << std::endl;
+	    }	
+	  }
 	}
-	std::cout << std::endl;
 	
 	if( norm_R < eps ) {
 	  do_continue = false;
@@ -393,14 +399,20 @@ x = 0    1    2    3
 	RealT norm_R;
 	Normalize(R,norm_R,b_comm);
 
-	std::cout << " Davidson iteration " << it << "." << ib
-		  << " at mpi (h,b,t) = ("
-		  << mpi_rank_h << "," << mpi_rank_b << ","
-		  << mpi_rank_t << "): (tol=" << norm_R << "):";
-	for(int p=0; p < std::min(ib+1,4); p++) {
-	  std::cout << " " << E[p];
+	if( mpi_rank_h == 0 ) {
+	  if( mpi_rank_t == 0 ) {
+	    if( mpi_rank_b == 0  ) {
+	      std::cout << " Davidson iteration " << it << "." << ib
+			<< " at mpi (h,b,t) = ("
+			<< mpi_rank_h << "," << mpi_rank_b << ","
+			<< mpi_rank_t << "): (tol=" << norm_R << "):";
+	      for(int p=0; p < std::min(ib+1,4); p++) {
+		std::cout << " " << E[p];
+	      }
+	      std::cout << std::endl;
+	    }
+	  }
 	}
-	std::cout << std::endl;
 	
 	if( norm_R < eps ) {
 	  do_continue = false;
@@ -618,14 +630,20 @@ x = 0    1    2    3
 	RealT norm_R;
 	Normalize(R,norm_R,b_comm);
 
-	std::cout << " Davidson iteration " << it << "." << ib
-		  << " at mpi (h,b,t) = ("
-		  << mpi_rank_h << "," << mpi_rank_b << ","
-		  << mpi_rank_t << "): (tol=" << norm_R << "):";
-	for(int p=0; p < std::min(ib+1,4); p++) {
-	  std::cout << " " << E[p];
+	if( mpi_rank_h == 0 ) {
+	  if( mpi_rank_t == 0 ) {
+	    if( mpi_rank_b == 0 ) {
+	      std::cout << " Davidson iteration " << it << "." << ib
+			<< " at mpi (h,b,t) = ("
+			<< mpi_rank_h << "," << mpi_rank_b << ","
+			<< mpi_rank_t << "): (tol=" << norm_R << "):";
+	      for(int p=0; p < std::min(ib+1,4); p++) {
+		std::cout << " " << E[p];
+	      }
+	      std::cout << std::endl;
+	    }
+	  }
 	}
-	std::cout << std::endl;
 	
 	if( norm_R < eps ) {
 	  do_continue = false;
