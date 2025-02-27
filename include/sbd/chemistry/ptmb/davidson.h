@@ -35,7 +35,17 @@ x = 0    1    2    3
      
  */
   
-
+/**
+   Initializer for the wave function
+   @tparam ElemT: Type of elements for the Hamiltonian and the wave functions
+   @param[out] W: The wave vector to be initialized.
+   @param[in] helper: helper array to construct the Hamiltonian
+   @param[in] h_comm: Communicator to split the row-index when performing the Hamiltonian operations
+   @param[in] b_comm: Communicator to split the wave function data
+   @param[in] t_comm: Communicator to split the operation in column basis when performing the Hamiltonian operations
+   @param[in] init: Select type of initial state. init==0 corresponds to the HF solution. init==1 is the random state.
+ */
+  
   
   template <typename ElemT>
   void BasisInitVector(std::vector<ElemT> & W,
@@ -66,7 +76,28 @@ x = 0    1    2    3
     }
   }
 
-
+  /**
+     Davidson method for the stored Hamiltonian constructed by the TaskHelpers
+     @tparam ElemT: Type of the elements of the Hamiltonian and the wave functions
+     @param[in] hii: Diagonal elements for the Hamiltonian matrix
+     @param[in] ih: row-index of the off-diagonal term
+     @param[in] jh: column-index of the off-diagonal term
+     @param[in] hij: Value of elements of off-diagonal term
+     @param[in] len: Length of the each (ih[x],jh[x],hij[x])
+     @param[in] tasktype: Type of task
+     @param[in] adetshift: Shift of ket-side block of alpha-string index
+     @param[in] bdetshift: Shift of ket-side block of beta-string index
+     @param[in] adet_comm_size: Number of division in alpha-string array
+     @param[in] bdet_comm_size: Number of division in beta-string array
+     @param[in/out] W: Initial vector in input, ground state wave function in output.
+     @param[in] h_comm: Communicator used to cyclicly split the row-index when performing the multiplication of Hamiltonian
+     @param[in] b_comm: Communicator to split the wave vector
+     @param[in] t_comm: Communicator to split the tasks in column-index when performing the multiplication
+     @param[in] max_iteration: Number of maximum interation of the Davidson iteration
+     @param[in] num_block: Maximum size of Litz vector space
+     @param[in] eps: error torelance (norm of the residual vector)
+   */
+  
   template <typename ElemT, typename RealT>
   void Davidson(const std::vector<ElemT> & hii,
 		const std::vector<size_t*> & ih,
@@ -273,6 +304,30 @@ x = 0    1    2    3
     free(E);
 
   }
+
+  /**
+     Davidson method for the direct multiplication using TaskHelpers
+     @tparam ElemT: Type of the Hamiltonian and wave functions
+     @tparam RealT: Real type of ElemT
+     @param[in] hii: Diagonal elements for the Hamiltonian matrix
+     @param[in/out] W: Initialized wave function in input. Obtained ground state at output.
+     @param[in] adets: bit strings to span the Hilbert space for alpha spins
+     @param[in] bdets: bit strings to span the Hilbert space for beta spins
+     @param[in] bit_length: Bit length managed by each size_t in adets and bdets
+     @param[in] norbs: Overall bit length of alpha-det and beta-det, corresponding to the number of orbitals
+     @param[in] adet_comm_size: number of nodes used to split the alpha-dets
+     @param[in] bdet_comm_size: number of nodes used to split the beta-dets
+     @param[in] helper: TaskHelpers to perform the Hamiltonian operatorations
+     @param[in] I0: Constant shift of energy
+     @param[in] I1: One-body integrals
+     @param[in] I2: Two-body integrals
+     @param[in] h_comm: Communicator used to cyclicly split the row-index when performing the multiplication of Hamiltonian
+     @param[in] b_comm: Communicator to split the wave vector
+     @param[in] t_comm: Communicator to split the tasks in column-index when performing the multiplication
+     @param[in] max_iteration: Number of maximum interation of the Davidson iteration
+     @param[in] num_block: Maximum size of Litz vector space
+     @param[in] eps: error torelance (norm of the residual vector)
+  */
   
   template <typename ElemT, typename RealT>
   void Davidson(const std::vector<ElemT> & hii,
@@ -484,8 +539,8 @@ x = 0    1    2    3
   }
 
   /**
-     Davidson method for the direct multiplication using TaskHelpers
-     @tparam ElemT: Type of the tensor elements
+     Davidson method for the direct multiplication using TaskHelpers, specialized for the SQD loop calculation.
+     @tparam ElemT: Type of the Hamiltonian and wave functions
      @tparam RealT: Real type of ElemT
      @param[in] hii: Diagonal elements for the Hamiltonian matrix
      @param[in/out] W: Initialized wave function in input. Obtained ground state at output.
