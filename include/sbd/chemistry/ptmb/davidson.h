@@ -81,6 +81,62 @@ x = 0    1    2    3
     }
   }
 
+/**
+   Initializer for the wave function
+   @tparam ElemT: Type of elements for the Hamiltonian and the wave functions
+   @param[out] W: The wave vector to be initialized.
+   @param[in] adet: Array of bit string for alpha det
+   @param[in] bdet: Array of bit string for beta det
+   @param[in] adet_comm_size: Number of communicators used to split the adet
+   @param[in] bdet_comm_size: Number of communicators used to split the bdet
+   @param[in] h_comm: Communicator to split the row-index when performing the Hamiltonian operations
+   @param[in] b_comm: Communicator to split the wave function data
+   @param[in] t_comm: Communicator to split the operation in column basis when performing the Hamiltonian operations
+   @param[in] init: Select type of initial state. init==0 corresponds to the HF solution. init==1 is the random state.
+ */
+  
+  
+  template <typename ElemT>
+  void BasisInitVector(std::vector<ElemT> & W,
+		       const std::vector<std::vector<size_t>> & adet,
+		       const std::vector<std::vector<size_t>> & bdet,
+		       const size_t adet_comm_size,
+		       const size_t bdet_comm_size,
+		       MPI_Comm h_comm,
+		       MPI_Comm b_comm,
+		       MPI_Comm t_comm,
+		       int init) {
+    
+    int mpi_rank_h; MPI_Comm_rank(h_comm,&mpi_rank_h);
+    int mpi_size_h; MPI_Comm_size(h_comm,&mpi_size_h);
+    int mpi_rank_b; MPI_Comm_rank(b_comm,&mpi_rank_b);
+    int mpi_size_b; MPI_Comm_size(b_comm,&mpi_size_b);
+    int mpi_rank_t; MPI_Comm_rank(t_comm,&mpi_rank_t);
+    int mpi_size_t; MPI_Comm_size(t_comm,&mpi_size_t);
+
+    int adet_rank = mpi_rank_b / bdet_comm_size;
+    int bdet_rank = mpi_rank_b % bdet_comm_size;
+    size_t adet_start = 0;
+    size_t adet_end   = adet.size();
+    size_t bdet_start = 0;
+    size_t bdet_end   = bdet.size();
+    get_mpi_range(adet_comm_size,adet_rank,adet_start,adet_end);
+    get_mpi_range(bdet_comm_size,bdet_rank,bdet_start,bdet_end);
+    size_t adet_size = adet_end-adet_start;
+    size_t bdet_size = bdet_end-bdet_start;
+    W.resize(adet_size*bdet_size,ElemT(0.0));
+    if( init == 0 ) { // default = start from fermi sea
+      if( mpi_rank_b == 0 ) {
+	W[0] = ElemT(1.0);
+      }
+    } else if ( init == 1 ) {
+      if( mpi_rank_t == 0 ) {
+	Randomize(W,b_comm,h_comm);
+      }
+      MpiBcast(W,0,t_comm);
+    }
+  }
+
   /**
      Davidson method for the stored Hamiltonian constructed by the TaskHelpers
      @tparam ElemT: Type of the elements of the Hamiltonian and the wave functions
