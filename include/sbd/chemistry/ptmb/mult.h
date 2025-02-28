@@ -138,8 +138,12 @@ namespace sbd {
     int mpi_rank_b; MPI_Comm_rank(b_comm,&mpi_rank_b);
     int mpi_size_t; MPI_Comm_size(t_comm,&mpi_size_t);
     int mpi_rank_t; MPI_Comm_rank(t_comm,&mpi_rank_t);
-    size_t braAlphaSize = helper[0].braAlphaEnd-helper[0].braAlphaStart;
-    size_t braBetaSize  = helper[0].braBetaEnd-helper[0].braBetaStart;
+    size_t braAlphaSize = 0;
+    size_t braBetaSize  = 0;
+    if( helper.size() != 0 ) {
+      braAlphaSize = helper[0].braAlphaEnd-helper[0].braAlphaStart;
+      braBetaSize  = helper[0].braBetaEnd-helper[0].braBetaStart;
+    }
 
     size_t adet_min = 0;
     size_t adet_max = adets.size();
@@ -156,8 +160,10 @@ namespace sbd {
     std::vector<ElemT> R;
     T.reserve(max_det_size);
     R.reserve(max_det_size);
-    Mpi2dSlide(Wk,T,adet_comm_size,bdet_comm_size,
-	       -helper[0].adetShift,-helper[0].bdetShift,b_comm);
+    if( helper.size() != 0 ) {
+      Mpi2dSlide(Wk,T,adet_comm_size,bdet_comm_size,
+		 -helper[0].adetShift,-helper[0].bdetShift,b_comm);
+    }
     auto time_copy_end = std::chrono::high_resolution_clock::now();
 
     auto time_mult_start = std::chrono::high_resolution_clock::now();
@@ -179,7 +185,6 @@ namespace sbd {
     }
 
     double time_slid = 0.0;
-
     size_t chunk_size = 0;
     if( helper.size() != 0 ) {
       chunk_size = (helper[0].braAlphaEnd-helper[0].braAlphaStart) / num_threads;

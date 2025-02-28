@@ -40,8 +40,20 @@ namespace sbd {
     int mpi_size_y; MPI_Comm_size(t_comm,&mpi_size_y);
     int mpi_rank_y; MPI_Comm_rank(t_comm,&mpi_rank_y);
 
-    size_t braAlphaSize = helper[0].braAlphaEnd-helper[0].braAlphaStart;
-    size_t braBetaSize = helper[0].braBetaEnd-helper[0].braBetaStart;
+    size_t braAlphaSize = 0;
+    size_t braBetaSize = 0;
+    size_t braAlphaStart = 0;
+    size_t braAlphaEnd = 0;
+    size_t braBetaStart = 0;
+    size_t braBetaEnd = 0;
+    if( helper.size() != 0 ) {
+      braAlphaSize = helper[0].braAlphaEnd-helper[0].braAlphaStart;
+      braBetaSize = helper[0].braBetaEnd-helper[0].braBetaStart;
+      braAlphaStart = helper[0].braAlphaStart;
+      braAlphaEnd   = helper[0].braAlphaEnd;
+      braBetaStart  = helper[0].braBetaStart;
+      braBetaEnd    = helper[0].braBetaEnd;
+    }
     size_t braSize = braAlphaSize*braBetaSize;
     size_t num_threads = 1;
     hii.resize(braSize,ElemT(0.0));
@@ -52,9 +64,9 @@ namespace sbd {
       auto det = DetFromAlphaBeta(adets[0],bdets[0],bit_length,norbs);
       
 #pragma omp for
-      for(size_t ia=helper[0].braAlphaStart; ia < helper[0].braAlphaEnd; ia++) {
-	for(size_t ib=helper[0].braBetaStart; ib < helper[0].braBetaEnd; ib++) {
-	  size_t k = (ia-helper[0].braAlphaStart)*braBetaSize+ib-helper[0].braBetaStart;
+      for(size_t ia=braAlphaStart; ia < braAlphaEnd; ia++) {
+	for(size_t ib=braBetaStart; ib < braBetaEnd; ib++) {
+	  size_t k = (ia-braAlphaStart)*braBetaSize+ib-braBetaStart;
 	  if( (k % mpi_size_h) != mpi_rank_h ) continue;
 	  DetFromAlphaBeta(adets[ia],bdets[ib],bit_length,norbs,det);
 	  hii[k] = ZeroExcite(det,bit_length,norbs,I0,I1,I2);
@@ -90,16 +102,16 @@ namespace sbd {
     jh.resize(num_threads);
     hij.resize(num_threads);
 
-    size_t chunk_size = (helper[0].braAlphaEnd-helper[0].braAlphaStart) / num_threads;
+    size_t chunk_size = (braAlphaEnd-braAlphaStart) / num_threads;
 
     // size evaluation
 #pragma omp parallel
     {
       size_t thread_id = omp_get_thread_num();
-      size_t ia_start = thread_id * chunk_size     + helper[0].braAlphaStart;
-      size_t ia_end   = (thread_id+1) * chunk_size + helper[0].braAlphaStart;
+      size_t ia_start = thread_id * chunk_size     + braAlphaStart;
+      size_t ia_end   = (thread_id+1) * chunk_size + braAlphaStart;
       if( thread_id == num_threads - 1 ) {
-	ia_end = helper[0].braAlphaEnd;
+	ia_end = braAlphaEnd;
       }
       for(size_t task = 0; task < helper.size(); task++) {
 	for(size_t ia = ia_start; ia < ia_end; ia++) {
@@ -172,10 +184,10 @@ namespace sbd {
 #pragma omp parallel
     {
       size_t thread_id = omp_get_thread_num();
-      size_t ia_start = thread_id * chunk_size     + helper[0].braAlphaStart;
-      size_t ia_end   = (thread_id+1) * chunk_size + helper[0].braAlphaStart;
+      size_t ia_start = thread_id * chunk_size     + braAlphaStart;
+      size_t ia_end   = (thread_id+1) * chunk_size + braAlphaStart;
       if( thread_id == num_threads - 1 ) {
-	ia_end = helper[0].braAlphaEnd;
+	ia_end = braAlphaEnd;
       }
 
       auto DetI = DetFromAlphaBeta(adets[0],bdets[0],bit_length,norbs);
@@ -301,9 +313,20 @@ namespace sbd {
     MPI_Comm_rank(h_comm,&mpi_rank_h);
     MPI_Comm_size(h_comm,&mpi_size_h);
 
-    size_t braAlphaSize = helper[0].braAlphaEnd-helper[0].braAlphaStart;
-    size_t braBetaSize = helper[0].braBetaEnd-helper[0].braBetaStart;
+    size_t braAlphaStart = 0;
+    size_t braAlphaEnd   = 0;
+    size_t braBetaStart  = 0;
+    size_t braBetaEnd    = 0;
+    if( helper.size() != 0 ) {
+      braAlphaStart = helper[0].braAlphaStart;
+      braAlphaEnd   = helper[0].braAlphaEnd;
+      braBetaStart  = helper[0].braBetaStart;
+      braBetaEnd    = helper[0].braBetaEnd;
+    }
+    size_t braAlphaSize = braAlphaEnd-braAlphaStart;
+    size_t braBetaSize = braBetaEnd-braBetaStart;
     size_t braSize = braAlphaSize*braBetaSize;
+    
     size_t num_threads = 1;
     
     hii.resize(braSize,ElemT(0.0));
@@ -314,9 +337,9 @@ namespace sbd {
       auto det = DetFromAlphaBeta(adets[0],bdets[0],bit_length,norbs);
       
 #pragma omp for
-      for(size_t ia=helper[0].braAlphaStart; ia < helper[0].braAlphaEnd; ia++) {
-	for(size_t ib=helper[0].braBetaStart; ib < helper[0].braBetaEnd; ib++) {
-	  size_t k = (ia-helper[0].braAlphaStart)*braBetaSize+ib-helper[0].braBetaStart;
+      for(size_t ia=braAlphaStart; ia < braAlphaEnd; ia++) {
+	for(size_t ib=braBetaStart; ib < braBetaEnd; ib++) {
+	  size_t k = (ia-braAlphaStart)*braBetaSize+ib-braBetaStart;
 	  if( (k % mpi_size_h) != mpi_rank_h ) continue;
 	  DetFromAlphaBeta(adets[ia],bdets[ib],bit_length,norbs,det);
 	  hii[k] = ZeroExcite(det,bit_length,norbs,I0,I1,I2);

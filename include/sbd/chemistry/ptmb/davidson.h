@@ -61,13 +61,18 @@ x = 0    1    2    3
     int mpi_rank_t; MPI_Comm_rank(t_comm,&mpi_rank_t);
     int mpi_size_t; MPI_Comm_size(t_comm,&mpi_size_t);
 
-    size_t AlphaSize = helper[0].braAlphaEnd - helper[0].braAlphaStart;
-    size_t BetaSize  = helper[0].braBetaEnd - helper[0].braBetaStart;
+    size_t AlphaSize = 0;
+    size_t BetaSize  = 0;
+    if( helper.size() != 0 ) {
+      AlphaSize = helper[0].braAlphaEnd - helper[0].braAlphaStart;
+      BetaSize  = helper[0].braBetaEnd  - helper[0].braBetaStart;
+    }
     W.resize(AlphaSize*BetaSize,ElemT(0.0));
     if( init == 0 ) { // default = start from fermi sea
       if( mpi_rank_b == 0 ) {
 	W[0] = ElemT(1.0);
       }
+      MpiBcast(W,0,t_comm);
     } else if ( init == 1 ) {
       if( mpi_rank_t == 0 ) {
 	Randomize(W,b_comm,h_comm);
