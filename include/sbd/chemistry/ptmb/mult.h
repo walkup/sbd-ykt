@@ -180,7 +180,11 @@ namespace sbd {
 
     double time_slid = 0.0;
 
-    size_t chunk_size = (helper[0].braAlphaEnd-helper[0].braAlphaStart) / num_threads;
+    size_t chunk_size = 0;
+    if( helper.size() != 0 ) {
+      chunk_size = (helper[0].braAlphaEnd-helper[0].braAlphaStart) / num_threads;
+    }
+    
     for(size_t task=0; task < helper.size(); task++) {
 
 #ifdef SBD_DEBUG_MULT
