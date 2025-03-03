@@ -11,6 +11,7 @@
 #include <limits.h>
 #include <unistd.h>
 #include <stdexcept>
+#include <bitset>
 
 #include "mpi.h"
 
