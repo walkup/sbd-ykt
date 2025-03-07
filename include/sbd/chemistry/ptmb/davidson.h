@@ -5,6 +5,8 @@
 #ifndef SBD_CHEMISTRY_PTMB_DAVIDSON_H
 #define SBD_CHEMISTRY_PTMB_DAVIDSON_H
 
+#include "sbd/framework/jacobi.h"
+
 namespace sbd {
 
 /**
@@ -729,7 +731,11 @@ x = 0    1    2    3
 	  }
 	}
 
+#ifdef SBD_NO_LAPACK
+	hp_numeric::JacobiHeev(ib+1,U,nb,E);
+#else
 	hp_numeric::MatHeev(jobz,uplo,ib+1,U,nb,E);
+#endif
 
 	ElemT x = U[0];
 #pragma omp parallel for
