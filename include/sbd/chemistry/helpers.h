@@ -5,6 +5,8 @@
 #ifndef SBD_CHEMISTRY_HELPERS_H
 #define SBD_CHEMISTRY_HELPERS_H
 
+#include <cstring>
+
 namespace sbd {
 
   struct Helpers {
