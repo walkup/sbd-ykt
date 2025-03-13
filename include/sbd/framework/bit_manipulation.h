@@ -12,11 +12,14 @@
 #include <unistd.h>
 #include <stdexcept>
 #include <bitset>
+#include <algorithm>
+#include <cstring>
 
 #include "mpi.h"
 
 #define SBD_BIT_LENGTH 20
-  
+
+/*
 std::ostream & operator << (std::ostream & s,
 			    const std::vector<size_t> & a) {
   for(size_t k=a.size(); k > 0; k--) {
@@ -37,7 +40,7 @@ std::ostream & operator << (std::ostream & s,
   }
   return s;
 }
-
+*/
 
   bool operator < (const std::vector<size_t> & a, const std::vector<size_t> & b) {
     size_t a_size = a.size();
