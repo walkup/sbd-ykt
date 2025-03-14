@@ -8,12 +8,6 @@
 namespace sbd {
 
   template <typename ElemT>
-  void Zero(std::vector<ElemT> & W) {
-    size_t w_size = W.size();
-    W = std::vector<ElemT>(w_size,ElemT(0.0));
-  }
-
-  template <typename ElemT>
   void GetTotalD(const std::vector<ElemT> & hii,
 		 std::vector<ElemT> & dii,
 		 MPI_Comm h_comm) {
@@ -110,6 +104,19 @@ namespace sbd {
 #pragma omp parallel for
 	for(size_t is=0; is < W.size(); is++) {
 	  R[is] += E[0]*W[is];
+	}
+
+	// for stability
+	MpiAllreduce(W,MPI_SUM,h_comm);
+	MpiAllreduce(R,MPI_SUM,h_comm);
+        ElemT volp(1.0/(mpi_size_h*1.0));
+#pragma	omp parallel for
+        for(size_t is=0; is < W.size(); is++) {
+          W[is] *= volp;
+	}
+#pragma omp parallel for
+	for(size_t is=0; is < R.size(); is++) {
+          R[is] *= volp;
 	}
 
 	RealT norm_W;

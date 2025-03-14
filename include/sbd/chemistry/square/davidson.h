@@ -190,6 +190,20 @@ x = 0    1    2    3
 	  R[is] += E[0]*W[is];
 	}
 
+	MpiAllreduce(W,MPI_SUM,k_comm);
+	MpiAllreduce(W,MPI_SUM,h_comm);
+	MpiAllreduce(R,MPI_SUM,k_comm);
+	MpiAllreduce(R,MPI_SUM,h_comm);
+        ElemT volp(1.0/(mpi_size_h*mpi_size_k));
+#pragma	omp parallel for
+        for(size_t is=0; is < W.size(); is++) {
+          W[is] *= volp;
+	}
+#pragma omp parallel for
+	for(size_t is=0; is < R.size(); is++) {
+          R[is] *= volp;
+	}
+
 	RealT norm_W;
 	Normalize(W,norm_W,b_comm);
 
@@ -380,6 +394,20 @@ x = 0    1    2    3
 	  R[is] += E[0]*W[is];
 	}
 
+	MpiAllreduce(W,MPI_SUM,k_comm);
+	MpiAllreduce(W,MPI_SUM,h_comm);
+	MpiAllreduce(R,MPI_SUM,k_comm);
+	MpiAllreduce(R,MPI_SUM,h_comm);
+        ElemT volp(1.0/(mpi_size_h*mpi_size_k));
+#pragma	omp parallel for
+        for(size_t is=0; is < W.size(); is++) {
+          W[is] *= volp;
+	}
+#pragma omp parallel for
+	for(size_t is=0; is < R.size(); is++) {
+          R[is] *= volp;
+	}
+	
 	RealT norm_W;
 	Normalize(W,norm_W,b_comm);
 

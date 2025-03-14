@@ -288,7 +288,7 @@ x = 0    1    2    3
 	}
 
 	
-#ifdef SBD_FUAGKUPATCH
+	// #ifdef SBD_FUAGKUPATCH
 	MpiAllreduce(W,MPI_SUM,t_comm);
 	MpiAllreduce(W,MPI_SUM,h_comm);
 	MpiAllreduce(R,MPI_SUM,t_comm);
@@ -302,7 +302,7 @@ x = 0    1    2    3
 	for(size_t is=0; is < R.size(); is++) {
           R[is] *= volp;
 	}
-#endif
+	// #endif
 
 	RealT norm_W;
 	Normalize(W,norm_W,b_comm);
@@ -537,7 +537,7 @@ x = 0    1    2    3
 	  R[is] += E[0]*W[is];
 	}
 
-#ifdef SBD_FUAGKUPATCH
+	// #ifdef SBD_FUAGKUPATCH
 	MpiAllreduce(W,MPI_SUM,t_comm);
 	MpiAllreduce(W,MPI_SUM,h_comm);
 	MpiAllreduce(R,MPI_SUM,t_comm);
@@ -551,7 +551,7 @@ x = 0    1    2    3
 	for(size_t is=0; is < R.size(); is++) {
           R[is] *= volp;
 	}
-#endif
+	// #endif
 	RealT norm_W;
 	Normalize(W,norm_W,b_comm);
 
@@ -799,7 +799,7 @@ x = 0    1    2    3
 	/**
 	   Patch for stability on Fugaku
 	 */
-#ifdef SBD_FUAGKUPATCH
+	// #ifdef SBD_FUAGKUPATCH
 	MpiAllreduce(W,MPI_SUM,t_comm);
 	MpiAllreduce(W,MPI_SUM,h_comm);
 	MpiAllreduce(R,MPI_SUM,t_comm);
@@ -813,7 +813,7 @@ x = 0    1    2    3
 	for(size_t is=0; is < R.size(); is++) {
           R[is] *= volp;
 	}
-#endif
+	// #endif
 	
 	RealT norm_W;
 	Normalize(W,norm_W,b_comm);
