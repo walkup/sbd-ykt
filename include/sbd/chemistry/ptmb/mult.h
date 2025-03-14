@@ -122,9 +122,9 @@ namespace sbd {
 	    const size_t adet_comm_size,
 	    const size_t bdet_comm_size,
 	    const std::vector<TaskHelpers> & helper,
-	    ElemT & I0,
-	    oneInt<ElemT> & I1,
-	    twoInt<ElemT> & I2,
+	    const ElemT & I0,
+	    const oneInt<ElemT> & I1,
+	    const twoInt<ElemT> & I2,
 	    MPI_Comm h_comm,
 	    MPI_Comm b_comm,
 	    MPI_Comm t_comm) {

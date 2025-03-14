@@ -310,9 +310,9 @@ namespace sbd {
   ElemT ZeroExcite(const std::vector<size_t> & det,
 		   const size_t bit_length,
 		   const size_t L,
-		   ElemT & I0,
-		   oneInt<ElemT> & I1,
-		   twoInt<ElemT> & I2) {
+		   const ElemT & I0,
+		   const oneInt<ElemT> & I1,
+		   const twoInt<ElemT> & I2) {
     ElemT energy(0.0);
     size_t one = 1;
     std::vector<int> closed;
@@ -320,12 +320,12 @@ namespace sbd {
 
     for(int i=0; i < num_closed; i++) {
       int I = closed.at(i);
-      energy += I1(I,I);
+      energy += I1.Value(I,I);
       for(int j=i+1; j < num_closed; j++) {
 	int J = closed.at(j);
-	energy += I2.Direct(I/2,J/2);
+	energy += I2.DirectValue(I/2,J/2);
 	if( (I%2) == (J%2) ) {
-	  energy -= I2.Exchange(I/2,J/2);
+	  energy -= I2.ExchangeValue(I/2,J/2);
 	}
       }
     }
@@ -337,18 +337,18 @@ namespace sbd {
 		  const size_t bit_length,
 		  int & i,
 		  int & a,
-		  oneInt<ElemT> & I1,
-		  twoInt<ElemT> & I2) {
+		  const oneInt<ElemT> & I1,
+		  const twoInt<ElemT> & I2) {
     double sgn = 1.0;
     parity(det,bit_length,std::min(i,a),std::max(i,a),sgn);
-    ElemT energy = I1(a,i);
+    ElemT energy = I1.Value(a,i);
     size_t one = 1;
     for(int x=0; x < det.size(); x++) {
       size_t bits = det[x];
       while(bits != 0) {
 	int pos = __builtin_ffsl(bits);
 	int j = x * bit_length + pos-1;
-	energy += (I2(a,i,j,j) - I2(a,j,j,i));
+	energy += (I2.Value(a,i,j,j) - I2.Value(a,j,j,i));
 	bits &= ~(one << (pos-1));
       }
     }
@@ -363,8 +363,8 @@ namespace sbd {
 		  int & j,
 		  int & a,
 		  int & b,
-		  oneInt<ElemT> & I1,
-		  twoInt<ElemT> & I2) {
+		  const oneInt<ElemT> & I1,
+		  const twoInt<ElemT> & I2) {
     double sgn = 1.0;
     int I = std::min(i,j);
     int J = std::max(i,j);
@@ -373,7 +373,7 @@ namespace sbd {
     parity(det,bit_length,std::min(I,A),std::max(I,A),sgn);
     parity(det,bit_length,std::min(J,B),std::max(J,B),sgn);
     if( A > J || B < I ) sgn *= -1.0;
-    return ElemT(sgn) * (I2(A,I,B,J)-I2(A,J,B,I));
+    return ElemT(sgn) * (I2.Value(A,I,B,J)-I2.Value(A,J,B,I));
   }
 
   template <typename ElemT>
@@ -381,9 +381,9 @@ namespace sbd {
 	    const std::vector<size_t> & DetB,
 	    const size_t & bit_length,
 	    const size_t & L,
-	    ElemT & I0,
-	    oneInt<ElemT> & I1,
-	    twoInt<ElemT> & I2,
+	    const ElemT & I0,
+	    const oneInt<ElemT> & I1,
+	    const twoInt<ElemT> & I2,
 	    size_t & orbDiff) {
     std::vector<int> c;
     std::vector<int> d;
@@ -444,9 +444,9 @@ namespace sbd {
 	    const size_t & L,
 	    std::vector<int> & c,
 	    std::vector<int> & d,
-	    ElemT & I0,
-	    oneInt<ElemT> & I1,
-	    twoInt<ElemT> & I2,
+	    const ElemT & I0,
+	    const oneInt<ElemT> & I1,
+	    const twoInt<ElemT> & I2,
 	    size_t & orbDiff) {
     size_t nc=0;
     size_t nd=0;
