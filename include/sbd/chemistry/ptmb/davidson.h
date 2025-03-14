@@ -287,6 +287,23 @@ x = 0    1    2    3
 	  R[is] += E[0]*W[is];
 	}
 
+	
+#ifdef SBD_FUAGKUPATCH
+	MpiAllreduce(W,MPI_SUM,t_comm);
+	MpiAllreduce(W,MPI_SUM,h_comm);
+	MpiAllreduce(R,MPI_SUM,t_comm);
+	MpiAllreduce(R,MPI_SUM,h_comm);
+        ElemT volp(1.0/(mpi_size_h*mpi_size_t));
+#pragma	omp parallel for
+        for(size_t is=0; is < W.size(); is++) {
+          W[is] *= volp;
+	}
+#pragma omp parallel for
+	for(size_t is=0; is < R.size(); is++) {
+          R[is] *= volp;
+	}
+#endif
+
 	RealT norm_W;
 	Normalize(W,norm_W,b_comm);
 
@@ -520,6 +537,21 @@ x = 0    1    2    3
 	  R[is] += E[0]*W[is];
 	}
 
+#ifdef SBD_FUAGKUPATCH
+	MpiAllreduce(W,MPI_SUM,t_comm);
+	MpiAllreduce(W,MPI_SUM,h_comm);
+	MpiAllreduce(R,MPI_SUM,t_comm);
+	MpiAllreduce(R,MPI_SUM,h_comm);
+        ElemT volp(1.0/(mpi_size_h*mpi_size_t));
+#pragma	omp parallel for
+        for(size_t is=0; is < W.size(); is++) {
+          W[is] *= volp;
+	}
+#pragma omp parallel for
+	for(size_t is=0; is < R.size(); is++) {
+          R[is] *= volp;
+	}
+#endif
 	RealT norm_W;
 	Normalize(W,norm_W,b_comm);
 
@@ -764,6 +796,25 @@ x = 0    1    2    3
 	  R[is] += E[0]*W[is];
 	}
 
+	/**
+	   Patch for stability on Fugaku
+	 */
+#ifdef SBD_FUAGKUPATCH
+	MpiAllreduce(W,MPI_SUM,t_comm);
+	MpiAllreduce(W,MPI_SUM,h_comm);
+	MpiAllreduce(R,MPI_SUM,t_comm);
+	MpiAllreduce(R,MPI_SUM,h_comm);
+        ElemT volp(1.0/(mpi_size_h*mpi_size_t));
+#pragma	omp parallel for
+        for(size_t is=0; is < W.size(); is++) {
+          W[is] *= volp;
+	}
+#pragma omp parallel for
+	for(size_t is=0; is < R.size(); is++) {
+          R[is] *= volp;
+	}
+#endif
+	
 	RealT norm_W;
 	Normalize(W,norm_W,b_comm);
 
