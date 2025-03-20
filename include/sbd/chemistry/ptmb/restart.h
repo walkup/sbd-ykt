@@ -230,6 +230,7 @@ namespace sbd {
       std::vector<std::vector<size_t>> send_I(mpi_size_b);
       std::vector<std::vector<ElemT>>  send_W(mpi_size_b);
 
+#ifdef SBD_RESTART_OLD
       for(int load_rank=load_rank_start; load_rank < load_rank_end; load_rank++) {
 	if( mpi_rank_b == load_rank ) {
 	  for(size_t ia = 0; ia < load_adet_size; ia++) {
@@ -266,6 +267,86 @@ namespace sbd {
 	  }
 	}
       } // end preparation of send data
+#else
+      std::vector<int> send_adet_rank(load_adet_size,-1);
+      std::vector<size_t> send_adet_idx(load_adet_size);
+      std::vector<int> send_bdet_rank(load_bdet_size,-1);
+      std::vector<size_t> send_bdet_idx(load_bdet_size);
+
+      for(int load_rank=load_rank_start; load_rank < load_rank_end; load_rank++) {
+	if( mpi_rank_b == load_rank ) {
+	  for(size_t ia = 0; ia < load_adet_size; ia++) {
+	    auto itja = std::find(adet.begin(),adet.end(),load_adet[ia]);
+	    if( itja != adet.end() ) {
+	      size_t ja = std::distance(adet.begin(),itja);
+	      int adet_rank = 0;
+	      for(int rank=0; rank < adet_comm_size; rank++) {
+		if( ( adet_start[rank] <= ja ) && ( ja < adet_end[rank] ) ) {
+		  adet_rank = rank;
+		  break;
+		}
+	      }
+	      send_adet_rank[ia] = adet_rank;
+	      send_adet_idx[ia]  = ja;
+	    }
+	  }
+	  for(size_t ib=0; ib < load_bdet_size; ib++) {
+	    auto itjb = std::find(bdet.begin(),bdet.end(),load_bdet[ib]);
+	    if( itjb != bdet.end() ) {
+	      size_t jb = std::distance(bdet.begin(),itjb);
+	      int bdet_rank = 0;
+	      for(int rank=0; rank < bdet_comm_size; rank++) {
+		if( ( bdet_start[rank] <= jb ) && ( jb < bdet_end[rank] ) ) {
+		  bdet_rank = rank;
+		  break;
+		}
+	      }
+	      send_bdet_rank[ib] = bdet_rank;
+	      send_bdet_idx[ib]  = jb;
+	    }
+	  }
+	}
+      }
+
+      std::vector<size_t> send_buffer_size(mpi_size_b,0);
+      
+      for(int load_rank=load_rank_start; load_rank < load_rank_end; load_rank++) {
+	if( mpi_rank_b == load_rank ) {
+	  for(size_t ia=0; ia < load_adet_size; ia++) {
+	    if( send_adet_rank[ia] > -1 ) {
+	      for(size_t ib=0; ib < load_bdet_size; ib++) {
+		if( send_bdet_rank[ib] > -1 ) {
+		  int target_rank = send_adet_rank[ia] * bdet_comm_size + send_bdet_rank[ib];
+		  send_buffer_size[target_rank] += 1;
+		}
+	      }
+	    }
+	  }
+	  for(int rank=0; rank < mpi_size_b; rank++) {
+	    send_W[rank].reserve(send_buffer_size[rank]);
+	    send_I[rank].reserve(send_buffer_size[rank]);
+	  }
+	  for(size_t ia=0; ia < load_adet_size; ia++) {
+	    if( send_adet_rank[ia] > -1 ) {
+	      for(size_t ib=0; ib < load_bdet_size; ib++) {
+		if( send_bdet_rank[ib] > -1 ) {
+		  int target_rank = send_adet_rank[ia] * bdet_comm_size + send_bdet_rank[ib];
+		  size_t target_I = (send_adet_idx[ia]-adet_start[send_adet_rank[ia]])
+		    * ( bdet_end[send_bdet_rank[ib]]-bdet_start[send_bdet_rank[ib]] )
+		    + send_bdet_idx[ib] - bdet_start[send_bdet_rank[ib]];
+		  send_I[target_rank].push_back(target_I);
+		  send_W[target_rank].push_back(load_W[ia*load_bdet_size+ib]);
+		}
+	      }
+	    }
+	  }
+	}
+      }
+
+      
+      
+#endif
+      
 
 #ifdef SBD_DEBUG_RESTART
       for(int rank_t=0; rank_t < mpi_size_t; rank_t++) {
