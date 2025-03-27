@@ -446,6 +446,123 @@ namespace sbd {
     
   }
 
+
+  template <typename ElemT>
+  void SaveMatrixFormWF(const std::string filename,
+			std::vector<std::vector<size_t>> & adet,
+			std::vector<std::vector<size_t>> & bdet,
+			size_t adet_comm_size,
+			size_t bdet_comm_size,
+			MPI_Comm h_comm,
+			MPI_Comm b_comm,
+			MPI_Comm t_comm,
+			std::vector<ElemT> & W) {
+    int mpi_rank_h; MPI_Comm_rank(h_comm,&mpi_rank_h);
+    int mpi_rank_b; MPI_Comm_rank(b_comm,&mpi_rank_b);
+    int mpi_rank_t; MPI_Comm_rank(t_comm,&mpi_rank_t);
+
+    std::vector<size_t> adet_start(adet_comm_size);
+    std::vector<size_t> adet_end(adet_comm_size);
+    std::vector<size_t> bdet_start(bdet_comm_size);
+    std::vector<size_t> bdet_end(bdet_comm_size);
+    
+    for(int rank=0; rank < adet_comm_size; rank++) {
+      adet_start[rank] = 0;
+      adet_end[rank]   = adet.size();
+      get_mpi_range(adet_comm_size,rank,adet_start[rank],adet_end[rank]);
+    }
+    for(int rank=0; rank < bdet_comm_size; rank++) {
+      bdet_start[rank] = 0;
+      bdet_end[rank]   = bdet.size();
+      get_mpi_range(bdet_comm_size,rank,bdet_start[rank],bdet_end[rank]);
+    }
+
+    std::cout.precision(16);
+    
+    if( mpi_rank_h == 0 && mpi_rank_t == 0 ) {
+
+      if( sbd::get_extension(filename) == std::string("bin") ) {
+	if( mpi_rank_b == 0 ) {
+	  
+	  std::vector<std::vector<ElemT>> Vb(bdet_comm_size,std::vector<ElemT>(W));
+
+	  size_t total_size = 0;
+	  std::ofstream obin(filename,std::ios::binary);
+	  for(int rank_adet=0; rank_adet < adet_comm_size; rank_adet++) {
+	    for(int rank_bdet=0; rank_bdet < bdet_comm_size; rank_bdet++) {
+	      int src_rank = rank_adet * bdet_comm_size + rank_bdet;
+	      if( src_rank == 0 ) {
+		Vb[rank_bdet] = W;
+		total_size += W.size();
+	      } else {
+		MpiRecv(Vb[rank_bdet],src_rank,b_comm);
+		total_size += Vb[rank_bdet].size();
+	      }
+	    }
+	    for(size_t ia = adet_start[rank_adet]; ia < adet_end[rank_adet]; ia++) {
+	      for(int rank_bdet=0; rank_bdet < bdet_comm_size; rank_bdet++) {
+		for(size_t ib = bdet_start[rank_bdet]; ib < bdet_end[rank_bdet]; ib++) {
+		  size_t idx = ( ia - adet_start[rank_adet] )
+		             * ( bdet_end[rank_bdet]-bdet_start[rank_bdet] )
+		             + ib - bdet_start[rank_bdet];
+		  obin.write(reinterpret_cast<char *>(&Vb[rank_bdet][idx]),sizeof(ElemT));
+		}
+	      }
+	    }
+	  }
+	  obin.close();
+	  if ( total_size != adet.size()*bdet.size() ) {
+	    std::cout << " SaveMatrixFormWF: total size is not compatible " << std::endl;
+	  }
+	} else {
+	  std::vector<ElemT> V(W);
+	  MpiSend(V,0,b_comm);
+	}
+      } else if ( sbd::get_extension(filename) == std::string("dat") ||
+		  sbd::get_extension(filename) == std::string("txt") ) {
+	
+	if( mpi_rank_b == 0 ) {
+
+	  std::vector<std::vector<ElemT>> Vb(bdet_comm_size,std::vector<ElemT>(W));
+
+	  size_t total_size = 0;
+	  std::ofstream ofile(filename);
+	  for(int rank_adet=0; rank_adet < adet_comm_size; rank_adet++) {
+	    for(int rank_bdet=0; rank_bdet < bdet_comm_size; rank_bdet++) {
+	      int src_rank = rank_adet * bdet_comm_size + rank_bdet;
+	      if( src_rank == 0 ) {
+		Vb[rank_bdet] = W;
+		total_size += W.size();
+	      } else {
+		MpiRecv(Vb[rank_bdet],src_rank,b_comm);
+		total_size += Vb[rank_bdet].size();
+	      }
+	    }
+	    for(size_t ia = adet_start[rank_adet]; ia < adet_end[rank_adet]; ia++) {
+	      for(int rank_bdet=0; rank_bdet < bdet_comm_size; rank_bdet++) {
+		for(size_t ib = bdet_start[rank_bdet]; ib < bdet_end[rank_bdet]; ib++) {
+		  size_t idx = ( ia - adet_start[rank_adet] )
+		             * ( bdet_end[rank_bdet]-bdet_start[rank_bdet] )
+		             + ib - bdet_start[rank_bdet];
+		  ofile << Vb[rank_bdet][idx] << " # " << ia << " " << ib << std::endl;
+		}
+	      }
+	    }
+	  }
+	  ofile.close();
+	  if ( total_size != adet.size()*bdet.size() ) {
+	    std::cout << " SaveMatrixFormWF: total size is not compatible " << std::endl;
+	  }
+	} else {
+	  std::vector<ElemT> V(W);
+	  MpiSend(V,0,b_comm);
+	}
+      }
+	
+    }
+
+  }
+
   
 } // end namespace sbd
 
