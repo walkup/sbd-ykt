@@ -74,7 +74,29 @@ namespace sbd {
     }
   }
 
-  
+  void ExtendHelper(const std::vector<std::vector<size_t>> & sdet,
+		    const std::vector<std::vector<size_t>> & edet,
+		    const size_t bit_length,
+		    const size_t norb,
+		    std::vector<std::vector<size_t>> & singles_from_sdet,
+		    std::vector<std::vector<size_t>> & doubles_from_sdet) {
+
+    singles_from_sdet.resize(sdet.size());
+    doubles_form_sdet.resize(sdet.size());
+    for(size_t is=0; is < sdet.size(); is++) {
+      singles_from_sdet[is].reserve(edet.size());
+      doubles_from_sdet[is].reserve(edet.size());
+      for(size_t ie=0; ie < edet.size(); ie++) {
+	int d = difference(edet[ie],sdet[is],bit_length,norb);
+	if( d == 2 ) {
+	  singles_from_sdet[is].push_back(ie);
+	} else if ( d == 4 ) {
+	  doubles_from_sdet[is].push_back(ie);
+	}
+      }
+    }
+  }
+
   
 } // end namespace sbd
 

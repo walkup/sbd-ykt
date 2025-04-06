@@ -14,6 +14,7 @@
 #include <bitset>
 #include <algorithm>
 #include <cstring>
+#include <unordered_map>
 
 #include "mpi.h"
 
@@ -1047,6 +1048,48 @@ Function for finding the state index of target bit string
     return s;
   }
 
+  // Hash function for sort: XOR base (while it has intersection risk, it is covered by equal)
+  struct BitVecHash {
+    size_t operator()(const std::vector<size_t> & v) const {
+      size_t hash = v.size();
+      for (size_t x : v) {
+	hash ^= x + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+      }
+      return hash;
+    }
+  };
+  
+  // Equal function: whether bit is equal or not
+  struct BitVecEqual {
+    bool operator()(const std::vector<size_t> & a,
+		    const std::vector<size_t>& b) const {
+      return a == b; // std::vector<size_t>
+    }
+  };
+  
+  template<typename T>
+  void merge_bit_sequences(
+	 const std::vector<std::vector<size_t>> & D,
+	 const std::vector<T> & W,
+	 std::vector<std::vector<size_t>>& Dn,
+	 std::vector<T>& Wn) {
+    std::unordered_map<std::vector<size_t>, T, BitVecHash, BitVecEqual> map;
+    
+    for (size_t i = 0; i < D.size(); ++i) {
+      map[D[i]] += W[i];
+    }
+    
+    Dn.clear();
+    Wn.clear();
+    Dn.reserve(map.size());
+    Wn.reserve(map.size());
+    
+    for (const auto& [bitvec, weight] : map) {
+      Dn.push_back(bitvec);
+      Wn.push_back(weight);
+    }
+  }
+  
 }
 
 #endif

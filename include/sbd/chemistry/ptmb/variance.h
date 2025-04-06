@@ -33,17 +33,34 @@ namespace sbd {
 		const std::vector<ElemT> & W,
 		size_t Nd,
 		size_t Ns,
+		unsigned long int seed,
 		RealT eps) {
 
 
     int mpi_rank_b; MPI_Comm_rank(b_comm,&mpi_rank_b);
     int mpi_rank_s; MPI_Comm_rank(s_comm,&mpi_rank_s);
+
+    size_t adet_begin = 0;
+    size_t adet_end   = adet.size();
+    size_t bdet_begin = 0;
+    size_t bdet_end   = bdet.size();
+    int adet_rank = mpi_rank_b / bdet_comm_size;
+    int bdet_rank = mip_rank_b % bdet_comm_size;
+    get_mpi_range(static_cast<int>(adet_comm_size),adet_rank,
+		  adet_begin,adet_end);
+    get_mpi_range(static_cast<int>(bdet_comm_size),bdet_rank,
+		  bdet_begin,bdet_end);
+    size_t adet_size = adet_end-adet_begin;
+    size_t bdet_size = bdet_end-bdet_begin;
+    size_t hdet_size = adet[0].size();
+
+    size_t nela = static_cast<size_t>(bitcount(adet[0],bit_length,norb));
+    size_t nelb = static_cast<size_t>(bitcount(bdet[0],bit_length,norb));
     
     // Preparation of probability and local Alias table 
     std::vector<RealT> local_P(W.size());
     for(size_t n=0; n < W.size(); n++) {
       local_P[n] = GetReal( Conjugate(W[n]) * W[n] );
-      local_P[n] *= (mpi_rank_b + 1);
     }
 
     std::vector<RealT> local_alias_prob;
@@ -59,9 +76,7 @@ namespace sbd {
 				       b_comm);
 
 
-    unsigned long int seed = 999;
     std::mt19937 rng(seed);
-
     for(size_t sample=0; sample < Ns; sample++) {
 
       // determine the number of samples for each rank
@@ -90,9 +105,148 @@ namespace sbd {
 	ic++;
       }
       
-      // find extended space
+      // setup sample dets
+      std::map<size_t,size_t> adet_idx_map;
+      std::map<size_t,size_t> bdet_idx_map;
+      for(size_t k=0; k < local_sample.size(); k++) {
+	size_t adet_idx = local_sample[k] / bdet_size + adet_begin;
+	size_t bdet_idx = local_sample[k] % bdet_size + bdet_begin;
+	adet_idx_map[adet_idx]=1;
+	bdet_idx_map[bdet_idx]=1;
+      }
+
+      std::vector<std::vector<size_t>> sample_adet(adet_idx_map.size(),
+						   std::vector<size_t>(hdet_length));
+      std::vector<std::vector<size_t>> sample_bdet(bdet_idx_map.size(),
+						   std::vector<size_t>(hdet_length));
+      size_t sample_adet_size = 0;
+      for(const auto & [idx,cnt] : adet_idx_map) {
+	sample_adet[sample_adet_size] = adet[idx];
+	adet_idx_map[idx] = sample_adet_size;
+	sample_adet_size++;
+      }
+      size_t sample_bdet_size = 0;
+      for(const auto & [idx,cnt] : bdet_idx_map) {
+	sample_bdet[sample_bdet_size] = bdet[idx];
+	bdet_idx_map[idx] = sample_bdet_size;
+	sample_bdet_size++;
+      }
+
+      std::vector<std::vector<size_t>> extend_adet;
+      std::vector<std::vector<size_t>> extend_bdet;
+      ExtendSingles(adet,sample_adet,bit_length,norb,extend_adet);
+      ExtendDoubles(adet,sample_adet,bit_length,norb,extend_adet);
+      ExtendSingles(bdet,sample_bdet,bit_length,norb,extend_bdet);
+      ExtendDoubles(bdet,sample_bdet,bit_length,norb,extend_bdet);
+      sort_bitarray(extend_adet);
+      sort_bitarray(extend_bdet);
+
+      std::vector<std::vector<size_t>> singles_from_adet;
+      std::vector<std::vector<size_t>> doubles_from_adet;
+      std::vector<std::vector<size_t>> singles_from_bdet;
+      std::vector<std::vector<size_t>> doubles_from_bdet;
+
+      ExtendHelper(sample_adet,extend_adet,bit_length,norb,singles_from_adet,doubles_from_adet);
+      ExtendHelper(sample_bdet,extend_bdet,bit_length,norb,singles_from_bdet,doubles_from_bdet);
+
+      std::vector<size_t> DetJ = DetFromAlphaBeta(adet[0],bdet[0],bit_length,norb);
+      std::vector<size_t> DetI = DetJ;
       
+
+      std::vector<std::vector<size_t>> ExD;
+      std::vector<ElemT> ExW;
+
+      size_t single_adet_size = nela * (norb-nela);
+      size_t single_bdet_size = nelb * (norb-nelb);
+      size_t double_adet_size = nela * (nela-1) * (norb-nela) * (norb-nela-1)/4;
+      size_t double_bdet_size = nelb * (nelb-1) * (norb-nelb) * (norb-nelb-1)/4;
+      size_t ex_size = local_sample.size() * ( (single_adet_size+1)*(single_bdet_size+1)-1
+					       + double_adet_size
+					       + double_bdet_size );
+
       
+      ExD.reserve(ex_size);
+      ExW.reserve(ex_size);
+      
+      std::vector<int> c(2,0);
+      std::vector<int> d(2,0);
+      size_t orbDiff;
+      
+
+      for(size_t j=0; j < local_sample.size(); j++) {
+
+	size_t adet_idx = local_sample[j] / bdet_size + adet_begin;
+	size_t bdet_idx = local_sample[j] % bdet_size + bdet_begin;
+	size_t ja = adet_idx_map[adet_idx];
+	size_t jb = bdet_idx_map[bdet_idx];
+	DetFromAlphaBeta(adet[ja],bdet[jb],bit_length,norb,DetJ);
+	ElemT wj  = W[(adet_idx-adet_begin)*bdet_size+bdet_idx-bdet_begin];
+	// single excitation from adet
+	for(size_t i=0; i < singles_from_adet[adet_sample_idx].size(); i++) {
+	  size_t ia = singles_from_adet[adet_sample_idx][i];
+	  DetFromAlphaBeta(extend_adet[ia],sample_bdet[jb],bit_length,norb,DetI);
+	  ElemT eij = Hij(DetI,DetJ,bit_length,norb,
+			  c,d,I0,I1,I2,orbDiff);
+	  if( std::abs(eij*wj) > eps ) {
+	    ExD.push_back(DetI);
+	    ExW.push_back(eij*wj);
+	  }
+	}
+	// double excitation from adet
+	for(size_t i=0; i < doubles_from_adet[adet_sample_idx].size(); i++) {
+	  size_t ia = doubles_from_adet[adet_sample_idx][i];
+	  DetFromAlphaBeta(extend_adet[ia],sample_bdet[jb],bit_length,norb,DetI);
+	  ElemT eij = Hij(DetI,DetJ,bit_length,norb,
+			  c,d,I0,I1,I2,orbDiff);
+	  if( std::abs(eij*wj) > eps ) {
+	    ExD.push_back(DetI);
+	    ExW.push_back(eij*wj);
+	  }
+	}
+	// single excitation from bdet
+	for(size_t i=0; i < singles_from_bdet[bdet_sample_idx].size(); i++) {
+	  size_t ib = singles_from_bdet[bdet_sample_idx][i];
+	  DetFromAlphaBeta(sample_adet[ja],extend_bdet[ib],bit_length,norb,DetI);
+	  ElemT eij = Hij(DetI,DetJ,bit_length,norb,
+			  c,d,I0,I1,I2,orbDiff);
+	  if( std::abs(eij*wj) > eps ) {
+	    ExD.push_back(DetI);
+	    ExW.push_back(eij*wj);
+	  }
+	}
+	// double excitation from adet
+	for(size_t i=0; i < doubles_from_bdet[bdet_sample_idx].size(); i++) {
+	  size_t ib = doubles_from_bdet[bdet_sample_idx][i];
+	  DetFromAlphaBeta(sample_adet[ja],extend_bdet[ib],bit_length,norb,DetI);
+	  ElemT eij = Hij(DetI,DetJ,bit_length,norb,
+			  c,d,I0,I1,I2,orbDiff);
+	  if( std::abs(eij*wj) > eps ) {
+	    ExD.push_back(DetI);
+	    ExW.push_back(eij*wj);
+	  }
+	}
+
+	// double excitation from single adet and single bdet
+	for(size_t k=0; k < singles_from_adet[adet_sample_idx].size(); k++) {
+	  size_t ia = singles_from_adet[adet_sample_idx][k];
+	  for(size_t l=0; l < singles_from_bdet[bdet_sample_idx].size(); l++) {
+	    size_t ib = singles_from_bdet[bdet_sample_idx][l];
+	    DetFromAlphaBeta(extend_adet[ia],extend_bdet[ib],bit_length,norb,DetI);
+	    ElemT eij = Hij(DetI,DetJ,bit_length,norb,
+			    c,d,I0,I1,I2,orbDiff);
+	    if( std::abs(eij*wj) > eps ) {
+	      ExD.push_back(DetI);
+	      ExW.push_back(eij*wj);
+	    }
+	  }
+	}
+	
+      } // end DetI
+
+      std::vector<std::vector<size_t>> ExDet;
+      std::vector<ElemT> ExWeight;
+      merge_bit_sequences(ExD,ExW,ExDet,ExWeight);
+
       
       
     } // end for(int sample=0; sample < Ns; sample++)
