@@ -34,7 +34,8 @@ namespace sbd {
 		size_t Nd,
 		size_t Ns,
 		unsigned long int seed,
-		RealT eps) {
+		RealT eps,
+		std::vector<ElemT> & res) {
 
 
     int mpi_rank_b; MPI_Comm_rank(b_comm,&mpi_rank_b);
@@ -75,7 +76,7 @@ namespace sbd {
 				       global_alias_index,
 				       b_comm);
 
-
+    res.resize(Ns);
     std::mt19937 rng(seed);
     for(size_t sample=0; sample < Ns; sample++) {
 
@@ -151,7 +152,7 @@ namespace sbd {
 
       std::vector<size_t> DetJ = DetFromAlphaBeta(adet[0],bdet[0],bit_length,norb);
       std::vector<size_t> DetI = DetJ;
-      
+      size_t det_length = DetI.size();
 
       std::vector<std::vector<size_t>> ExD;
       std::vector<ElemT> ExW;
@@ -247,7 +248,59 @@ namespace sbd {
       std::vector<ElemT> ExWeight;
       merge_bit_sequences(ExD,ExW,ExDet,ExWeight);
 
-      
+
+      std::vector<std::vector<size_t>> SortDet(ExDet);
+      std::vector<std::vector<size_t>> SortDet_begin(mpi_size_b,std::vector<size_t>(det_length));
+      std::vector<std::vector<size_t>> SortDet_end(mpi_size_b,std::vector<size_t>(det_length));
+      std::vector<size_t> Idx_begin(mpi_size_b);
+      std::vector<size_t> Idx_end(mpi_size_b);
+      mpi_sort_bitarray(SortDet,SortDet_begin,SortDet_end,Idx_begin,Idx_end,bit_length,b_comm);
+
+      std::vector<std::vector<std::vector<size_t>>> ExDet_send(mpi_size_b);
+      std::vector<std::vector<ElemT>> ExWeight_send(mpi_size_b);
+
+      int target_rank;
+      bool exist_rank;
+      for(size_t n=0; n < ExDet.size(); n++) {
+	mpi_process_search(ExDet[n],SortDet_begin,SortDet_end,target_rank,exist_rank);
+	ExDet_send[target_rank].push_back(ExDet[n]);
+	ExWeight_send[target_rank].push_back(ExWeight[n]);
+      }
+
+      std::vector<std::vector<std::vector<size_t>>> SortDet_recv(mpi_size_b);
+      std::vector<std::vector<ElemT>> SortWeight_recv(mpi_size_b);
+      SortDet_recv[mpi_rank_b] = ExDet_send[mpi_rank_b];
+      SortWeight_recv[mpi_rank_b] = ExWeight_send[mpi_rank_b];
+
+      for(size_t slide=1; slide < mpi_size_b; slide++) {
+	int mpi_send_rank = (mpi_size_b+mpi_rank_b+slide) % mpi_size_b;
+	int mpi_recv_rank = (mpi_size_b+mpi_rank_b-slide) % mpi_size_b;
+	MpiSlide(ExDet_send[mpi_send_rank],SortDet_recv[mpi_recv_rank],slide,b_comm);
+	MpiSlide(ExWeight_send[mpi_send_rank],SortWeight_recv[mpi_recv_rank],slide,b_comm);
+      }
+
+      std::vector<ElemT> TotalWeight(SortDet.size(),ElemT(0.0));
+      size_t Idx;
+      for(size_t rank=0; rank < mpi_size_b; rank++) {
+	for(size_t n=0; n < SortWeight_recv[rank].size(); n++) {
+	  auto intIdx = std::lower_bound(SortDet.begin(),SortDet.end(),SortDet_recv[rank][n],
+				       [](const std::vector<size_t> & x,
+					  const std::vector<size_t> & y)
+				       { return x < y; });
+	  Idx = std::distance(SortDet.begin(),itIdx);
+	  SortWeight[Idx] += SortWeight_recv[rank][n];
+	}
+      }
+
+      ElemT SumSend = ElemT(0.0);
+      for(size_t n=0; n < SortDet.size(); n++) {
+	SumSend += Conjugate(SortWeight[n]) * SortWeight[n];
+      }
+
+      ElemT SumRecv = ElemT(0.0);
+      MPI_Datatype DataT = GetMpiType<ElemT>::MpiT;
+      MPI_Allreduce(&SumSend,&SumRecv,1,DataT,MPI_SUM,b_comm);
+      res[sample] = SumRecv;
       
     } // end for(int sample=0; sample < Ns; sample++)
     
