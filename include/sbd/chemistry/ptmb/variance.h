@@ -156,6 +156,7 @@ namespace sbd {
 
       std::vector<std::vector<size_t>> ExD;
       std::vector<ElemT> ExW;
+      ElemT ExC = ElemT(0.0);
 
       size_t single_adet_size = nela * (norb-nela);
       size_t single_bdet_size = nelb * (norb-nelb);
@@ -164,7 +165,6 @@ namespace sbd {
       size_t ex_size = local_sample.size() * ( (single_adet_size+1)*(single_bdet_size+1)-1
 					       + double_adet_size
 					       + double_bdet_size );
-
       
       ExD.reserve(ex_size);
       ExW.reserve(ex_size);
@@ -172,7 +172,6 @@ namespace sbd {
       std::vector<int> c(2,0);
       std::vector<int> d(2,0);
       size_t orbDiff;
-      
 
       for(size_t j=0; j < local_sample.size(); j++) {
 
@@ -190,7 +189,8 @@ namespace sbd {
 			  c,d,I0,I1,I2,orbDiff);
 	  if( std::abs(eij*wj) > eps ) {
 	    ExD.push_back(DetI);
-	    ExW.push_back(eij*wj);
+	    ExW.push_back(eij*wj*local_count[j]/local_P[local_sample[j]]);
+	    ExC += (local_count[j]*(Nd-1)/local_P[local_sample[j]] - local_count[j]*local_count[j]/(local_P[local_sample[j]]*local_P[local_sample[j]]))*(wj*wj*eij*eij);
 	  }
 	}
 	// double excitation from adet
@@ -201,7 +201,8 @@ namespace sbd {
 			  c,d,I0,I1,I2,orbDiff);
 	  if( std::abs(eij*wj) > eps ) {
 	    ExD.push_back(DetI);
-	    ExW.push_back(eij*wj);
+	    ExW.push_back(eij*wj*local_count[j]/local_P[local_sample[j]]);
+	    ExC += (local_count[j]*(Nd-1)/local_P[local_sample[j]] - local_count[j]*local_count[j]/(local_P[local_sample[j]]*local_P[local_sample[j]]))*(wj*wj*eij*eij);
 	  }
 	}
 	// single excitation from bdet
@@ -212,7 +213,8 @@ namespace sbd {
 			  c,d,I0,I1,I2,orbDiff);
 	  if( std::abs(eij*wj) > eps ) {
 	    ExD.push_back(DetI);
-	    ExW.push_back(eij*wj);
+	    ExW.push_back(eij*wj*local_count[j]/local_P[local_sample[j]]);
+	    ExC += (local_count[j]*(Nd-1)/local_P[local_sample[j]] - local_count[j]*local_count[j]/(local_P[local_sample[j]]*local_P[local_sample[j]]))*(wj*wj*eij*eij);
 	  }
 	}
 	// double excitation from adet
@@ -223,7 +225,8 @@ namespace sbd {
 			  c,d,I0,I1,I2,orbDiff);
 	  if( std::abs(eij*wj) > eps ) {
 	    ExD.push_back(DetI);
-	    ExW.push_back(eij*wj);
+	    ExW.push_back(eij*wj*local_count[j]/local_P[local_sample[j]]);
+	    ExC += (local_count[j]*(Nd-1)/local_P[local_sample[j]] - local_count[j]*local_count[j]/(local_P[local_sample[j]]*local_P[local_sample[j]]))*(wj*wj*eij*eij);
 	  }
 	}
 
@@ -237,7 +240,8 @@ namespace sbd {
 			    c,d,I0,I1,I2,orbDiff);
 	    if( std::abs(eij*wj) > eps ) {
 	      ExD.push_back(DetI);
-	      ExW.push_back(eij*wj);
+	      ExW.push_back(eij*wj*local_count[j]/local_P[local_sample[j]]);
+	      ExC += (local_count[j]*(Nd-1)/local_P[local_sample[j]] - local_count[j]*local_count[j]/(local_P[local_sample[j]]*local_P[local_sample[j]]))*(wj*wj*eij*eij);
 	    }
 	  }
 	}
@@ -296,6 +300,8 @@ namespace sbd {
       for(size_t n=0; n < SortDet.size(); n++) {
 	SumSend += Conjugate(SortWeight[n]) * SortWeight[n];
       }
+      SumSend += ElemT(-1.0) * ExC;
+      SumSend *= ElemT(1.0/(Nd*(Nd-1.0)));
 
       ElemT SumRecv = ElemT(0.0);
       MPI_Datatype DataT = GetMpiType<ElemT>::MpiT;

@@ -1073,6 +1073,9 @@ Function for finding the state index of target bit string
 	 const std::vector<T> & W,
 	 std::vector<std::vector<size_t>>& Dn,
 	 std::vector<T>& Wn) {
+
+    // method 1
+    /*
     std::unordered_map<std::vector<size_t>, T, BitVecHash, BitVecEqual> map;
     
     for (size_t i = 0; i < D.size(); ++i) {
@@ -1088,7 +1091,25 @@ Function for finding the state index of target bit string
       Dn.push_back(bitvec);
       Wn.push_back(weight);
     }
+    */
+
+    // method 2
+    Dn = D;
+    sort_bitarray(Dn);
+    Wn.resize(Dn.size(),ElemT(0.0));
+    for(size_t i=0; i < D.size(); i++) {
+      auto itn = std::lower_bound(Dn.begin(),Dn.end(),
+				  D[i],
+				  [](const std::vector<size_t> & x,
+				     const std::vector<size_t> & y)
+				  { return x < y; });
+      size_t n = std::distance(Dn.begin(),itn);
+      Wn[n] += W[i];
+    }
+    
+    
   }
+
   
 }
 
