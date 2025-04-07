@@ -64,10 +64,19 @@ namespace sbd {
     size_t nela = static_cast<size_t>(bitcount(adet[0],bit_length,norb));
     size_t nelb = static_cast<size_t>(bitcount(bdet[0],bit_length,norb));
     
-    // Preparation of probability and local Alias table 
+    // Preparation of probability and local Alias table
+    RealT SumP_rank = 0.0;
     std::vector<RealT> local_P(W.size());
     for(size_t n=0; n < W.size(); n++) {
-      local_P[n] = GetReal( Conjugate(W[n]) * W[n] );
+      local_P[n] = std::sqrt( GetReal( Conjugate(W[n]) * W[n] ) );
+      SumP_rank += local_P[n];
+    }
+    RealT SumP = 0.0;
+    MPI_Datatype MPI_RealT = GetMpiType<RealT>::MpiT;
+    MPI_Allreduce(&SumP_rank,&SumP,1,MPI_RealT,MPI_SUM,b_comm);
+    RealT FactorP = 1.0/SumP;
+    for(size_t n=0; n < W.size(); n++) {
+      local_P[n] *= FactorP;
     }
 
     std::vector<RealT> local_alias_prob;
@@ -111,6 +120,17 @@ namespace sbd {
 	local_count[ic] = cnt;
 	ic++;
       }
+
+#ifdef SBD_DEBUG_VARIANCE
+      std::cout << " Variance at mpi = (" << mpi_rank_s << "," << mpi_rank_b
+		<< "): local sampling =";
+      for(size_t i=0; i < std::min(local_sample.size(),static_cast<size_t>(4)); i++) {
+	std::cout << " (" << local_sample[i] << "," << local_count[i] << ")";
+      }
+      std::cout << " ... (" << local_sample[local_sample.size()-1]
+		<< "," << local_count[local_sample.size()-1] << "), "
+		<< local_sample.size() << " samples " << std::endl;
+#endif
       
       // setup sample dets
       std::map<size_t,size_t> adet_idx_map;
@@ -314,7 +334,7 @@ namespace sbd {
       MPI_Datatype DataT = GetMpiType<ElemT>::MpiT;
       MPI_Allreduce(&SumSend,&SumRecv,1,DataT,MPI_SUM,b_comm);
       res[sample] = SumRecv;
-      
+
     } // end for(int sample=0; sample < Ns; sample++)
     
   }

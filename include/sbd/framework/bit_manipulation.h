@@ -211,7 +211,6 @@ Function for finding the state index of target bit string
 	  index = index_a;
 	  exist = true;
 	} else if ( target_config < config[index_a] ) {
-	  std::cout << " here ? " << std::endl;
 	  index = index_a;
 	  exist = false;
 	} else if( target_config < config[index_b] ) {
@@ -699,6 +698,7 @@ Function for finding the state index of target bit string
 
 	mpi_redistribution(config,config_begin,config_end,index_begin,index_end,bit_length,comm);
 
+#ifdef SBD_DEBUG_BIT
 	for(int rank=0; rank < mpi_size; rank++) {
 	  if( mpi_rank == rank ) {
 	    std::cout << " (index_begin, index_end) at rank " << rank;
@@ -710,6 +710,7 @@ Function for finding the state index of target bit string
 	  }
 	  MPI_Barrier(comm);
 	}
+#endif
 	
 	
       } else {
