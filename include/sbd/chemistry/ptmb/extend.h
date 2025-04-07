@@ -82,7 +82,7 @@ namespace sbd {
 		    std::vector<std::vector<size_t>> & doubles_from_sdet) {
 
     singles_from_sdet.resize(sdet.size());
-    doubles_form_sdet.resize(sdet.size());
+    doubles_from_sdet.resize(sdet.size());
     for(size_t is=0; is < sdet.size(); is++) {
       singles_from_sdet[is].reserve(edet.size());
       doubles_from_sdet[is].reserve(edet.size());

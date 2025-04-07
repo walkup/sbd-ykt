@@ -9,4 +9,11 @@
 #include "sbd/chemistry/ptmb/rdmat.h"
 #include "sbd/chemistry/ptmb/restart.h"
 
+/**
+   Functions for variance evaluation
+ */
+#include "sbd/chemistry/ptmb/sampler.h"
+#include "sbd/chemistry/ptmb/extend.h"
+#include "sbd/chemistry/ptmb/variance.h"
+
 #endif

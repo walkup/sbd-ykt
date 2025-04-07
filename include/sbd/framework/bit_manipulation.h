@@ -1096,7 +1096,7 @@ Function for finding the state index of target bit string
     // method 2
     Dn = D;
     sort_bitarray(Dn);
-    Wn.resize(Dn.size(),ElemT(0.0));
+    Wn.resize(Dn.size(),T(0.0));
     for(size_t i=0; i < D.size(); i++) {
       auto itn = std::lower_bound(Dn.begin(),Dn.end(),
 				  D[i],

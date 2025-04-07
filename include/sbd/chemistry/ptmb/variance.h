@@ -18,7 +18,7 @@ namespace sbd {
     int mpi_size_s = mpi_size / b_comm_size;
     int b_comm_color = mpi_rank / b_comm_size;
     MPI_Comm_split(comm,b_comm_color,mpi_rank,&b_comm);
-    int s_comm_color = mpi_rank % basis_comm_size;
+    int s_comm_color = mpi_rank % b_comm_size;
     MPI_Comm_split(comm,s_comm_color,mpi_rank,&s_comm);
   }
 
@@ -44,13 +44,15 @@ namespace sbd {
 
     int mpi_rank_b; MPI_Comm_rank(b_comm,&mpi_rank_b);
     int mpi_rank_s; MPI_Comm_rank(s_comm,&mpi_rank_s);
+    int mpi_size_b; MPI_Comm_size(b_comm,&mpi_size_b);
+    int mpi_size_s; MPI_Comm_size(b_comm,&mpi_size_s);
 
     size_t adet_begin = 0;
     size_t adet_end   = adet.size();
     size_t bdet_begin = 0;
     size_t bdet_end   = bdet.size();
     int adet_rank = mpi_rank_b / bdet_comm_size;
-    int bdet_rank = mip_rank_b % bdet_comm_size;
+    int bdet_rank = mpi_rank_b % bdet_comm_size;
     get_mpi_range(static_cast<int>(adet_comm_size),adet_rank,
 		  adet_begin,adet_end);
     get_mpi_range(static_cast<int>(bdet_comm_size),bdet_rank,
@@ -85,10 +87,10 @@ namespace sbd {
     for(size_t sample=0; sample < Ns; sample++) {
 
       // determine the number of samples for each rank
-      std::vector<int> samples_per_rank(size, 0);
+      std::vector<int> samples_per_rank(mpi_size_b, 0);
       if (mpi_rank_b == 0) {
 	for (int i = 0; i < Nd; ++i) {
-	  int selected_rank = alias_sampling::sample_rank_alias(global_alias_prob, global_alias_index, rng);
+	  int selected_rank = sample_rank_alias(global_alias_prob, global_alias_index, rng);
 	  samples_per_rank[selected_rank]++;
 	}
       }
@@ -97,7 +99,7 @@ namespace sbd {
       // local sampling
       std::map<size_t,int> local_data;
       for (int i = 0; i < samples_per_rank[mpi_rank_b]; ++i) {
-	size_t idx = alias_sampling::sample_alias(local_alias_prob, local_alias_index, rng);
+	size_t idx = sample_alias(local_alias_prob, local_alias_index, rng);
 	local_data[idx]++;
       }
 
@@ -121,9 +123,9 @@ namespace sbd {
       }
 
       std::vector<std::vector<size_t>> sample_adet(adet_idx_map.size(),
-						   std::vector<size_t>(hdet_length));
+						   std::vector<size_t>(hdet_size));
       std::vector<std::vector<size_t>> sample_bdet(bdet_idx_map.size(),
-						   std::vector<size_t>(hdet_length));
+						   std::vector<size_t>(hdet_size));
       size_t sample_adet_size = 0;
       for(const auto & [idx,cnt] : adet_idx_map) {
 	sample_adet[sample_adet_size] = adet[idx];
@@ -186,8 +188,8 @@ namespace sbd {
 	DetFromAlphaBeta(adet[ja],bdet[jb],bit_length,norb,DetJ);
 	ElemT wj  = W[(adet_idx-adet_begin)*bdet_size+bdet_idx-bdet_begin];
 	// single excitation from adet
-	for(size_t i=0; i < singles_from_adet[adet_sample_idx].size(); i++) {
-	  size_t ia = singles_from_adet[adet_sample_idx][i];
+	for(size_t i=0; i < singles_from_adet[ja].size(); i++) {
+	  size_t ia = singles_from_adet[ja][i];
 	  DetFromAlphaBeta(extend_adet[ia],sample_bdet[jb],bit_length,norb,DetI);
 	  ElemT eij = Hij(DetI,DetJ,bit_length,norb,
 			  c,d,I0,I1,I2,orbDiff);
@@ -198,8 +200,8 @@ namespace sbd {
 	  }
 	}
 	// double excitation from adet
-	for(size_t i=0; i < doubles_from_adet[adet_sample_idx].size(); i++) {
-	  size_t ia = doubles_from_adet[adet_sample_idx][i];
+	for(size_t i=0; i < doubles_from_adet[ja].size(); i++) {
+	  size_t ia = doubles_from_adet[ja][i];
 	  DetFromAlphaBeta(extend_adet[ia],sample_bdet[jb],bit_length,norb,DetI);
 	  ElemT eij = Hij(DetI,DetJ,bit_length,norb,
 			  c,d,I0,I1,I2,orbDiff);
@@ -210,8 +212,8 @@ namespace sbd {
 	  }
 	}
 	// single excitation from bdet
-	for(size_t i=0; i < singles_from_bdet[bdet_sample_idx].size(); i++) {
-	  size_t ib = singles_from_bdet[bdet_sample_idx][i];
+	for(size_t i=0; i < singles_from_bdet[jb].size(); i++) {
+	  size_t ib = singles_from_bdet[jb][i];
 	  DetFromAlphaBeta(sample_adet[ja],extend_bdet[ib],bit_length,norb,DetI);
 	  ElemT eij = Hij(DetI,DetJ,bit_length,norb,
 			  c,d,I0,I1,I2,orbDiff);
@@ -222,8 +224,8 @@ namespace sbd {
 	  }
 	}
 	// double excitation from adet
-	for(size_t i=0; i < doubles_from_bdet[bdet_sample_idx].size(); i++) {
-	  size_t ib = doubles_from_bdet[bdet_sample_idx][i];
+	for(size_t i=0; i < doubles_from_bdet[jb].size(); i++) {
+	  size_t ib = doubles_from_bdet[jb][i];
 	  DetFromAlphaBeta(sample_adet[ja],extend_bdet[ib],bit_length,norb,DetI);
 	  ElemT eij = Hij(DetI,DetJ,bit_length,norb,
 			  c,d,I0,I1,I2,orbDiff);
@@ -235,10 +237,10 @@ namespace sbd {
 	}
 
 	// double excitation from single adet and single bdet
-	for(size_t k=0; k < singles_from_adet[adet_sample_idx].size(); k++) {
-	  size_t ia = singles_from_adet[adet_sample_idx][k];
-	  for(size_t l=0; l < singles_from_bdet[bdet_sample_idx].size(); l++) {
-	    size_t ib = singles_from_bdet[bdet_sample_idx][l];
+	for(size_t k=0; k < singles_from_adet[ja].size(); k++) {
+	  size_t ia = singles_from_adet[ja][k];
+	  for(size_t l=0; l < singles_from_bdet[jb].size(); l++) {
+	    size_t ib = singles_from_bdet[jb][l];
 	    DetFromAlphaBeta(extend_adet[ia],extend_bdet[ib],bit_length,norb,DetI);
 	    ElemT eij = Hij(DetI,DetJ,bit_length,norb,
 			    c,d,I0,I1,I2,orbDiff);
@@ -263,6 +265,7 @@ namespace sbd {
       std::vector<size_t> Idx_begin(mpi_size_b);
       std::vector<size_t> Idx_end(mpi_size_b);
       mpi_sort_bitarray(SortDet,SortDet_begin,SortDet_end,Idx_begin,Idx_end,bit_length,b_comm);
+      std::vector<ElemT> SortWeight(SortDet.size(),ElemT(0.0));
 
       std::vector<std::vector<std::vector<size_t>>> ExDet_send(mpi_size_b);
       std::vector<std::vector<ElemT>> ExWeight_send(mpi_size_b);
@@ -291,7 +294,7 @@ namespace sbd {
       size_t Idx;
       for(size_t rank=0; rank < mpi_size_b; rank++) {
 	for(size_t n=0; n < SortWeight_recv[rank].size(); n++) {
-	  auto intIdx = std::lower_bound(SortDet.begin(),SortDet.end(),SortDet_recv[rank][n],
+	  auto itIdx = std::lower_bound(SortDet.begin(),SortDet.end(),SortDet_recv[rank][n],
 				       [](const std::vector<size_t> & x,
 					  const std::vector<size_t> & y)
 				       { return x < y; });
