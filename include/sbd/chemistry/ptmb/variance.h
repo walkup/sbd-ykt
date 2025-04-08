@@ -37,7 +37,7 @@ namespace sbd {
 		const twoInt<ElemT> & I2,
 		size_t Nd,
 		size_t Ns,
-		unsigned long int seed,
+		uint64_t seed,
 		RealT eps,
 		std::vector<ElemT> & res) {
 
@@ -125,10 +125,15 @@ namespace sbd {
       std::cout << " Variance at mpi = (" << mpi_rank_s << "," << mpi_rank_b
 		<< "): local sampling =";
       for(size_t i=0; i < std::min(local_sample.size(),static_cast<size_t>(4)); i++) {
-	std::cout << " (" << local_sample[i] << "," << local_count[i] << ")";
+	std::cout << " (" << local_sample[i]
+		  << "," << local_count[i]
+		  << "," << W[local_sample[i]]
+		  << ")";
       }
       std::cout << " ... (" << local_sample[local_sample.size()-1]
-		<< "," << local_count[local_sample.size()-1] << "), "
+		<< "," << local_count[local_sample.size()-1]
+		<< "," << W[local_sample[local_sample.size()-1]]
+		<< "), "
 		<< local_sample.size() << " samples " << std::endl;
 #endif
       
@@ -327,13 +332,18 @@ namespace sbd {
       for(size_t n=0; n < SortDet.size(); n++) {
 	SumSend += Conjugate(SortWeight[n]) * SortWeight[n];
       }
-      SumSend += ElemT(-1.0) * ExC;
+      // SumSend += ElemT(-1.0) * ExC;
+      SumSend += ExC;
       SumSend *= ElemT(1.0/(Nd*(Nd-1.0)));
 
       ElemT SumRecv = ElemT(0.0);
       MPI_Datatype DataT = GetMpiType<ElemT>::MpiT;
       MPI_Allreduce(&SumSend,&SumRecv,1,DataT,MPI_SUM,b_comm);
       res[sample] = SumRecv;
+      if( mpi_rank_b == 0 ) {
+	std::cout << " Variance at MPI = (" << mpi_rank_s << "," << mpi_rank_b
+		  << "): variance = " << res[sample] << " at sample " << sample << std::endl;
+      }
 
     } // end for(int sample=0; sample < Ns; sample++)
     
