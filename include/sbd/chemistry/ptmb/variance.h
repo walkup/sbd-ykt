@@ -130,11 +130,15 @@ namespace sbd {
 		  << "," << W[local_sample[i]]
 		  << ")";
       }
-      std::cout << " ... (" << local_sample[local_sample.size()-1]
-		<< "," << local_count[local_sample.size()-1]
-		<< "," << W[local_sample[local_sample.size()-1]]
-		<< "), "
-		<< local_sample.size() << " samples " << std::endl;
+      if( local_sample.size() != 0 ) {
+	std::cout << " ... (" << local_sample[local_sample.size()-1]
+		  << "," << local_count[local_sample.size()-1]
+		  << "," << W[local_sample[local_sample.size()-1]]
+		  << "), "
+		  << local_sample.size() << " samples " << std::endl;
+      } else {
+	std::cout << " " << local_sample.size() << " samples " << std::endl;
+      }
 #endif
       
       // setup sample dets
@@ -163,6 +167,21 @@ namespace sbd {
 	bdet_idx_map[idx] = sample_bdet_size;
 	sample_bdet_size++;
       }
+
+#ifdef SBD_DEBUG_VARIANCE
+      std::cout << " Variance at mpi = (" << mpi_rank_s << "," << mpi_rank_b
+		<< "): sample index map =";
+      for(size_t i=0; i < local_sample.size(); i++) {
+	size_t adet_idx = local_sample[i] / bdet_size + adet_begin;
+	size_t bdet_idx = local_sample[i] % bdet_size + bdet_begin;
+	size_t ia = adet_idx_map[adet_idx];
+	size_t ib = bdet_idx_map[bdet_idx];
+	std::cout << " (" << ia << " for adet[" << adet_idx
+		  << "]," << ib << " for bdet[" << bdet_idx << "])";
+      }
+      std::cout << std::endl;
+      sleep(3);
+#endif
 
       std::vector<std::vector<size_t>> extend_adet;
       std::vector<std::vector<size_t>> extend_bdet;
@@ -278,6 +297,13 @@ namespace sbd {
 	}
 	
       } // end DetI
+
+
+#ifdef SBD_DEBUG_VARIANCE
+      std::cout << " Variance at mpi = (" << mpi_rank_s << "," << mpi_rank_b
+		<< "): size of extended space = " << ExD.size() << std::endl;
+      sleep(3);
+#endif
 
       std::vector<std::vector<size_t>> ExDet;
       std::vector<ElemT> ExWeight;

@@ -19,10 +19,11 @@ namespace sbd {
 
     for(size_t is=0; is < sdet.size(); is++) {
       int nclosed = getOpenClosed(sdet[is],bit_length,norb,open,closed);
+      int nopen = norb - nclosed;
       tdet = sdet[is];
       for(int i=0; i < nclosed; i++) {
 	setocc(tdet,bit_length,closed[i],false);
-	for(int j=0; j < norb-nclosed; j++) {
+	for(int j=0; j < nopen; j++) {
 	  setocc(tdet,bit_length,open[j],true);
 	  auto itk = std::find(adet.begin(),
 			       adet.end(),
