@@ -65,38 +65,36 @@ namespace sbd {
     size_t nelb = static_cast<size_t>(bitcount(bdet[0],bit_length,norb));
     
     // Preparation of probability and local Alias table
-    RealT local_weight = 0.0;
-    std::vector<RealT> local_P(W.size());
+    RealT global_weight_rank = 0.0;
     std::vector<RealT> prob(W.size());
     for(size_t n=0; n < W.size(); n++) {
-      local_P[n] = std::sqrt( GetReal( Conjugate(W[n]) * W[n] ) );
-      local_weight += local_P[n];
+      prob[n] = std::sqrt( GetReal( Conjugate(W[n]) * W[n] ) );
+      global_weight_rank += prob[n];
     }
-
-    for(size_t n=0; n < W.size(); n++) {
-      prob[n] = local_P[n];
-    }
-
-    RealT global_weight_rank = local_weight;
     RealT global_weight = 0.0;
     MPI_Datatype MPI_RealT = GetMpiType<RealT>::MpiT;
     MPI_Allreduce(&global_weight_rank,&global_weight,1,MPI_RealT,MPI_SUM,b_comm);
-
-    RealT weight_factor = 1.0/local_weight;
-    for(size_t n=0; n < W.size(); n++) {
-      local_P[n] *= weight_factor;
-    }
-
-    weight_factor = 1.0/global_weight;
+    RealT weight_factor = 1.0/global_weight;
     for(size_t n=0; n < W.size(); n++) {
       prob[n] *= weight_factor;
     }
 
+    std::vector<RealT> local_prob(W.size());
+    RealT local_weight = 0.0;
+    for(size_t n=0; n < W.size(); n++) {
+      local_prob[n] = prob[n];
+      local_weight += prob[n];
+    }
+
+    weight_factor = 1.0/local_weight;
+    for(size_t n=0; n < W.size(); n++) {
+      local_prob[n] *= weight_factor;
+    }
+
     std::vector<RealT> local_alias_prob;
     std::vector<size_t> local_alias_index;
-    build_alias_table(local_P, local_alias_prob, local_alias_index);
+    build_alias_table(local_prob, local_alias_prob, local_alias_index);
 
-    // RealT local_weight = std::accumulate(local_P.begin(),local_P.end(),0.0);
     std::vector<double> global_alias_prob;
     std::vector<size_t> global_alias_index;
     build_global_alias_table_for_ranks(local_weight,
@@ -228,7 +226,11 @@ namespace sbd {
 	size_t ja = adet_idx_map[adet_idx];
 	size_t jb = bdet_idx_map[bdet_idx];
 	DetFromAlphaBeta(sample_adet[ja],sample_bdet[jb],bit_length,norb,DetJ);
-	ElemT wj  = W[(adet_idx-adet_begin)*bdet_size+bdet_idx-bdet_begin];
+	// ElemT wj  = W[(adet_idx-adet_begin)*bdet_size+bdet_idx-bdet_begin];
+	ElemT wj  = W[local_sample[j]];
+	ElemT factorExW = wj * local_count[j] / prob[local_sample[j]];
+	ElemT factorExC = wj * wj * ( local_count[j]*(Nd-1)/prob[local_sample[j]]
+			  - local_count[j]*local_count[j]/(prob[local_sample[j]]*prob[local_sample[j]]) );
 	// single excitation from adet
 	for(size_t i=0; i < singles_from_adet[ja].size(); i++) {
 	  size_t ia = singles_from_adet[ja][i];
@@ -237,8 +239,8 @@ namespace sbd {
 			  c,d,I0,I1,I2,orbDiff);
 	  if( std::abs(eij*wj) > eps ) {
 	    ExD.push_back(DetI);
-	    ExW.push_back(eij*wj*local_count[j]/prob[local_sample[j]]);
-	    ExC += (local_count[j]*(Nd-1)/prob[local_sample[j]] - local_count[j]*local_count[j]/(prob[local_sample[j]]*prob[local_sample[j]]))*(wj*wj*eij*eij);
+	    ExW.push_back(eij*factorExW);
+	    ExC += factorExC*eij*eij;
 	  }
 	}
 	// double excitation from adet
@@ -249,8 +251,8 @@ namespace sbd {
 			  c,d,I0,I1,I2,orbDiff);
 	  if( std::abs(eij*wj) > eps ) {
 	    ExD.push_back(DetI);
-	    ExW.push_back(eij*wj*local_count[j]/prob[local_sample[j]]);
-	    ExC += (local_count[j]*(Nd-1)/prob[local_sample[j]] - local_count[j]*local_count[j]/(prob[local_sample[j]]*prob[local_sample[j]]))*(wj*wj*eij*eij);
+	    ExW.push_back(eij*factorExW);
+	    ExC += factorExC*eij*eij;
 	  }
 	}
 	// single excitation from bdet
@@ -261,8 +263,8 @@ namespace sbd {
 			  c,d,I0,I1,I2,orbDiff);
 	  if( std::abs(eij*wj) > eps ) {
 	    ExD.push_back(DetI);
-	    ExW.push_back(eij*wj*local_count[j]/prob[local_sample[j]]);
-	    ExC += (local_count[j]*(Nd-1)/prob[local_sample[j]] - local_count[j]*local_count[j]/(prob[local_sample[j]]*prob[local_sample[j]]))*(wj*wj*eij*eij);
+	    ExW.push_back(eij*factorExW);
+	    ExC += factorExC*eij*eij;
 	  }
 	}
 	// double excitation from adet
@@ -273,8 +275,8 @@ namespace sbd {
 			  c,d,I0,I1,I2,orbDiff);
 	  if( std::abs(eij*wj) > eps ) {
 	    ExD.push_back(DetI);
-	    ExW.push_back(eij*wj*local_count[j]/prob[local_sample[j]]);
-	    ExC += (local_count[j]*(Nd-1)/prob[local_sample[j]] - local_count[j]*local_count[j]/(prob[local_sample[j]]*prob[local_sample[j]]))*(wj*wj*eij*eij);
+	    ExW.push_back(eij*factorExW);
+	    ExC += factorExC*eij*eij;
 	  }
 	}
 
@@ -288,8 +290,8 @@ namespace sbd {
 			    c,d,I0,I1,I2,orbDiff);
 	    if( std::abs(eij*wj) > eps ) {
 	      ExD.push_back(DetI);
-	      ExW.push_back(eij*wj*local_count[j]/prob[local_sample[j]]);
-	      ExC += (local_count[j]*(Nd-1)/prob[local_sample[j]] - local_count[j]*local_count[j]/(prob[local_sample[j]]*prob[local_sample[j]]))*(wj*wj*eij*eij);
+	      ExW.push_back(eij*factorExW);
+	      ExC += factorExC*eij*eij;
 	    }
 	  }
 	}
@@ -353,10 +355,12 @@ namespace sbd {
       for(size_t n=0; n < SortDet.size(); n++) {
 	SumSend += Conjugate(SortWeight[n]) * SortWeight[n];
       }
+      ElemT SumSquare = SumSend;
       // SumSend += ElemT(-1.0) * ExC;
       SumSend += ExC;
       SumSend *= ElemT(1.0/(Nd*(Nd-1.0)));
 
+      std::cout << " Sqaure term contribution = " << SumSquare/(Nd*(Nd-1)) << std::endl;
       std::cout << " ExC term contribution = " << ExC/(Nd*(Nd-1)) << std::endl;
 
       ElemT SumRecv = ElemT(0.0);
