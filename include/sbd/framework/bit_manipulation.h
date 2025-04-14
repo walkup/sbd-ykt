@@ -15,6 +15,9 @@
 #include <algorithm>
 #include <cstring>
 #include <unordered_map>
+#include <iostream>
+#include <fstream>
+
 
 #include "mpi.h"
 
