@@ -65,10 +65,12 @@ namespace sbd {
     size_t nelb = static_cast<size_t>(bitcount(bdet[0],bit_length,norb));
     
     // Preparation of probability and local Alias table
-    RealT global_weight_rank = 0.0;
     std::vector<RealT> prob(W.size());
     for(size_t n=0; n < W.size(); n++) {
       prob[n] = std::sqrt( GetReal( Conjugate(W[n]) * W[n] ) );
+    }
+    RealT global_weight_rank = 0.0;
+    for(size_t n=0; n < W.size(); n++) {
       global_weight_rank += prob[n];
     }
     RealT global_weight = 0.0;
@@ -78,6 +80,21 @@ namespace sbd {
     for(size_t n=0; n < W.size(); n++) {
       prob[n] *= weight_factor;
     }
+
+#ifdef SBD_DEBUG_VARIANCE
+    for(int rank_s=0; rank_s < mpi_size_s; rank_s++) {
+      if( mpi_rank_s == rank_s ) {
+	for(int rank_b=0; rank_b < mpi_size_b; rank_b++) {
+	  if( mpi_rank_b == rank_b ) {
+	    std::cout << " Variance at mpi = (" << mpi_rank_s << "," << mpi_rank_b
+		      << "): global weight = " << global_weight << std::endl;
+	  }
+	  MPI_Barrier(b_comm);
+	}
+      }
+      MPI_Barrier(s_comm);
+    }
+#endif
 
     std::vector<RealT> local_prob(W.size());
     RealT local_weight = 0.0;
@@ -95,13 +112,18 @@ namespace sbd {
     std::vector<size_t> local_alias_index;
     build_alias_table(local_prob, local_alias_prob, local_alias_index);
 
-    std::vector<double> global_alias_prob;
+    std::vector<RealT> global_alias_prob;
     std::vector<size_t> global_alias_index;
     build_global_alias_table_for_ranks(local_weight,
 				       global_alias_prob,
 				       global_alias_index,
 				       b_comm);
 
+#ifdef SBD_DEBUG_VARIANCE
+    RealT empirical_volume = 1.0/(1.0*Nd*Ns);
+    std::vector<RealT> empirical_prob(W.size(),0.0);
+#endif
+    
     res.resize(Ns);
     std::mt19937 rng(seed);
     for(size_t sample=0; sample < Ns; sample++) {
@@ -150,6 +172,9 @@ namespace sbd {
       } else {
 	std::cout << " " << local_sample.size() << " samples " << std::endl;
       }
+      for(size_t i=0; i < local_sample.size(); i++) {
+	empirical_prob[local_sample[i]] += empirical_volume*local_count[i];
+      }
 #endif
       
       // setup sample dets
@@ -192,10 +217,18 @@ namespace sbd {
       std::vector<std::vector<size_t>> doubles_from_adet;
       std::vector<std::vector<size_t>> singles_from_bdet;
       std::vector<std::vector<size_t>> doubles_from_bdet;
+      std::vector<std::vector<size_t>> singles_in_adet;
+      std::vector<std::vector<size_t>> doubles_in_adet;
+      std::vector<std::vector<size_t>> singles_in_bdet;
+      std::vector<std::vector<size_t>> doubles_in_bdet;
+      std::vector<std::vector<size_t>> sample_adet_copy(sample_adet);
+      std::vector<std::vector<size_t>> sample_bdet_copy(sample_bdet);
 
       ExtendHelper(sample_adet,extend_adet,bit_length,norb,singles_from_adet,doubles_from_adet);
       ExtendHelper(sample_bdet,extend_bdet,bit_length,norb,singles_from_bdet,doubles_from_bdet);
-
+      ExtendHelper(sample_adet,sample_adet_copy,bit_length,norb,singles_in_adet,doubles_in_adet);
+      ExtendHelper(sample_bdet,sample_bdet_copy,bit_length,norb,singles_in_bdet,doubles_in_bdet);
+      
       std::vector<size_t> DetJ = DetFromAlphaBeta(adet[0],bdet[0],bit_length,norb);
       std::vector<size_t> DetI = DetJ;
       size_t det_length = DetI.size();
@@ -229,9 +262,10 @@ namespace sbd {
 	// ElemT wj  = W[(adet_idx-adet_begin)*bdet_size+bdet_idx-bdet_begin];
 	ElemT wj  = W[local_sample[j]];
 	ElemT factorExW = wj * local_count[j] / prob[local_sample[j]];
-	ElemT factorExC = wj * wj * ( local_count[j]*(Nd-1)/prob[local_sample[j]]
-			  - local_count[j]*local_count[j]/(prob[local_sample[j]]*prob[local_sample[j]]) );
-	// single excitation from adet
+	// ElemT factorExC = wj * wj * ( local_count[j]*(Nd-1)/prob[local_sample[j]]
+	// 		  - local_count[j]*local_count[j]/(prob[local_sample[j]]*prob[local_sample[j]]) );
+	ElemT factorExC = wj * wj * local_count[j]/(prob[local_sample[j]]*prob[local_sample[j]]);
+	// single excitation within adet
 	for(size_t i=0; i < singles_from_adet[ja].size(); i++) {
 	  size_t ia = singles_from_adet[ja][i];
 	  DetFromAlphaBeta(extend_adet[ia],sample_bdet[jb],bit_length,norb,DetI);
@@ -243,7 +277,7 @@ namespace sbd {
 	    ExC += factorExC*eij*eij;
 	  }
 	}
-	// double excitation from adet
+	// double excitation within adet
 	for(size_t i=0; i < doubles_from_adet[ja].size(); i++) {
 	  size_t ia = doubles_from_adet[ja][i];
 	  DetFromAlphaBeta(extend_adet[ia],sample_bdet[jb],bit_length,norb,DetI);
@@ -255,7 +289,7 @@ namespace sbd {
 	    ExC += factorExC*eij*eij;
 	  }
 	}
-	// single excitation from bdet
+	// single excitation within bdet
 	for(size_t i=0; i < singles_from_bdet[jb].size(); i++) {
 	  size_t ib = singles_from_bdet[jb][i];
 	  DetFromAlphaBeta(sample_adet[ja],extend_bdet[ib],bit_length,norb,DetI);
@@ -267,7 +301,7 @@ namespace sbd {
 	    ExC += factorExC*eij*eij;
 	  }
 	}
-	// double excitation from adet
+	// double excitation within adet
 	for(size_t i=0; i < doubles_from_bdet[jb].size(); i++) {
 	  size_t ib = doubles_from_bdet[jb][i];
 	  DetFromAlphaBeta(sample_adet[ja],extend_bdet[ib],bit_length,norb,DetI);
@@ -280,7 +314,7 @@ namespace sbd {
 	  }
 	}
 
-	// double excitation from single adet and single bdet
+	// double excitation from single adet and single bdet for both outside
 	for(size_t k=0; k < singles_from_adet[ja].size(); k++) {
 	  size_t ia = singles_from_adet[ja][k];
 	  for(size_t l=0; l < singles_from_bdet[jb].size(); l++) {
@@ -295,18 +329,86 @@ namespace sbd {
 	    }
 	  }
 	}
+
+	// double excitation from single adet to outside and from single bdet in inside
+	for(size_t k=0; k < singles_from_adet[ja].size(); k++) {
+	  size_t ia = singles_from_adet[ja][k];
+	  for(size_t l=0; l < singles_in_bdet[jb].size(); l++) {
+	    size_t ib = singles_in_bdet[jb][l];
+	    DetFromAlphaBeta(extend_adet[ia],sample_bdet[ib],bit_length,norb,DetI);
+	    ElemT eij = Hij(DetI,DetJ,bit_length,norb,
+			    c,d,I0,I1,I2,orbDiff);
+	    if( std::abs(eij*wj) > eps ) {
+	      ExD.push_back(DetI);
+	      ExW.push_back(eij*factorExW);
+	      ExC += factorExC*eij*eij;
+	    }
+	  }
+	}
+
+	// double excitation from single adet in inside and from single bdet to outside
+	for(size_t k=0; k < singles_in_adet[ja].size(); k++) {
+	  size_t ia = singles_in_adet[ja][k];
+	  for(size_t l=0; l < singles_from_bdet[jb].size(); l++) {
+	    size_t ib = singles_from_bdet[jb][l];
+	    DetFromAlphaBeta(sample_adet[ia],extend_bdet[ib],bit_length,norb,DetI);
+	    ElemT eij = Hij(DetI,DetJ,bit_length,norb,
+			    c,d,I0,I1,I2,orbDiff);
+	    if( std::abs(eij*wj) > eps ) {
+	      ExD.push_back(DetI);
+	      ExW.push_back(eij*factorExW);
+	      ExC += factorExC*eij*eij;
+	    }
+	  }
+	}
+	
 	
       } // end DetI
 
-
 #ifdef SBD_DEBUG_VARIANCE
-      std::cout << " Variance at mpi = (" << mpi_rank_s << "," << mpi_rank_b
-		<< "): size of extended space = " << ExD.size() << std::endl;
+      for(int rank_s=0; rank_s < mpi_size_s; rank_s++) {
+	if( mpi_rank_s == rank_s ) {
+	  for(int rank_b=0; rank_b < mpi_size_b; rank_b++) {
+	    if( mpi_rank_b == rank_b ) {
+	      std::cout << " Variance at mpi = (" << mpi_rank_s << "," << mpi_rank_b
+			<< "): extended dets = ";\
+	      for(size_t k=0; k < std::min(ExD.size(),static_cast<size_t>(3)); k++) {
+		std::cout << ((k==0) ? "[" : ", ") << makestring(ExD[k],bit_length,2*norb)
+			  << " (" << ExW[k] << ")";
+	      }
+	      std::cout << ", ... ], size = " << ExD.size() << std::endl;
+	    }
+	    MPI_Barrier(b_comm);
+	  }
+	}
+	MPI_Barrier(s_comm);
+      }
 #endif
+      
 
       std::vector<std::vector<size_t>> ExDet;
       std::vector<ElemT> ExWeight;
       merge_bit_sequences(ExD,ExW,ExDet,ExWeight);
+
+#ifdef SBD_DEBUG_VARIANCE
+      for(int rank_s=0; rank_s < mpi_size_s; rank_s++) {
+	if( mpi_rank_s == rank_s ) {
+	  for(int rank_b=0; rank_b < mpi_size_b; rank_b++) {
+	    if( mpi_rank_b == rank_b ) {
+	      std::cout << " Variance at mpi = (" << mpi_rank_s << "," << mpi_rank_b
+			<< "): extended dets = ";\
+	      for(size_t k=0; k < std::min(ExDet.size(),static_cast<size_t>(3)); k++) {
+		std::cout << ((k==0) ? "[" : ", ") << makestring(ExDet[k],bit_length,2*norb)
+			  << " (" << ExWeight[k] << ")";
+	      }
+	      std::cout << ", ... ], size = " << ExDet.size() << std::endl;
+	    }
+	    MPI_Barrier(b_comm);
+	  }
+	}
+	MPI_Barrier(s_comm);
+      }
+#endif
 
 
       std::vector<std::vector<size_t>> SortDet(ExDet);
@@ -342,7 +444,8 @@ namespace sbd {
       std::vector<ElemT> SortWeight(SortDet.size(),ElemT(0.0));
       for(size_t rank=0; rank < mpi_size_b; rank++) {
 	for(size_t n=0; n < SortWeight_recv[rank].size(); n++) {
-	  auto itIdx = std::lower_bound(SortDet.begin(),SortDet.end(),SortDet_recv[rank][n],
+	  auto itIdx = std::lower_bound(SortDet.begin(),SortDet.end(),
+					SortDet_recv[rank][n],
 				       [](const std::vector<size_t> & x,
 					  const std::vector<size_t> & y)
 				       { return x < y; });
@@ -351,13 +454,34 @@ namespace sbd {
 	}
       }
 
+#ifdef SBD_DEBUG_VARIANCE
+      for(int rank_s=0; rank_s < mpi_size_s; rank_s++) {
+	if( mpi_rank_s == rank_s ) {
+	  for(int rank_b=0; rank_b < mpi_size_b; rank_b++) {
+	    if( mpi_rank_b == rank_b ) {
+	      std::cout << " Variance at mpi = (" << mpi_rank_s << "," << mpi_rank_b
+			<< "): sorted dets = ";\
+	      for(size_t k=0; k < std::min(SortDet.size(),static_cast<size_t>(3)); k++) {
+		std::cout << ((k==0) ? "[" : ", ") << makestring(SortDet[k],bit_length,2*norb)
+			  << " (" << SortWeight[k] << ")";
+	      }
+	      std::cout << ", ..., " << makestring(SortDet_end[rank_b],bit_length,2*norb)
+			<< "), size = " << SortDet.size() << std::endl;
+	    }
+	    MPI_Barrier(b_comm);
+	  }
+	}
+	MPI_Barrier(s_comm);
+      }
+#endif
+      
+
       ElemT SumSend = ElemT(0.0);
       for(size_t n=0; n < SortDet.size(); n++) {
 	SumSend += Conjugate(SortWeight[n]) * SortWeight[n];
       }
       ElemT SumSquare = SumSend;
-      // SumSend += ElemT(-1.0) * ExC;
-      SumSend += ExC;
+      SumSend += ElemT(-1.0) * ExC;
       SumSend *= ElemT(1.0/(Nd*(Nd-1.0)));
 
       std::cout << " Sqaure term contribution = " << SumSquare/(Nd*(Nd-1)) << std::endl;
@@ -373,6 +497,48 @@ namespace sbd {
       }
 
     } // end for(int sample=0; sample < Ns; sample++)
+
+#ifdef SBD_DEBUG_VARIANCE
+    RealT error_prob_rank = 0.0;
+    std::vector<size_t> sidx_prob(prob.size());
+    std::iota(sidx_prob.begin(),sidx_prob.end(),0);
+    std::sort(sidx_prob.begin(),sidx_prob.end(),[&](int i, int j) {
+      return prob[i] > prob[j];
+    });
+    for(int rank_s=0; rank_s < mpi_size_s; rank_s++) {
+      if( mpi_rank_s == rank_s ) {
+	for(int rank_b=0; rank_b < mpi_size_b; rank_b++) {
+	  if( mpi_rank_b == rank_b ) {
+	    std::cout << " Variance at mpi = (" << mpi_rank_s << "," << mpi_rank_b
+		      << "): probability =";
+	    for(size_t k=0; k < std::min(prob.size(),static_cast<size_t>(10)); k++) {
+	      std::cout << " (" << prob[sidx_prob[k]] << "," << empirical_prob[sidx_prob[k]] << ")";
+	    }
+	    std::cout << " ... " << std::endl;
+	  }
+	  MPI_Barrier(b_comm);
+	}
+      }
+      MPI_Barrier(s_comm);
+    }
+    for(size_t i=0; i < prob.size(); i++) {
+      error_prob_rank += (prob[i]-empirical_prob[i])*(prob[i]-empirical_prob[i]);
+    }
+    RealT error_prob_base = 0.0;
+    // MPI_Datatype MPI_RealT = GetMpiType<ElemT>::MpiT;
+    MPI_Allreduce(&error_prob_rank,&error_prob_base,1,MPI_RealT,MPI_SUM,b_comm);
+    if( mpi_rank_b == 0 ) {
+      std::cout << " Variance at mpi = (" << mpi_rank_s << "," << mpi_rank_b
+		<< "): error from real probability = " << error_prob_base << std::endl;
+    }
+    RealT error_prob = 0.0;
+    MPI_Allreduce(&error_prob_base,&error_prob,1,MPI_RealT,MPI_SUM,s_comm);
+    if( mpi_rank_b == 0 ) {
+      if( mpi_rank_s == 0 ) {
+	std::cout << " Variance: total error from real probability = " << error_prob/mpi_size_s << std::endl;
+      }
+    }
+#endif
     
   }
 		

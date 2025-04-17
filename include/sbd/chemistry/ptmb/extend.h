@@ -28,7 +28,7 @@ namespace sbd {
 	  auto itk = std::find(adet.begin(),
 			       adet.end(),
 			       tdet);
-	  if( itk != adet.end() ) {
+	  if( itk == adet.end() ) {
 	    edet.push_back(tdet);
 	  }
 	  setocc(tdet,bit_length,open[j],false);
@@ -61,7 +61,7 @@ namespace sbd {
 	      auto itk = std::find(adet.begin(),
 				   adet.end(),
 				   tdet);
-	      if( itk != adet.end() ) {
+	      if( itk == adet.end() ) {
 		edet.push_back(tdet);
 	      }
 	      setocc(tdet,bit_length,open[l],false);
