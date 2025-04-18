@@ -213,6 +213,31 @@ namespace sbd {
       sort_bitarray(extend_adet);
       sort_bitarray(extend_bdet);
 
+#ifdef SBD_DEBUG_VARIANCE
+      for(int rank_s=0; rank_s < mpi_size_s; rank_s++) {
+	if( mpi_rank_s == rank_s ) {
+	  for(int rank_b=0; rank_b < mpi_size_b; rank_b++) {
+	    if( mpi_rank_b == rank_b ) {
+	      std::cout << " Variance at mpi = (" << mpi_rank_s << "," << mpi_rank_b
+			<< "): extended adet = ";
+	      for(size_t k=0; k < std::min(extend_adet.size(),static_cast<size_t>(10)); k++) {
+		std::cout << ((k==0) ? "[" : ", ") << makestring(extend_adet[k],bit_length,norb);
+	      }
+	      std::cout << ", ... ], size = " << extend_adet.size()
+			<< ", extended bdet = ";
+	      for(size_t k=0; k < std::min(extend_bdet.size(),static_cast<size_t>(10)); k++) {
+		std::cout << ((k==0) ? "[" : ", ") << makestring(extend_bdet[k],bit_length,norb);
+	      }
+	      std::cout << ", ... ], size = " << extend_bdet.size() << std::endl;
+	    }
+	    MPI_Barrier(b_comm);
+	  }
+	}
+	MPI_Barrier(s_comm);
+      }
+#endif
+      
+
       std::vector<std::vector<size_t>> singles_from_adet;
       std::vector<std::vector<size_t>> doubles_from_adet;
       std::vector<std::vector<size_t>> singles_from_bdet;
@@ -221,13 +246,11 @@ namespace sbd {
       std::vector<std::vector<size_t>> doubles_in_adet;
       std::vector<std::vector<size_t>> singles_in_bdet;
       std::vector<std::vector<size_t>> doubles_in_bdet;
-      std::vector<std::vector<size_t>> sample_adet_copy(sample_adet);
-      std::vector<std::vector<size_t>> sample_bdet_copy(sample_bdet);
 
       ExtendHelper(sample_adet,extend_adet,bit_length,norb,singles_from_adet,doubles_from_adet);
       ExtendHelper(sample_bdet,extend_bdet,bit_length,norb,singles_from_bdet,doubles_from_bdet);
-      ExtendHelper(sample_adet,sample_adet_copy,bit_length,norb,singles_in_adet,doubles_in_adet);
-      ExtendHelper(sample_bdet,sample_bdet_copy,bit_length,norb,singles_in_bdet,doubles_in_bdet);
+      ExtendHelper(sample_adet,adet,bit_length,norb,singles_in_adet,doubles_in_adet);
+      ExtendHelper(sample_bdet,bdet,bit_length,norb,singles_in_bdet,doubles_in_bdet);
       
       std::vector<size_t> DetJ = DetFromAlphaBeta(adet[0],bdet[0],bit_length,norb);
       std::vector<size_t> DetI = DetJ;
@@ -265,7 +288,7 @@ namespace sbd {
 	// ElemT factorExC = wj * wj * ( local_count[j]*(Nd-1)/prob[local_sample[j]]
 	// 		  - local_count[j]*local_count[j]/(prob[local_sample[j]]*prob[local_sample[j]]) );
 	ElemT factorExC = wj * wj * local_count[j]/(prob[local_sample[j]]*prob[local_sample[j]]);
-	// single excitation within adet
+	// single excitation from adet to outside
 	for(size_t i=0; i < singles_from_adet[ja].size(); i++) {
 	  size_t ia = singles_from_adet[ja][i];
 	  DetFromAlphaBeta(extend_adet[ia],sample_bdet[jb],bit_length,norb,DetI);
@@ -277,7 +300,7 @@ namespace sbd {
 	    ExC += factorExC*eij*eij;
 	  }
 	}
-	// double excitation within adet
+	// double excitation from adet to outside
 	for(size_t i=0; i < doubles_from_adet[ja].size(); i++) {
 	  size_t ia = doubles_from_adet[ja][i];
 	  DetFromAlphaBeta(extend_adet[ia],sample_bdet[jb],bit_length,norb,DetI);
@@ -289,7 +312,7 @@ namespace sbd {
 	    ExC += factorExC*eij*eij;
 	  }
 	}
-	// single excitation within bdet
+	// single excitation from bdet to outside
 	for(size_t i=0; i < singles_from_bdet[jb].size(); i++) {
 	  size_t ib = singles_from_bdet[jb][i];
 	  DetFromAlphaBeta(sample_adet[ja],extend_bdet[ib],bit_length,norb,DetI);
@@ -301,7 +324,7 @@ namespace sbd {
 	    ExC += factorExC*eij*eij;
 	  }
 	}
-	// double excitation within adet
+	// double excitation from bdet to outside
 	for(size_t i=0; i < doubles_from_bdet[jb].size(); i++) {
 	  size_t ib = doubles_from_bdet[jb][i];
 	  DetFromAlphaBeta(sample_adet[ja],extend_bdet[ib],bit_length,norb,DetI);
@@ -314,7 +337,8 @@ namespace sbd {
 	  }
 	}
 
-	// double excitation from single adet and single bdet for both outside
+	// double excitation composed of single excitation from adet to outside
+	//                           and single excitation from bdet to outside
 	for(size_t k=0; k < singles_from_adet[ja].size(); k++) {
 	  size_t ia = singles_from_adet[ja][k];
 	  for(size_t l=0; l < singles_from_bdet[jb].size(); l++) {
@@ -330,12 +354,13 @@ namespace sbd {
 	  }
 	}
 
-	// double excitation from single adet to outside and from single bdet in inside
+	// double excitation composed of single excitation from adet to outside
+	//                           and single excitation in inside of bdet
 	for(size_t k=0; k < singles_from_adet[ja].size(); k++) {
 	  size_t ia = singles_from_adet[ja][k];
 	  for(size_t l=0; l < singles_in_bdet[jb].size(); l++) {
 	    size_t ib = singles_in_bdet[jb][l];
-	    DetFromAlphaBeta(extend_adet[ia],sample_bdet[ib],bit_length,norb,DetI);
+	    DetFromAlphaBeta(extend_adet[ia],bdet[ib],bit_length,norb,DetI);
 	    ElemT eij = Hij(DetI,DetJ,bit_length,norb,
 			    c,d,I0,I1,I2,orbDiff);
 	    if( std::abs(eij*wj) > eps ) {
@@ -346,12 +371,13 @@ namespace sbd {
 	  }
 	}
 
-	// double excitation from single adet in inside and from single bdet to outside
+	// double excitation composed of single excitation in inside of adet
+	//                           and single excitation from bdet to outside
 	for(size_t k=0; k < singles_in_adet[ja].size(); k++) {
 	  size_t ia = singles_in_adet[ja][k];
 	  for(size_t l=0; l < singles_from_bdet[jb].size(); l++) {
 	    size_t ib = singles_from_bdet[jb][l];
-	    DetFromAlphaBeta(sample_adet[ia],extend_bdet[ib],bit_length,norb,DetI);
+	    DetFromAlphaBeta(adet[ia],extend_bdet[ib],bit_length,norb,DetI);
 	    ElemT eij = Hij(DetI,DetJ,bit_length,norb,
 			    c,d,I0,I1,I2,orbDiff);
 	    if( std::abs(eij*wj) > eps ) {

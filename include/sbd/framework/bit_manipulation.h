@@ -427,14 +427,23 @@ Function for finding the state index of target bit string
     int mpi_master = 0;
     int mpi_size; MPI_Comm_size(comm,&mpi_size);
     int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
-    size_t bit_size = config[0].size();
+    size_t bit_size;
+    if( config.size() > 0 ) {
+      bit_size = config[0].size();
+    }
     if( mpi_size == 1 ) {
-      sort_bitarray(config);
-      config_begin[mpi_rank] = config[0];
-      config_end[mpi_rank] = config[config.size()-1];
-      index_begin[mpi_rank] = 0;
-      index_end[mpi_rank] = config.size()-1;
-      
+      if( config.size() > 0 ) {
+	sort_bitarray(config);
+	config_begin[mpi_rank] = config[0];
+	config_end[mpi_rank] = config[config.size()-1];
+	index_begin[mpi_rank] = 0;
+	index_end[mpi_rank] = config.size()-1;
+      } else {
+	config_begin[mpi_rank] = std::vector<size_t>();
+	config_end[mpi_rank]   = std::vector<size_t>();
+	index_begin[mpi_rank] = 0;
+	index_end[mpi_rank] = 0;
+      }
     } else {
       // mpi_size = 2 -> mpi_size_half = 1, mpi_rank / mpi_size_half = 0 or 1
       // mpi_size = 3 -> mpi_size_half = 2, mpi_rank / mpi_size_half = 0 or 1
