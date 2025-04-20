@@ -268,8 +268,15 @@ namespace sbd {
 					       + double_adet_size
 					       + double_bdet_size );
       
-      ExD.reserve(ex_size);
-      ExW.reserve(ex_size);
+      ExD.reserve(ex_size+2);
+      ExW.reserve(ex_size+2);
+
+      DetFromAlphaBeta(adet[adet_begin],bdet[bdet_begin],bit_length,norb,DetI);
+      ExD.push_back(DetI);
+      ExW.push_back(ElemT(0.0));
+      DetFromAlphaBeta(adet[adet_end-1],bdet[bdet_end-1],bit_length,norb,DetI);
+      ExD.push_back(DetI);
+      ExW.push_back(ElemT(0.0));
       
       std::vector<int> c(2,0);
       std::vector<int> d(2,0);
