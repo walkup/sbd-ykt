@@ -392,7 +392,11 @@ namespace sbd {
 
     std::vector<size_t> data_send(total_send_size);
     std::vector<size_t> data_recv(total_recv_size);
-    B.resize(size_recv[0],std::vector<size_t>(size_recv[1]));
+    if( size_recv[0] != 0 ) {
+      B.resize(size_recv[0],std::vector<size_t>(size_recv[1]));
+    } else {
+      B.resize(0);
+    }
 
     for(size_t n=0; n < size_send[0]; n++) {
       for(size_t k=0; k < size_send[1]; k++) {

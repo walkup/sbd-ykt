@@ -451,6 +451,27 @@ namespace sbd {
       std::vector<size_t> Idx_end(mpi_size_b);
       mpi_sort_bitarray(SortDet,SortDet_begin,SortDet_end,Idx_begin,Idx_end,bit_length,b_comm);
 
+#ifdef SBD_DEBUG_VARIANCE
+      for(int rank_s=0; rank_s < mpi_size_s; rank_s++) {
+	if( mpi_rank_s == rank_s ) {
+	  for(int rank_b=0; rank_b < mpi_size_b; rank_b++) {
+	    if( mpi_rank_b == rank_b ) {
+	      std::cout << " Variance at mpi = (" << mpi_rank_s << "," << mpi_rank_b
+			<< "): sorted dets = ";\
+	      for(size_t k=0; k < std::min(SortDet.size(),static_cast<size_t>(3)); k++) {
+		std::cout << ((k==0) ? "[" : ", ") << makestring(SortDet[k],bit_length,2*norb);
+	      }
+	      std::cout << ", ..., " << makestring(SortDet_end[rank_b],bit_length,2*norb)
+			<< "), size = " << SortDet.size() << std::endl;
+	    }
+	    MPI_Barrier(b_comm);
+	  }
+	}
+	MPI_Barrier(s_comm);
+      }
+#endif
+      
+
       std::vector<std::vector<std::vector<size_t>>> ExDet_send(mpi_size_b);
       std::vector<std::vector<ElemT>> ExWeight_send(mpi_size_b);
 
@@ -474,7 +495,8 @@ namespace sbd {
 	MpiSlide(ExWeight_send[mpi_send_rank],SortWeight_recv[mpi_recv_rank],slide,b_comm);
       }
 
-      std::vector<ElemT> SortWeight(SortDet.size(),ElemT(0.0));
+      std::vector<ElemT> SortWeight(SortDet.size());
+      std::fill(SortWeight.begin(),SortWeight.end(),ElemT(0.0));
       for(size_t rank=0; rank < mpi_size_b; rank++) {
 	for(size_t n=0; n < SortWeight_recv[rank].size(); n++) {
 	  auto itIdx = std::lower_bound(SortDet.begin(),SortDet.end(),
@@ -482,8 +504,12 @@ namespace sbd {
 				       [](const std::vector<size_t> & x,
 					  const std::vector<size_t> & y)
 				       { return x < y; });
-	  size_t Idx = std::distance(SortDet.begin(),itIdx);
-	  SortWeight[Idx] += SortWeight_recv[rank][n];
+	  if( itIdx != SortDet.end() ) {
+	    size_t Idx = std::distance(SortDet.begin(),itIdx);
+	    if( (*itIdx) == SortDet[Idx] ) {
+	      SortWeight[Idx] += SortWeight_recv[rank][n];
+	    }
+	  }
 	}
       }
 
