@@ -270,13 +270,58 @@ namespace sbd {
       
       ExD.reserve(ex_size+2);
       ExW.reserve(ex_size+2);
-
       DetFromAlphaBeta(adet[adet_begin],bdet[bdet_begin],bit_length,norb,DetI);
       ExD.push_back(DetI);
       ExW.push_back(ElemT(0.0));
       DetFromAlphaBeta(adet[adet_end-1],bdet[bdet_end-1],bit_length,norb,DetI);
       ExD.push_back(DetI);
       ExW.push_back(ElemT(0.0));
+
+
+      /*
+      ExD.reserve(ex_size+2*mpi_size_b);
+      ExW.reserve(ex_size+2*mpi_size_b);
+
+      for(int rank_b=0; rank_b < mpi_size_b; rank_b++) {
+	size_t a_begin = 0;
+	size_t a_end = adet.size();
+	size_t b_begin = 0;
+	size_t b_end = bdet.size();
+	int a_rank = rank_b / bdet_comm_size;
+	int b_rank = rank_b % bdet_comm_size;
+	get_mpi_range(static_cast<int>(adet_comm_size),a_rank,
+		      a_begin,a_end);
+	get_mpi_range(static_cast<int>(bdet_comm_size),b_rank,
+		      b_begin,b_end);
+	auto itamin = std::min_element(adet.begin()+a_begin,
+				       adet.begin()+a_end,
+				       [](const std::vector<size_t> & x,
+					  const std::vector<size_t> & y) {
+					 return x < y; });
+	auto itamax = std::max_element(adet.begin()+a_begin,
+				       adet.begin()+a_end,
+				       [](const std::vector<size_t> & x,
+					  const std::vector<size_t> & y) {
+					 return x < y; });
+	auto itbmin = std::min_element(bdet.begin()+b_begin,
+				       bdet.begin()+b_end,
+				       [](const std::vector<size_t> & x,
+					  const std::vector<size_t> & y) {
+					 return x < y; });
+	auto itbmax = std::max_element(bdet.begin()+b_begin,
+				       bdet.begin()+b_end,
+				       [](const std::vector<size_t> & x,
+					  const std::vector<size_t> & y) {
+					 return x < y; });
+	
+	DetFromAlphaBeta(*itamin,*itbmin,bit_length,norb,DetI);
+	ExD.push_back(DetI);
+	ExW.push_back(ElemT(0.0));
+	DetFromAlphaBeta(*itamax,*itbmax,bit_length,norb,DetI);
+	ExD.push_back(DetI);
+	ExW.push_back(ElemT(0.0));
+      }
+      */
       
       std::vector<int> c(2,0);
       std::vector<int> d(2,0);
@@ -418,7 +463,6 @@ namespace sbd {
       }
 #endif
       
-
       std::vector<std::vector<size_t>> ExDet;
       std::vector<ElemT> ExWeight;
       merge_bit_sequences(ExD,ExW,ExDet,ExWeight);
@@ -442,7 +486,6 @@ namespace sbd {
 	MPI_Barrier(s_comm);
       }
 #endif
-
 
       std::vector<std::vector<size_t>> SortDet(ExDet);
       std::vector<std::vector<size_t>> SortDet_begin(mpi_size_b,std::vector<size_t>(det_length));
