@@ -814,7 +814,6 @@ Function for finding the state index of target bit string
 	  index_end[rank] = index_begin[rank]+new_config_size[rank];
 	}
 
-	MPI_Barrier(comm);
 	mpi_redistribution(config,config_begin,config_end,index_begin,index_end,bit_length,comm);
 	
       } // if( config_end_a_end > config_begin_b_begin ) to skip case where it is already sorted.
