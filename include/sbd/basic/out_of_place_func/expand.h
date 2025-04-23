@@ -136,7 +136,8 @@ namespace sbd {
     std::vector<std::vector<size_t>> config_end(mpi_size,  std::vector<size_t>(c_len));
     std::vector<size_t> index_begin(mpi_size);
     std::vector<size_t> index_end(mpi_size);
-    mpi_sort_bitarray(new_config,config_begin,config_end,index_begin,index_end,bit_length,comm);
+    size_t total_length = bit_length * c_len;
+    mpi_sort_bitarray(new_config,config_begin,config_end,index_begin,index_end,total_length,bit_length,comm);
 
     // determine the node to be send
 #ifdef SBD_DEBUG
@@ -316,7 +317,8 @@ namespace sbd {
     std::vector<std::vector<size_t>> config_end(mpi_size,  std::vector<size_t>(c_len));
     std::vector<size_t> index_begin(mpi_size);
     std::vector<size_t> index_end(mpi_size);
-    mpi_sort_bitarray(new_config,config_begin,config_end,index_begin,index_end,bit_length,comm);
+    size_t total_length = c_len * bit_length;
+    mpi_sort_bitarray(new_config,config_begin,config_end,index_begin,index_end,total_length,bit_length,comm);
 
     // determine the node to be send
 #ifdef SBD_DEBUG

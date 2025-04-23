@@ -267,7 +267,7 @@ namespace sbd {
       size_t ex_size = local_sample.size() * ( (single_adet_size+1)*(single_bdet_size+1)-1
 					       + double_adet_size
 					       + double_bdet_size );
-      
+
       ExD.reserve(ex_size+2);
       ExW.reserve(ex_size+2);
       DetFromAlphaBeta(adet[adet_begin],bdet[bdet_begin],bit_length,norb,DetI);
@@ -277,47 +277,24 @@ namespace sbd {
       ExD.push_back(DetI);
       ExW.push_back(ElemT(0.0));
 
-
       /*
-      ExD.reserve(ex_size+2*mpi_size_b);
-      ExW.reserve(ex_size+2*mpi_size_b);
+      ExD.reserve(ex_size+min_extra_dets);
+      ExW.reserve(ex_size+min_extra_dets);
 
-      for(int rank_b=0; rank_b < mpi_size_b; rank_b++) {
-	size_t a_begin = 0;
-	size_t a_end = adet.size();
-	size_t b_begin = 0;
-	size_t b_end = bdet.size();
-	int a_rank = rank_b / bdet_comm_size;
-	int b_rank = rank_b % bdet_comm_size;
-	get_mpi_range(static_cast<int>(adet_comm_size),a_rank,
-		      a_begin,a_end);
-	get_mpi_range(static_cast<int>(bdet_comm_size),b_rank,
-		      b_begin,b_end);
-	auto itamin = std::min_element(adet.begin()+a_begin,
-				       adet.begin()+a_end,
-				       [](const std::vector<size_t> & x,
-					  const std::vector<size_t> & y) {
-					 return x < y; });
-	auto itamax = std::max_element(adet.begin()+a_begin,
-				       adet.begin()+a_end,
-				       [](const std::vector<size_t> & x,
-					  const std::vector<size_t> & y) {
-					 return x < y; });
-	auto itbmin = std::min_element(bdet.begin()+b_begin,
-				       bdet.begin()+b_end,
-				       [](const std::vector<size_t> & x,
-					  const std::vector<size_t> & y) {
-					 return x < y; });
-	auto itbmax = std::max_element(bdet.begin()+b_begin,
-				       bdet.begin()+b_end,
-				       [](const std::vector<size_t> & x,
-					  const std::vector<size_t> & y) {
-					 return x < y; });
-	
-	DetFromAlphaBeta(*itamin,*itbmin,bit_length,norb,DetI);
-	ExD.push_back(DetI);
-	ExW.push_back(ElemT(0.0));
-	DetFromAlphaBeta(*itamax,*itbmax,bit_length,norb,DetI);
+      for(int rank_b=0; rank_b < min_extra_dets; rank_b++) {
+	std::vector<size_t> ad(norb,0);
+	std::vector<size_t> bd(norb,0);
+	for(int i=0; i < nela; i++) {
+	  ad[i] = 1;
+	}
+	for(int i=0; i < nelb; i++) {
+	  bd[i] = 1;
+	}
+	std::shuffle(ad.begin(),ad.end(),rng);
+	std::shuffle(bd.begin(),bd.end(),rng);
+	change_bitlength(static_cast<size_t>(1),ad,bit_length);
+	change_bitlength(static_cast<size_t>(1),bd,bit_length);
+	DetFromAlphaBeta(ad,bd,bit_length,norb,DetI);
 	ExD.push_back(DetI);
 	ExW.push_back(ElemT(0.0));
       }
@@ -492,7 +469,7 @@ namespace sbd {
       std::vector<std::vector<size_t>> SortDet_end(mpi_size_b,std::vector<size_t>(det_length));
       std::vector<size_t> Idx_begin(mpi_size_b);
       std::vector<size_t> Idx_end(mpi_size_b);
-      mpi_sort_bitarray(SortDet,SortDet_begin,SortDet_end,Idx_begin,Idx_end,bit_length,b_comm);
+      mpi_sort_bitarray(SortDet,SortDet_begin,SortDet_end,Idx_begin,Idx_end,2*norb,bit_length,b_comm);
 
 #ifdef SBD_DEBUG_VARIANCE
       for(int rank_s=0; rank_s < mpi_size_s; rank_s++) {
@@ -643,7 +620,6 @@ namespace sbd {
 #endif
     
   }
-		
   
 }
 
