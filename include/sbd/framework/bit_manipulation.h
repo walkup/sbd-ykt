@@ -445,7 +445,6 @@ Function for finding the state index of target bit string
     int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
     size_t bit_size = (total_bit_length + bit_length - 1 ) / bit_length;
     if( mpi_size == 1 ) {
-      std::cout << " ParallelSort: mpi_size == 1 is called at id = " << id << std::endl;
       sort_bitarray(config);
       config_begin[mpi_rank] = config[0];
       config_end[mpi_rank] = config[config.size()-1];

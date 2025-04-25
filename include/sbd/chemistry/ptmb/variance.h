@@ -469,6 +469,8 @@ namespace sbd {
       std::vector<std::vector<size_t>> SortDet_end(mpi_size_b,std::vector<size_t>(det_length));
       std::vector<size_t> Idx_begin(mpi_size_b);
       std::vector<size_t> Idx_end(mpi_size_b);
+
+      mpi_redistribution(SortDet,SortDet_begin,SortDet_end,Idx_begin,Idx_end,2*norb,bit_length,b_comm);
       mpi_sort_bitarray(SortDet,SortDet_begin,SortDet_end,Idx_begin,Idx_end,2*norb,bit_length,b_comm);
 
 #ifdef SBD_DEBUG_VARIANCE
@@ -563,8 +565,8 @@ namespace sbd {
       SumSend += ElemT(-1.0) * ExC;
       SumSend *= ElemT(1.0/(Nd*(Nd-1.0)));
 
-      std::cout << " Sqaure term contribution = " << SumSquare/(Nd*(Nd-1)) << std::endl;
-      std::cout << " ExC term contribution = " << ExC/(Nd*(Nd-1)) << std::endl;
+      // std::cout << " Sqaure term contribution = " << SumSquare/(Nd*(Nd-1)) << std::endl;
+      // std::cout << " ExC term contribution = " << ExC/(Nd*(Nd-1)) << std::endl;
 
       ElemT SumRecv = ElemT(0.0);
       MPI_Datatype DataT = GetMpiType<ElemT>::MpiT;
