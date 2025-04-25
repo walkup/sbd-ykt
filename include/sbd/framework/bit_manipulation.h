@@ -372,11 +372,11 @@ Function for finding the state index of target bit string
 	  break;
 	}
       }
-      std::vector<std::vector<size_t>> config_transfer;
       for(int send_rank=mpi_rank_begin; send_rank <= mpi_rank_end; send_rank++) {
 	if( mpi_rank == send_rank ) {
 	  size_t ii_min = std::max(i_begin[recv_rank],index_begin[send_rank]);
 	  size_t ii_max = std::min(i_end[recv_rank],  index_end[send_rank]);
+	  std::vector<std::vector<size_t>> config_transfer;
 	  if( (ii_max - ii_min) > 0 ) {
 	    config_transfer.resize(ii_max-ii_min);
 	    for(size_t i=ii_min; i < ii_max; i++) {
@@ -388,16 +388,13 @@ Function for finding the state index of target bit string
 	  if( send_rank != recv_rank ) {
 	    MpiSend(config_transfer,recv_rank,comm);
 	  } else {
-	    // new_config.insert(new_config.begin()+i_new,config_transfer.begin(),config_transfer.end());
 	    new_config.insert(new_config.end(),config_transfer.begin(),config_transfer.end());
-	    // i_new += config_transfer.size();
 	  }
 	}
 	if( ( mpi_rank == recv_rank ) && ( send_rank != recv_rank ) ) {
+	  std::vector<std::vector<size_t>> config_transfer;
 	  MpiRecv(config_transfer,send_rank,comm);
-	  // new_config.insert(new_config.begin()+i_new,config_transfer.begin(),config_transfer.end());
 	  new_config.insert(new_config.end(),config_transfer.begin(),config_transfer.end());
-	  // i_new += config_transfer.size();
 	}
       } // end for(int send_rank=mpi_rank_begin; send_rank <= mpi_rank_end; send_rank++)
       MPI_Barrier(comm);
@@ -441,13 +438,14 @@ Function for finding the state index of target bit string
 			 std::vector<size_t> & index_end,
 			 size_t total_bit_length,
 			 size_t bit_length,
-			 MPI_Comm comm) {
+			 MPI_Comm comm,
+			 int id=0) {
     int mpi_master = 0;
     int mpi_size; MPI_Comm_size(comm,&mpi_size);
     int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
     size_t bit_size = (total_bit_length + bit_length - 1 ) / bit_length;
     if( mpi_size == 1 ) {
-      std::cout << " ParallelSort: mpi_size == 1 is called " << std::endl;
+      std::cout << " ParallelSort: mpi_size == 1 is called at id = " << id << std::endl;
       sort_bitarray(config);
       config_begin[mpi_rank] = config[0];
       config_end[mpi_rank] = config[config.size()-1];
@@ -459,16 +457,18 @@ Function for finding the state index of target bit string
       int mpi_ierr;
       int mpi_size_half = (mpi_size / 2) + ( mpi_size % 2 );
       int mpi_color = mpi_rank / mpi_size_half;
-      int mpi_key   = mpi_rank % mpi_size_half;
+      int mpi_key   = ( mpi_rank < mpi_size_half ) ? ( mpi_rank ) : ( mpi_rank - mpi_size_half );
+      // int mpi_key mpi_rank % mpi_size_half;
       MPI_Comm new_comm;
+      int new_id = id + mpi_color * mpi_size_half;
       MPI_Comm_split(comm,mpi_color,mpi_key,&new_comm);
-      mpi_sort_bitarray(config,config_begin,config_end,index_begin,index_end,total_bit_length,bit_length,new_comm);
+      mpi_sort_bitarray(config,config_begin,config_end,index_begin,index_end,total_bit_length,bit_length,new_comm,new_id);
 
 #ifdef SBD_DEBUG_BIT
       // for(int rank=0; rank < mpi_size; rank++) {
       // if( mpi_rank == rank ) {
       if( mpi_rank == 0 ) {
-	std::cout << " ParallelSort at rank " << mpi_rank
+	std::cout << " ParallelSort at rank " << mpi_rank << " id " << id
 		  << ": start parallel merge sort for size " << mpi_size
 		  << " (" << mpi_size_half << "," << mpi_size-mpi_size_half << ")" << std::endl;
       }
@@ -530,7 +530,7 @@ Function for finding the state index of target bit string
 	// for(int rank=0; rank < mpi_size; rank++) {
 	// if( mpi_rank == rank ) {
 	if( mpi_rank == 0 ) {
-	    std::cout << " ParallelSort at rank " << mpi_rank
+	  std::cout << " ParallelSort at rank " << mpi_rank << " id " << id
 		      << ": end config_begin and config_end set up, and enter case necessary to merge " << std::endl;
 	}
 	// MPI_Barrier(comm);
@@ -563,7 +563,7 @@ Function for finding the state index of target bit string
 	// for(int rank=0; rank < mpi_size; rank++) {
 	//  if( mpi_rank == rank ) {
 	if( mpi_rank == 0 ) {
-	  std::cout << " ParallelSort at rank " << mpi_rank
+	  std::cout << " ParallelSort at rank " << mpi_rank << " id " << id
 		    << ": complete range definition:";
 	  for(int rank_t=0; rank_t < mpi_size; rank_t++) {
 	    std::cout << " [" << makestring(config_begin[rank_t],bit_length,total_bit_length)
@@ -577,14 +577,14 @@ Function for finding the state index of target bit string
 #endif
 
 	std::vector<std::vector<size_t>> new_config_b;
-	std::vector<std::vector<size_t>> config_transfer;
 	for(int r_rank=0; r_rank < mpi_size; r_rank++) {
 	  for(int s_rank=0; s_rank < mpi_size_b; s_rank++) {
-	    
+
 	    if( ( config_begin[r_rank] < config_end_b[s_rank] )
 	     && ( config_begin_b[s_rank] < config_end[r_rank] ) ) {
 	      
 	      if( (s_rank + mpi_master_b) == mpi_rank ) {
+
 		size_t i_begin = 0;
 		size_t i_end   = config.size();
 		if( config.size() > 0 ) {
@@ -608,7 +608,18 @@ Function for finding the state index of target bit string
 		  }
 		}
 
-		config_transfer.resize(0);
+#ifdef SBD_DEBUG_BIT
+		std::cout << " rank = " << mpi_rank << " id " << id << ": send data [" << i_begin << "," << i_end
+			  << ") from " << s_rank + mpi_master_b << " to " << r_rank
+			  << " because [" << makestring(config_begin[r_rank],bit_length,total_bit_length)
+			  << " < " << makestring(config_end_b[s_rank],bit_length,total_bit_length)
+			  << "] = " << ( config_begin[r_rank] < config_end_b[s_rank] )
+			  << " and [" << makestring(config_begin_b[s_rank],bit_length,total_bit_length)
+			  << " < " << makestring(config_end[r_rank],bit_length,total_bit_length)
+			  << "] = " << ( config_begin_b[s_rank] < config_end[r_rank] ) << std::endl;
+#endif
+		
+		std::vector<std::vector<size_t>> config_transfer;
 		size_t transfer_size = i_end-i_begin;
 		if( i_end-i_begin > 0 ) {
 		  config_transfer.resize(transfer_size);
@@ -621,10 +632,14 @@ Function for finding the state index of target bit string
 		} else {
 		  new_config_b.insert(new_config_b.end(),config_transfer.begin(),config_transfer.end());
 		}
+		
 	      }
 	      if( ( r_rank == mpi_rank ) && ( s_rank+mpi_master_b != r_rank ) ) {
+		
+		std::vector<std::vector<size_t>> config_transfer(0);
 		MpiRecv(config_transfer,s_rank+mpi_master_b,comm);
 		new_config_b.insert(new_config_b.end(),config_transfer.begin(),config_transfer.end());
+		
 	      }
 	    }
 	  }
@@ -632,18 +647,6 @@ Function for finding the state index of target bit string
 
 	sort_bitarray(new_config_b);
 
-#ifdef SBD_DEBUG_BIT
-	// for(int rank=0; rank < mpi_size; rank++) {
-	// if( mpi_rank == rank ) {
-	if( mpi_rank == 0 ) {
-	  std::cout << " ParallelSort at rank " << mpi_rank
-		    << ": end transfer data for merge from B-block " << std::endl;
-	}
-	  // MPI_Barrier(comm);
-	  // }
-	sleep(1);
-#endif
-	
 	std::vector<std::vector<size_t>> new_config_a;
 	for(int s_rank=0; s_rank < mpi_size_a; s_rank++) {
 	  int r_rank = 2 * s_rank;
@@ -658,6 +661,7 @@ Function for finding the state index of target bit string
 		i_begin = 0;
 		i_end = config.size()/2;
 	      }
+	      std::vector<std::vector<size_t>> config_transfer;
 	      config_transfer.resize(0);
 	      size_t transfer_size = i_end-i_begin;
 	      if( transfer_size > 0 ) {
@@ -673,6 +677,7 @@ Function for finding the state index of target bit string
 	      }
 	    }
 	    if( mpi_rank == r_rank && s_rank != r_rank ) {
+	      std::vector<std::vector<size_t>> config_transfer(0);
 	      MpiRecv(config_transfer,s_rank,comm);
 	      new_config_a.insert(new_config_a.end(),config_transfer.begin(),config_transfer.end());
 	    }
@@ -682,6 +687,7 @@ Function for finding the state index of target bit string
 	    if( mpi_rank == s_rank ) {
 	      size_t i_begin = config.size()/2;
 	      size_t i_end = config.size();
+	      std::vector<std::vector<size_t>> config_transfer;
 	      config_transfer.resize(0);
 	      size_t transfer_size = i_end-i_begin;
 	      if( transfer_size > 0 ) {
@@ -697,6 +703,7 @@ Function for finding the state index of target bit string
 	      }
 	    }
 	    if( ( mpi_rank == r_rank ) && ( s_rank != r_rank ) ) {
+	      std::vector<std::vector<size_t>> config_transfer(0);
 	      MpiRecv(config_transfer,s_rank,comm);
 	      new_config_a.insert(new_config_a.end(),config_transfer.begin(),config_transfer.end());
 	    }
@@ -704,20 +711,6 @@ Function for finding the state index of target bit string
 	} // end send configs from a-block
 
 	sort_bitarray(new_config_a);
-
-#ifdef SBD_DEBUG_BIT
-	// for(int rank=0; rank < mpi_size; rank++) {
-	// if( mpi_rank == rank ) {
-	if( mpi_rank == 0 ) {
-	  std::cout << " ParallelSort at rank " << mpi_rank
-		    << ": end transfer data for merge from A-block " << std::endl;
-	}
-	  // MPI_Barrier(comm);
-	  // }
-	sleep(1);
-#endif
-
-	
 
 	// Sorted config from sorted a-configs and sorted b-configs (O(N) method)
 	size_t config_size = new_config_a.size() + new_config_b.size();
@@ -747,7 +740,7 @@ Function for finding the state index of target bit string
 
 #ifdef SBD_DEBUG_BIT
 	if( mpi_rank == 0 ) {
-	  std::cout << " [config_begin, config_end) at rank " << mpi_rank << " before redistribution";
+	  std::cout << " [config_begin, config_end) at rank " << mpi_rank << " id " << id << " before redistribution";
 	  for(int p_rank=0; p_rank < mpi_size; p_rank++) {
 	    std::cout << " [" << makestring(config_begin[p_rank],bit_length,total_bit_length)
 		      << "_" << index_begin[p_rank]
@@ -760,7 +753,7 @@ Function for finding the state index of target bit string
 	usleep(500000);
 	for(int rank=0; rank < mpi_size; rank++) {
 	  if( mpi_rank == rank ) {
-	    std::cout << " config at rank " << mpi_rank << " before redistribution = [";
+	    std::cout << " config at rank " << mpi_rank << " id " << id << " before redistribution = [";
 	    for(size_t k=0; k < config.size(); k++) {
 	      std::cout << ( (k==0) ? "" : "," ) << makestring(config[k],bit_length,total_bit_length);
 	    }
@@ -771,12 +764,11 @@ Function for finding the state index of target bit string
 	}
 #endif
 	
-
 	mpi_redistribution(config,config_begin,config_end,index_begin,index_end,total_bit_length,bit_length,comm);
 
 #ifdef SBD_DEBUG_BIT
 	if( mpi_rank == 0 ) {
-	  std::cout << " [config_begin, config_end) at rank " << mpi_rank << " after redistribution";
+	  std::cout << " [config_begin, config_end) at rank " << mpi_rank << " id " << id << " after redistribution";
 	  for(int p_rank=0; p_rank < mpi_size; p_rank++) {
 	    std::cout << " [" << makestring(config_begin[p_rank],bit_length,total_bit_length)
 		      << "_" << index_begin[p_rank]
@@ -789,7 +781,7 @@ Function for finding the state index of target bit string
 	usleep(500000);
 	for(int rank=0; rank < mpi_size; rank++) {
 	  if( mpi_rank == rank ) {
-	    std::cout << " config at rank " << mpi_rank << " before redistribution = [";
+	    std::cout << " config at rank " << mpi_rank << " id " << id << " before redistribution = [";
 	    for(size_t k=0; k < config.size(); k++) {
 	      std::cout << ( (k==0) ? "" : "," ) << makestring(config[k],bit_length,total_bit_length);
 	    }
