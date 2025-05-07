@@ -264,10 +264,29 @@ namespace sbd {
       size_t single_bdet_size = nelb * (norb-nelb);
       size_t double_adet_size = nela * (nela-1) * (norb-nela) * (norb-nela-1)/4;
       size_t double_bdet_size = nelb * (nelb-1) * (norb-nelb) * (norb-nelb-1)/4;
+
       size_t ex_size = local_sample.size() * ( (single_adet_size+1)*(single_bdet_size+1)-1
 					       + double_adet_size
 					       + double_bdet_size );
 
+#ifdef SBD_VARIANCE_DEBUG
+      for(int rank_s=0; rank_s < mpi_size_s; rank_s++) {
+	if( mpi_rank_s == rank_s ) {
+	  for(int rank_b=0; rank_b < mpi_size_b; rank_b++) {
+	    if( mpi_rank_b == rank_b ) {
+	      std::cout << " Variance at mpi = (" << mpi_rank_s << "," << mpi_rank_b
+			<< "): reserve extended dimension = " << ex_size
+			<< ", det array size = " << sizeof(size_t)*det_length*ex_size
+			<< ", det weight size = " << sizeof(ElemT)*ex_size
+			<< std::endl;
+	    }
+	    MPI_Barrier(b_comm);
+	  }
+	}
+	MPI_Barrier(s_comm);
+      }
+#endif
+      
       ExD.reserve(ex_size+2);
       ExW.reserve(ex_size+2);
       DetFromAlphaBeta(adet[adet_begin],bdet[bdet_begin],bit_length,norb,DetI);
