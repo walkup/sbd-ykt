@@ -169,10 +169,14 @@ namespace sbd {
     int mpi_rank_b; MPI_Comm_rank(b_comm,&mpi_rank_b);
 
     size_t total_task;
+    int index_type = 0;
     if( xc.size() == 2 ) {
-      total_task = 2 * adet_comm_size * bdet_comm_size + adet_comm_size + bdet_comm_size;
-    } else if ( xc.size() == 1 ) {
-      total_task = adet_comm_size + bdet_comm_size;
+      if ( ( xc[0] != xc[1] ) && ( xa[0] != xa[1] ) ) {
+	total_task = 2 * adet_comm_size * bdet_comm_size + adet_comm_size + bdet_comm_size;
+      } else {
+	total_task = 2 * adet_comm_size * bdet_comm_size;
+	index_type = 1;
+      }
     }
     
     std::vector<size_t> adet_schedule(total_task);
@@ -185,14 +189,16 @@ namespace sbd {
 	for(int nb=0; nb < bdet_comm_size; nb++) {
 	  if( na == 0 ) {
 	    if( nb == 0 ) {
-	      adet_schedule[task_count] = na;
-	      bdet_schedule[task_count] = nb;
-	      type_schedule[task_count] = 5; // 2p excitation in adet
-	      task_count++;
-	      adet_schedule[task_count] = na;
-	      bdet_schedule[task_count] = nb;
-	      type_schedule[task_count] = 4; // 2p excitation in bdet
-	      task_count++;
+	      if( index_type == 0 ) {
+		adet_schedule[task_count] = na;
+		bdet_schedule[task_count] = nb;
+		type_schedule[task_count] = 5; // 2p excitation in adet
+		task_count++;
+		adet_schedule[task_count] = na;
+		bdet_schedule[task_count] = nb;
+		type_schedule[task_count] = 4; // 2p excitation in bdet
+		task_count++;
+	      }
 	      adet_schedule[task_count] = na;
 	      bdet_schedule[task_count] = nb;
 	      type_schedule[task_count] = 3; // 1p excitation in adet and bdet 
@@ -202,10 +208,12 @@ namespace sbd {
 	      type_schedule[task_count] = 2; // 1p excitation in bdet and adet
 	      task_count++;
 	    } else {
-	      adet_schedule[task_count] = na;
-	      bdet_schedule[task_count] = nb;
-	      type_schedule[task_count] = 4; // 2p excitation in bdet
-	      task_count++;
+	      if( index_type == 0 ) {
+		adet_schedule[task_count] = na;
+		bdet_schedule[task_count] = nb;
+		type_schedule[task_count] = 4; // 2p excitation in bdet
+		task_count++;
+	      }
 	      adet_schedule[task_count] = na;
 	      bdet_schedule[task_count] = nb;
 	      type_schedule[task_count] = 3; // 1p excitation in adet and bdet 
@@ -217,10 +225,12 @@ namespace sbd {
 	    }
 	  } else {
 	    if( nb == 0 ) {
-	      adet_schedule[task_count] = na;
-	      bdet_schedule[task_count] = nb;
-	      type_schedule[task_count] = 5; // 2p excitation in adet
-	      task_count++;
+	      if( index_type == 0 ) {
+		adet_schedule[task_count] = na;
+		bdet_schedule[task_count] = nb;
+		type_schedule[task_count] = 5; // 2p excitation in adet
+		task_count++;
+	      }
 	      adet_schedule[task_count] = na;
 	      bdet_schedule[task_count] = nb;
 	      type_schedule[task_count] = 3; // 1p excitation in adet and bdet 
@@ -242,6 +252,7 @@ namespace sbd {
 	  }
 	}
       }
+      
     } else if ( xc.size() == 1 ) {
 
       for(int na=0; na < adet_comm_size; na++) {
@@ -312,19 +323,19 @@ namespace sbd {
       helper[task-task_start].adetShift = adet_schedule[task];
       helper[task-task_start].bdetShift = bdet_schedule[task];
       if( type_schedule[task] == 5 ) {
-	GenerateDoubles(adet,bdet,bit_length,norb,0,xc[0],xc[1],xa[1],xa[0],helper[task]);
+	GenerateDoubles(adet,bdet,bit_length,norb,0,xc[0],xc[1],xa[1],xa[0],helper[task-task_start]);
       } else if ( type_schedule[task] == 4 ) {
-	GenerateDoubles(adet,bdet,bit_length,norb,1,xc[0],xc[1],xa[1],xa[0],helper[task]);
+	GenerateDoubles(adet,bdet,bit_length,norb,1,xc[0],xc[1],xa[1],xa[0],helper[task-task_start]);
       } else if ( type_schedule[task] == 3 ) {
-	GenerateSingles(adet,bdet,bit_length,norb,0,xc[1],xa[1],helper[task]);
-	GenerateSingles(adet,bdet,bit_length,norb,1,xc[0],xa[0],helper[task]);
+	GenerateSingles(adet,bdet,bit_length,norb,0,xc[1],xa[1],helper[task-task_start]);
+	GenerateSingles(adet,bdet,bit_length,norb,1,xc[0],xa[0],helper[task-task_start]);
       } else if ( type_schedule[task] == 2 ) {
-	GenerateSingles(adet,bdet,bit_length,norb,0,xc[0],xa[0],helper[task]);
-	GenerateSingles(adet,bdet,bit_length,norb,1,xc[1],xa[1],helper[task]);
+	GenerateSingles(adet,bdet,bit_length,norb,0,xc[0],xa[0],helper[task-task_start]);
+	GenerateSingles(adet,bdet,bit_length,norb,1,xc[1],xa[1],helper[task-task_start]);
       } else if ( type_schedule[task] == 1 ) {
-	GenerateSingles(adet,bdet,bit_length,norb,0,xc[0],xa[0],helper[task]);
+	GenerateSingles(adet,bdet,bit_length,norb,0,xc[0],xa[0],helper[task-task_start]);
       } else if ( type_schedule[task] == 0 ) {
-	GenerateSingles(adet,bdet,bit_length,norb,1,xc[0],xa[0],helper[task]);
+	GenerateSingles(adet,bdet,bit_length,norb,1,xc[0],xa[0],helper[task-task_start]);
       }
 
       MakeSmartHelper(helper[task-task_start],sharedmemory[task-task_start]);
