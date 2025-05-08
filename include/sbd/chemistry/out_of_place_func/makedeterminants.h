@@ -155,14 +155,13 @@ namespace sbd {
      @param[in] L: total length of bit string
    */
   
-  void LoadAlphaDets(const std::string & filename,
+  void LoadAlphaDets(const std::string & adetfile,
 		     std::vector<std::vector<size_t>> & adet,
 		     size_t bit_length,
 		     size_t total_bit_length) {
 
     std::cout << " Open alpha-string determinant file: " << adetfile << std::endl;
     if( sbd::get_extension(adetfile) == std::string("txt") ) {
-      std::string line;
       std::ifstream inadet(adetfile);
       if( !inadet.is_open() ) {
         throw std::runtime_error("Failed to open alpha det file.");

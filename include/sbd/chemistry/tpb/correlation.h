@@ -14,7 +14,7 @@ namespace sbd {
 		       int ab,
 		       int ic,
 		       int ia,
-		       TaskHelper & helper) {
+		       TaskHelpers & helper) {
     
     size_t braAlphaStart = helper.braAlphaStart;
     size_t braAlphaEnd   = helper.braBetaStart;
@@ -83,7 +83,7 @@ namespace sbd {
 		       int jc,
 		       int ja,
 		       int ia,
-		       TaskHelper & helper) {
+		       TaskHelpers & helper) {
     
     size_t braAlphaStart = helper.braAlphaStart;
     size_t braAlphaEnd   = helper.braBetaStart;
@@ -157,13 +157,13 @@ namespace sbd {
 			      const std::vector<std::vector<size_t>> & bdet,
 			      const size_t bit_length,
 			      const size_t norb,
-			      std::vector<std::vector<TaskHelpers>> & helper,
+			      std::vector<TaskHelpers> & helper,
 			      std::vector<std::vector<size_t>> & sharedmemory,
 			      MPI_Comm b_comm,
 			      size_t adet_comm_size,
 			      size_t bdet_comm_size,
-			      const std::vector<int> xc,
-			      const std::vector<int> xa) {
+			      const std::vector<int> & xc,
+			      const std::vector<int> & xa) {
     
     int mpi_size_b; MPI_Comm_size(b_comm,&mpi_size_b);
     int mpi_rank_b; MPI_Comm_rank(b_comm,&mpi_rank_b);
@@ -289,13 +289,13 @@ namespace sbd {
       int ket_adet_rank = (bra_adet_rank + adet_schedule[task]) % adet_comm_size;
       int ket_bdet_rank = (bra_bdet_rank + bdet_schedule[task]) % bdet_comm_size;
       helper[task-task_start].braAlphaStart = 0;
-      helper[task-task_start].braAlphaEnd   = adets.size();
+      helper[task-task_start].braAlphaEnd   = adet.size();
       helper[task-task_start].braBetaStart  = 0;
-      helper[task-task_start].braBetaEnd    = bdets.size();
+      helper[task-task_start].braBetaEnd    = bdet.size();
       helper[task-task_start].ketAlphaStart = 0;
-      helper[task-task_start].ketAlphaEnd   = adets.size();
+      helper[task-task_start].ketAlphaEnd   = adet.size();
       helper[task-task_start].ketBetaStart  = 0;
-      helper[task-task_start].ketBetaEnd    = bdets.size();
+      helper[task-task_start].ketBetaEnd    = bdet.size();
       get_mpi_range(adet_comm_size,bra_adet_rank,
 		    helper[task-task_start].braAlphaStart,
 		    helper[task-task_start].braAlphaEnd);
@@ -347,9 +347,11 @@ namespace sbd {
 		   const size_t norb,
 		   const size_t adet_comm_size,
 		   const size_t bdet_comm_size,
-		   const std::vector<int> xc,
-		   const std::vector<int> xa,
+		   const std::vector<int> & xc,
+		   const std::vector<int> & xa,
 		   MPI_Comm b_comm) {
+
+    using RealT = typename sbd::GetRealType<ElemT>::RealT;
 
     size_t num_corr;
 
@@ -368,13 +370,13 @@ namespace sbd {
     int mpi_rank_b; MPI_Comm_rank(b_comm,&mpi_rank_b);
     int mpi_size_b; MPI_Comm_size(b_comm,&mpi_size_b);
     
-    std::vector<std::vector<TaskHelpers>> helper;
+    std::vector<TaskHelpers> helper;
     std::vector<std::vector<size_t>> sharedmemory;
     
     MakeCorrelationHelpers(adet,bdet,bit_length,norb,
 			   helper,sharedmemory,
 			   b_comm,adet_comm_size,bdet_comm_size,
-			   xc,yc,ya,xa);
+			   xc,xa);
 
     size_t braAlphaSize = 0;
     size_t braBetaSize  = 0;
@@ -408,14 +410,14 @@ namespace sbd {
 
 #pragma omp parallel
     {
-      num_threads = omp_get_num_threads();
+      max_threads = omp_get_num_threads();
       size_t thread_id = omp_get_thread_num();
     }
 
     double time_slid = 0.0;
     size_t chunk_size = 0;
     if( helper.size() != 0 ) {
-      chunk_size = (helper[0].braAlphaEnd - helper[0].braAlphaStart ) / num_threads;
+      chunk_size = (helper[0].braAlphaEnd - helper[0].braAlphaStart ) / max_threads;
     }
 
     for(size_t task = 0; task < helper.size(); task++) {
@@ -428,11 +430,11 @@ namespace sbd {
 	size_t thread_id = omp_get_thread_num();
 	size_t ia_start = (thread_id+0) * chunk_size + helper[task].braAlphaStart;
 	size_t ia_end   = (thread_id+1) * chunk_size + helper[task].braAlphaStart;
-	if( thread_id == num_threads - 1 ) {
+	if( thread_id == max_threads - 1 ) {
 	  ia_end = helper[task].braAlphaEnd;
 	}
 
-	auto DetI = DetFromAlphaBeta(adet[0],bdet[0],bit_length,norbs);
+	auto DetI = DetFromAlphaBeta(adet[0],bdet[0],bit_length,norb);
 	auto DetJ = DetI;
 	RealT sgn;
 

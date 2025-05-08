@@ -6,6 +6,7 @@
 #include "sbd/chemistry/tpb/mult.h"
 #include "sbd/chemistry/tpb/davidson.h"
 #include "sbd/chemistry/tpb/occupation.h"
+#include "sbd/chemistry/tpb/correlation.h"
 #include "sbd/chemistry/tpb/rdmat.h"
 #include "sbd/chemistry/tpb/restart.h"
 
