@@ -22,4 +22,4 @@ This is a library for diagonalizing systems composed of selected basis. The libr
 
 ## Licence
 
-[Apach License 2.0](https://github.com/t-sirakawa/sbd/main/LICENSE.txt)
+[Apach License 2.0](https://github.com/t-sirakawa/sbd/blob/main/LICENSE.txt)
