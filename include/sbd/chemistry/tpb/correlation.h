@@ -1,9 +1,9 @@
 /**
-@file sbd/chemistry/ptmb/correlation.h
+@file sbd/chemistry/tpb/correlation.h
 @brief function to evaluate correlation functions ( < cdag cdag c c > and < cdag c > ) in general
 */
-#ifndef SBD_CHEMISTRY_PTMB_CORRELATION_H
-#define SBD_CHEMISTRY_PTMB_CORRELATION_H
+#ifndef SBD_CHEMISTRY_TPB_CORRELATION_H
+#define SBD_CHEMISTRY_TPB_CORRELATION_H
 
 namespace sbd {
   

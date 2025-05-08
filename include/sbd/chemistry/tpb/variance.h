@@ -1,9 +1,9 @@
 /**
-@file sbd/chemistry/ptmb/variance.h
+@file sbd/chemistry/tpb/variance.h
 @brief Function to evaluate the variance <H^2>-<H>^2
 */
-#ifndef SBD_CHEMISTRY_PTMB_VARIANCE_H
-#define SBD_CHEMISTRY_PTMB_VARIANCE_H
+#ifndef SBD_CHEMISTRY_TPB_VARIANCE_H
+#define SBD_CHEMISTRY_TPB_VARIANCE_H
 
 namespace sbd {
 

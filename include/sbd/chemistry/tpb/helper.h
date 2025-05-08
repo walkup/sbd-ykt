@@ -1,9 +1,9 @@
 /**
-@file sbd/chemistry/ptmb/helpers.h
+@file sbd/chemistry/tpb/helpers.h
 @brief Helper array to construct Hamiltonian for parallel taskers for distributed basis
  */
-#ifndef SBD_CHEMISTRY_PTMB_HELPER_H
-#define SBD_CHEMISTRY_PTMB_HELPER_H
+#ifndef SBD_CHEMISTRY_TPB_HELPER_H
+#define SBD_CHEMISTRY_TPB_HELPER_H
 
 #include <algorithm>
 

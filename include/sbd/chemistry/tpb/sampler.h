@@ -1,9 +1,9 @@
 /**
-@file sbd/chemistry/ptmb/sampler.h
+@file sbd/chemistry/tpb/sampler.h
 @brief Alias sampling for stochastic variance evaluation
  */
-#ifndef SBD_CHEMISTRY_PTMB_SAMPLER_H
-#define SBD_CHEMISTRY_PTMB_SAMPLER_H
+#ifndef SBD_CHEMISTRY_TPB_SAMPLER_H
+#define SBD_CHEMISTRY_TPB_SAMPLER_H
 
 #include <random>
 #include <utility>

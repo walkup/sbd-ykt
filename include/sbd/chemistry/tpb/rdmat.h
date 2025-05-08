@@ -1,9 +1,9 @@
 /**
-@file sbd/chemistry/ptmb/rdmat.h
+@file sbd/chemistry/tpb/rdmat.h
 @brief function to evaluate the diagonal term of the reduced density matrix (in statistical physics/quantum information)
  */
-#ifndef SBD_CHEMISTRY_PTMB_RDMAT_H
-#define SBD_CHEMISTRY_PTMB_RDMAT_H
+#ifndef SBD_CHEMISTRY_TPB_RDMAT_H
+#define SBD_CHEMISTRY_TPB_RDMAT_H
 
 namespace sbd {
 

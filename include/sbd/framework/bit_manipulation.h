@@ -954,8 +954,7 @@ Function for finding the state index of target bit string
       }
   }
 
-  inline std::string get_extension(const std::string &path)
-  {
+  inline std::string get_extension(const std::string &path) {
     std::string ext;
     size_t pos1 = path.rfind('.');
     if(pos1 != std::string::npos){

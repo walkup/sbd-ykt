@@ -1,9 +1,9 @@
 /**
-@file sbd/chemistry/ptmb/occupation.h
+@file sbd/chemistry/tpb/occupation.h
 @brief function to evaluate occupation density (one-particle reduced density matrix in quantum chemistry)
  */
-#ifndef SBD_CHEMISTRY_PTMB_OCCUPATION_H
-#define SBD_CHEMISTRY_PTMB_OCCUPATION_H
+#ifndef SBD_CHEMISTRY_TPB_OCCUPATION_H
+#define SBD_CHEMISTRY_TPB_OCCUPATION_H
 
 namespace sbd {
     

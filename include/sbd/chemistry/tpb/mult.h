@@ -1,9 +1,9 @@
 /**
-@file sbd/chemistry/ptmb/mult.h
+@file sbd/chemistry/tpb/mult.h
 @brief Function to perform Hamiltonian operation for twist-basis parallelization scheme
 */
-#ifndef SBD_CHEMISTRY_PTMB_MULT_H
-#define SBD_CHEMISTRY_PTMB_MULT_H
+#ifndef SBD_CHEMISTRY_TPB_MULT_H
+#define SBD_CHEMISTRY_TPB_MULT_H
 
 #include <chrono>
 

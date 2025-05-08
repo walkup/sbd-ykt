@@ -1,9 +1,9 @@
 /**
-@file sbd/chemistry/ptmb/qcham.h
+@file sbd/chemistry/tpb/qcham.h
 @brief Function to make Hamiltonian for parallel taskers for distributed basis
 */
-#ifndef SBD_CHEMISTRY_PTMB_QCHAM_H
-#define SBD_CHEMISTRY_PTMB_QCHAM_H
+#ifndef SBD_CHEMISTRY_TPB_QCHAM_H
+#define SBD_CHEMISTRY_TPB_QCHAM_H
 
 namespace sbd {
 

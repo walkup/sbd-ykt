@@ -1,9 +1,9 @@
 /**
-@file sbd/chemistry/ptmb/restart.h
+@file sbd/chemistry/tpb/restart.h
 @brief restart from itersectional bitstring
  */
-#ifndef SBD_CHEMISTRY_PTMB_RESTART_H
-#define SBD_CHEMISTRY_PTMB_RESTART_H
+#ifndef SBD_CHEMISTRY_TPB_RESTART_H
+#define SBD_CHEMISTRY_TPB_RESTART_H
 
 #include <iomanip>
 #include <sstream>

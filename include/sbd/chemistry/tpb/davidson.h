@@ -1,9 +1,9 @@
 /**
-@file sbd/chemistry/ptmb/davidson.h
+@file sbd/chemistry/tpb/davidson.h
 @brief davidson for parallel task management for distributed basis
 */
-#ifndef SBD_CHEMISTRY_PTMB_DAVIDSON_H
-#define SBD_CHEMISTRY_PTMB_DAVIDSON_H
+#ifndef SBD_CHEMISTRY_TPB_DAVIDSON_H
+#define SBD_CHEMISTRY_TPB_DAVIDSON_H
 
 #include "sbd/framework/jacobi.h"
 

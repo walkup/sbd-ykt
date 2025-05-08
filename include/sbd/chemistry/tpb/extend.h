@@ -1,9 +1,9 @@
 /**
-@file sbd/chemistry/ptmb/extend.h
+@file sbd/chemistry/tpb/extend.h
 @brief Function to find the extended space by Hamiltonian
 */
-#ifndef SBD_CHEMISTRY_PTMB_EXTEND_H
-#define SBD_CHEMISTRY_PTMB_EXTEND_H
+#ifndef SBD_CHEMISTRY_TPB_EXTEND_H
+#define SBD_CHEMISTRY_TPB_EXTEND_H
 
 namespace sbd {
 
