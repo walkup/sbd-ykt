@@ -569,7 +569,8 @@ namespace sbd {
 
       } // end pragma omp
 
-      if( helper[task].taskType == 0 && task != helper.size() - 1 ) {
+      if( ( helper[task].taskType == 0 && task != helper.size() - 1 ) ||
+	  ( helper[task].taskType == 2 && task != helper.size() - 1 ) ) {
 	int adetslide = helper[task].adetShift-helper[task+1].adetShift;
 	int bdetslide = helper[task].bdetShift-helper[task+1].bdetShift;
 	R.resize(T.size());
@@ -586,6 +587,8 @@ namespace sbd {
     for(size_t k=0; k < num_corr; k++) {
       InnerProduct(Wb[k],Wk,res[k],b_comm);
     }
+
+    FreeHelpers(helper);
     
   }
 
