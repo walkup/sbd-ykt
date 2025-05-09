@@ -33,7 +33,7 @@ namespace sbd {
     std::vector<size_t> tdet(array_size);
 
     if( ab == 0 ) {
-      
+
       helper.SinglesFromAlpha.resize(braAlphaSize);
       for(size_t ib=braAlphaStart; ib < braAlphaEnd; ib++) {
 	helper.SinglesFromAlpha.reserve(ketAlphaSize);
@@ -50,7 +50,7 @@ namespace sbd {
 	  }
 	}
       }
-
+      
     } else {
       
       helper.SinglesFromBeta.resize(braBetaSize);
@@ -72,7 +72,6 @@ namespace sbd {
       
     }
   } // end void GenerateSingles;
-
 
   void GenerateDoubles(const std::vector<std::vector<size_t>> & adet,
 		       const std::vector<std::vector<size_t>> & bdet,
@@ -150,6 +149,44 @@ namespace sbd {
     }
   } // end void GenerateDoubles;
 
+  void GenerateEmptySingles(const std::vector<std::vector<size_t>> & adet,
+			    const std::vector<std::vector<size_t>> & bdet,
+			    const size_t bit_length,
+			    const size_t norb,
+			    int ab,
+			    int ic,
+			    int ia,
+			    TaskHelpers & helper) {
+
+    size_t braAlphaSize = helper.braAlphaEnd - helper.braAlphaStart;
+    size_t braBetaSize  = helper.braBetaEnd  - helper.braBetaStart;
+    if( ab == 0 ) {
+      helper.SinglesFromAlpha.resize(braAlphaSize,std::vector<size_t>(0));
+    } else {
+      helper.SinglesFromBeta.resize(braBetaSize,std::vector<size_t>(0));
+    }
+  }
+
+  void GenerateEmptyDoubles(const std::vector<std::vector<size_t>> & adet,
+			    const std::vector<std::vector<size_t>> & bdet,
+			    const size_t bit_length,
+			    const size_t norb,
+			    int ab,
+			    int ic,
+			    int jc,
+			    int ja,
+			    int ia,
+			    TaskHelpers & helper) {
+
+    size_t braAlphaSize = helper.braAlphaEnd - helper.braAlphaStart;
+    size_t braBetaSize  = helper.braBetaEnd  - helper.braBetaStart;
+    if( ab == 0 ) {
+      helper.DoublesFromAlpha.resize(braAlphaSize,std::vector<size_t>(0));
+    } else {
+      helper.DoublesFromBeta.resize(braBetaSize,std::vector<size_t>(0));
+    }
+  }
+
   /**
      Function to set-up the helpers for two-particle correlation function
    */
@@ -177,14 +214,23 @@ namespace sbd {
 	total_task = 2 * adet_comm_size * bdet_comm_size;
 	index_type = 1;
       }
+    } else if ( xc.size() == 1 ) {
+      total_task = adet_comm_size + bdet_comm_size;
     }
     
     std::vector<size_t> adet_schedule(total_task);
     std::vector<size_t> bdet_schedule(total_task);
     std::vector<size_t> type_schedule(total_task);
 
+#ifdef SBD_DEBUG_CORRELATION
+    std::cout << " MakeCorrelationHelpers: start construction of scheduling array "
+	      << total_task << std::endl;
+#endif
+
     size_t task_count = 0;
+    
     if( xc.size() == 2 ) {
+      
       for(int na=0; na < adet_comm_size; na++) {
 	for(int nb=0; nb < bdet_comm_size; nb++) {
 	  if( na == 0 ) {
@@ -286,6 +332,11 @@ namespace sbd {
       
     }
 
+#ifdef SBD_DEBUG_CORRELATION
+    std::cout << " MakeCorrelationHelpers: start construction of helper array, size = "
+	      << task_count << std::endl;
+#endif
+
     size_t task_start = 0;
     size_t task_end = type_schedule.size();
     size_t task_size = task_end - task_start;
@@ -323,19 +374,35 @@ namespace sbd {
       helper[task-task_start].adetShift = adet_schedule[task];
       helper[task-task_start].bdetShift = bdet_schedule[task];
       if( type_schedule[task] == 5 ) {
+	GenerateEmptySingles(adet,bdet,bit_length,norb,0,xc[0],xa[0],helper[task-task_start]);
+	GenerateEmptySingles(adet,bdet,bit_length,norb,1,xc[0],xa[0],helper[task-task_start]);
 	GenerateDoubles(adet,bdet,bit_length,norb,0,xc[0],xc[1],xa[1],xa[0],helper[task-task_start]);
+	GenerateEmptyDoubles(adet,bdet,bit_length,norb,1,xc[0],xc[1],xa[1],xa[0],helper[task-task_start]);	
       } else if ( type_schedule[task] == 4 ) {
+	GenerateEmptySingles(adet,bdet,bit_length,norb,0,xc[0],xa[0],helper[task-task_start]);
+	GenerateEmptySingles(adet,bdet,bit_length,norb,1,xc[0],xa[0],helper[task-task_start]);
+	GenerateEmptyDoubles(adet,bdet,bit_length,norb,0,xc[0],xc[1],xa[1],xa[0],helper[task-task_start]);	
 	GenerateDoubles(adet,bdet,bit_length,norb,1,xc[0],xc[1],xa[1],xa[0],helper[task-task_start]);
       } else if ( type_schedule[task] == 3 ) {
 	GenerateSingles(adet,bdet,bit_length,norb,0,xc[1],xa[1],helper[task-task_start]);
 	GenerateSingles(adet,bdet,bit_length,norb,1,xc[0],xa[0],helper[task-task_start]);
+	GenerateEmptyDoubles(adet,bdet,bit_length,norb,0,xc[0],xc[1],xa[1],xa[0],helper[task-task_start]);
+	GenerateEmptyDoubles(adet,bdet,bit_length,norb,1,xc[0],xc[1],xa[1],xa[0],helper[task-task_start]);
       } else if ( type_schedule[task] == 2 ) {
 	GenerateSingles(adet,bdet,bit_length,norb,0,xc[0],xa[0],helper[task-task_start]);
 	GenerateSingles(adet,bdet,bit_length,norb,1,xc[1],xa[1],helper[task-task_start]);
+	GenerateEmptyDoubles(adet,bdet,bit_length,norb,0,xc[0],xc[1],xa[1],xa[0],helper[task-task_start]);
+	GenerateEmptyDoubles(adet,bdet,bit_length,norb,1,xc[0],xc[1],xa[1],xa[0],helper[task-task_start]);
       } else if ( type_schedule[task] == 1 ) {
 	GenerateSingles(adet,bdet,bit_length,norb,0,xc[0],xa[0],helper[task-task_start]);
+	GenerateEmptySingles(adet,bdet,bit_length,norb,1,xc[0],xa[0],helper[task-task_start]);
+	GenerateEmptyDoubles(adet,bdet,bit_length,norb,0,xc[0],xc[0],xa[0],xa[0],helper[task-task_start]);
+	GenerateEmptyDoubles(adet,bdet,bit_length,norb,1,xc[0],xc[0],xa[0],xa[0],helper[task-task_start]);
       } else if ( type_schedule[task] == 0 ) {
+	GenerateEmptySingles(adet,bdet,bit_length,norb,0,xc[0],xa[0],helper[task-task_start]);
 	GenerateSingles(adet,bdet,bit_length,norb,1,xc[0],xa[0],helper[task-task_start]);
+	GenerateEmptyDoubles(adet,bdet,bit_length,norb,0,xc[0],xc[0],xa[0],xa[0],helper[task-task_start]);
+	GenerateEmptyDoubles(adet,bdet,bit_length,norb,1,xc[0],xc[0],xa[0],xa[0],helper[task-task_start]);
       }
 
       MakeSmartHelper(helper[task-task_start],sharedmemory[task-task_start]);
@@ -383,11 +450,20 @@ namespace sbd {
     
     std::vector<TaskHelpers> helper;
     std::vector<std::vector<size_t>> sharedmemory;
-    
+
+#ifdef SBD_DEBUG_CORRELATION
+    std::cout << " Correlation: start MakeCorrelationHelpers " << std::endl;
+    auto time_helper_start = std::chrono::high_resolution_clock::now();
+#endif
     MakeCorrelationHelpers(adet,bdet,bit_length,norb,
 			   helper,sharedmemory,
 			   b_comm,adet_comm_size,bdet_comm_size,
 			   xc,xa);
+#ifdef SBD_DEBUG_CORRELATION
+    auto time_helper_end  = std::chrono::high_resolution_clock::now();
+    auto time_helper_count = std::chrono::duration_cast<std::chrono::microseconds>(time_helper_end-time_helper_start).count();
+    std::cout << " Correlation: elapsed time for construct the helpers = " << 1.0e-6 * time_helper_count << std::endl;
+#endif
 
     size_t braAlphaSize = 0;
     size_t braBetaSize  = 0;
@@ -541,7 +617,7 @@ namespace sbd {
 		size_t ja = helper[task].SinglesFromAlphaSM[ia-helper[task].braAlphaStart][j1];
 		size_t ketIdx = (ja-helper[task].ketAlphaStart)*ketBetaSize
 		                +ib-helper[task].ketBetaStart;
-		parity(DetI,bit_length,2*xc[0]+1,2*xa[0]+1,sgn);
+		parity(DetI,bit_length,2*xc[0],2*xa[0],sgn);
 		Wb[1][braIdx] += ElemT(sgn) * T[ketIdx];
 	      }
 	    }
