@@ -6,7 +6,7 @@
 #define SBD_CHEMISTRY_TPB_CORRELATION_H
 
 namespace sbd {
-  
+
   void GenerateSingles(const std::vector<std::vector<size_t>> & adet,
 		       const std::vector<std::vector<size_t>> & bdet,
 		       const size_t bit_length,
@@ -17,7 +17,7 @@ namespace sbd {
 		       TaskHelpers & helper) {
     
     size_t braAlphaStart = helper.braAlphaStart;
-    size_t braAlphaEnd   = helper.braBetaStart;
+    size_t braAlphaEnd   = helper.braAlphaEnd;
     size_t ketAlphaStart = helper.ketAlphaStart;
     size_t ketAlphaEnd   = helper.ketAlphaEnd;
     size_t braBetaStart  = helper.braBetaStart;
@@ -34,38 +34,62 @@ namespace sbd {
 
     if( ab == 0 ) {
 
-      helper.SinglesFromAlpha.resize(braAlphaSize);
+      helper.SinglesFromAlpha.resize(braAlphaSize,std::vector<size_t>(0));
       for(size_t ib=braAlphaStart; ib < braAlphaEnd; ib++) {
-	helper.SinglesFromAlpha.reserve(ketAlphaSize);
-	if ( getocc(adet[ib],bit_length,ic) && !getocc(adet[ib],bit_length,ia) ) {
-	  tdet = adet[ib];
-	  setocc(tdet,bit_length,ic,false);
-	  setocc(tdet,bit_length,ia,true);
-	  auto itk = std::find(adet.begin()+ketAlphaStart,
-			       adet.begin()+ketAlphaEnd,
-			       tdet);
-	  if( itk != adet.begin()+ketAlphaEnd ) {
-	    auto ik = std::distance(adet.begin(),itk);
-	    helper.SinglesFromAlpha[ib-braAlphaStart].push_back(static_cast<size_t>(ik));
+	helper.SinglesFromAlpha[ib-braAlphaStart].reserve(ketAlphaSize);
+	if ( getocc(adet[ib],bit_length,ic) ) {
+	  if ( !getocc(adet[ib],bit_length,ia) ) {
+	    tdet = adet[ib];
+	    setocc(tdet,bit_length,ic,false);
+	    setocc(tdet,bit_length,ia,true);
+	    auto itk = std::find(adet.begin()+ketAlphaStart,
+				 adet.begin()+ketAlphaEnd,
+				 tdet);
+	    if( itk != adet.begin()+ketAlphaEnd ) {
+	      auto ik = std::distance(adet.begin(),itk);
+	      helper.SinglesFromAlpha[ib-braAlphaStart].push_back(static_cast<size_t>(ik));
+	    }
+	  } else if ( ia == ic ) {
+	    tdet = adet[ib];
+	    auto itk = std::find(adet.begin()+ketAlphaStart,
+				 adet.begin()+ketAlphaEnd,
+				 tdet);
+	    if( itk != adet.begin()+ketAlphaEnd ) {
+	      auto ik = std::distance(adet.begin(),itk);
+	      helper.SinglesFromAlpha[ib-braAlphaStart].push_back(static_cast<size_t>(ik));
+	    }
 	  }
 	}
       }
       
     } else {
       
-      helper.SinglesFromBeta.resize(braBetaSize);
+      helper.SinglesFromBeta.resize(braBetaSize,std::vector<size_t>(0));
       for(size_t ib=braBetaStart; ib < braBetaEnd; ib++) {
-	helper.SinglesFromBeta.reserve(ketBetaSize);
-	if ( getocc(bdet[ib],bit_length,ic) && !getocc(bdet[ib],bit_length,ia) ) {
-	  tdet = bdet[ib];
-	  setocc(tdet,bit_length,ic,false);
-	  setocc(tdet,bit_length,ia,true);
-	  auto itk = std::find(bdet.begin()+ketBetaStart,
-			       bdet.begin()+ketBetaEnd,
-			       tdet);
-	  if( itk != bdet.begin()+ketBetaEnd ) {
-	    auto ik = std::distance(bdet.begin(),itk);
-	    helper.SinglesFromBeta[ib-braBetaStart].push_back(static_cast<size_t>(ik));
+	helper.SinglesFromBeta[ib-braBetaStart].reserve(ketBetaSize);
+	if ( getocc(bdet[ib],bit_length,ic) ) {
+	  if ( !getocc(bdet[ib],bit_length,ia) ) {
+	    tdet = bdet[ib];
+	    setocc(tdet,bit_length,ic,false);
+	    setocc(tdet,bit_length,ia,true);
+	    auto itk = std::find(bdet.begin()+ketBetaStart,
+				 bdet.begin()+ketBetaEnd,
+				 tdet);
+	    if( itk != bdet.begin()+ketBetaEnd ) {
+	      auto ik = std::distance(bdet.begin(),itk);
+	      helper.SinglesFromBeta[ib-braBetaStart].push_back(static_cast<size_t>(ik));
+	    }
+	  } else if ( ic == ia ) {
+	    tdet = bdet[ib];
+	    setocc(tdet,bit_length,ic,false);
+	    setocc(tdet,bit_length,ia,true);
+	    auto itk = std::find(bdet.begin()+ketBetaStart,
+				 bdet.begin()+ketBetaEnd,
+				 tdet);
+	    if( itk != bdet.begin()+ketBetaEnd ) {
+	      auto ik = std::distance(bdet.begin(),itk);
+	      helper.SinglesFromBeta[ib-braBetaStart].push_back(static_cast<size_t>(ik));
+	    }
 	  }
 	}
       }
@@ -85,7 +109,7 @@ namespace sbd {
 		       TaskHelpers & helper) {
     
     size_t braAlphaStart = helper.braAlphaStart;
-    size_t braAlphaEnd   = helper.braBetaStart;
+    size_t braAlphaEnd   = helper.braAlphaEnd;
     size_t ketAlphaStart = helper.ketAlphaStart;
     size_t ketAlphaEnd   = helper.ketAlphaEnd;
     size_t braBetaStart  = helper.braBetaStart;
@@ -101,10 +125,10 @@ namespace sbd {
     std::vector<size_t> tdet(array_size);
 
     if( ab == 0 ) {
-      helper.DoublesFromAlpha.resize(braAlphaSize);
       
+      helper.DoublesFromAlpha.resize(braAlphaSize,std::vector<size_t>(0));
       for(size_t ib=braAlphaStart; ib < braAlphaEnd; ib++) {
-	helper.DoublesFromAlpha.reserve(ketAlphaSize);
+	helper.DoublesFromAlpha[ib-braAlphaStart].reserve(ketAlphaSize);
 	if ( getocc(adet[ib],bit_length,ic) && getocc(adet[ib],bit_length,jc) ) {
 	  if( !getocc(adet[ib],bit_length,ia) && !getocc(adet[ib],bit_length,ja) ) {
 	    tdet = adet[ib];
@@ -125,9 +149,9 @@ namespace sbd {
       
     } else {
 
-      helper.DoublesFromBeta.resize(braBetaSize);
+      helper.DoublesFromBeta.resize(braBetaSize,std::vector<size_t>(0));
       for(size_t ib=braBetaStart; ib < braBetaEnd; ib++) {
-	helper.DoublesFromBeta.reserve(ketBetaSize);
+	helper.DoublesFromBeta[ib-braBetaStart].reserve(ketBetaSize);
 	if ( getocc(bdet[ib],bit_length,ic) && getocc(bdet[ib],bit_length,jc) ) {
 	  if ( !getocc(bdet[ib],bit_length,ia) && !getocc(bdet[ib],bit_length,ja) ) {
 	    tdet = bdet[ib];
@@ -427,7 +451,8 @@ namespace sbd {
 		   const size_t bdet_comm_size,
 		   const std::vector<int> & xc,
 		   const std::vector<int> & xa,
-		   MPI_Comm b_comm) {
+		   MPI_Comm b_comm,
+		   int global_label=0) {
 
     using RealT = typename sbd::GetRealType<ElemT>::RealT;
 
@@ -452,7 +477,8 @@ namespace sbd {
     std::vector<std::vector<size_t>> sharedmemory;
 
 #ifdef SBD_DEBUG_CORRELATION
-    std::cout << " Correlation: start MakeCorrelationHelpers " << std::endl;
+    std::cout << " Correlation at (" << mpi_rank_b << "," << global_label
+	      << "): start MakeCorrelationHelpers " << std::endl;
     auto time_helper_start = std::chrono::high_resolution_clock::now();
 #endif
     MakeCorrelationHelpers(adet,bdet,bit_length,norb,
@@ -462,7 +488,41 @@ namespace sbd {
 #ifdef SBD_DEBUG_CORRELATION
     auto time_helper_end  = std::chrono::high_resolution_clock::now();
     auto time_helper_count = std::chrono::duration_cast<std::chrono::microseconds>(time_helper_end-time_helper_start).count();
-    std::cout << " Correlation: elapsed time for construct the helpers = " << 1.0e-6 * time_helper_count << std::endl;
+    std::cout << " Correlation at (" << mpi_rank_b << "," << global_label
+	      << "): elapsed time for construct the helpers = "
+	      << 1.0e-6 * time_helper_count << std::endl;
+    for(int rank_b=0; rank_b < mpi_size_b; rank_b++) {
+      if( rank_b == mpi_rank_b ) {
+	for(int task=0; task < helper.size(); task++) {
+	  std::cout << " Correlation at (" << mpi_rank_b << "," << global_label
+		    << "): helper[" << task << "] is a task type " << helper[task].taskType;
+	  if( helper[task].taskType == 0 ) {
+	    size_t num_ops = 0;
+	    for(size_t ib=0; ib < helper[task].SinglesFromBetaSM.size(); ib++) {
+	      num_ops += helper[task].SinglesFromBetaLen[ib];
+	      for(size_t j=0; j < helper[task].SinglesFromBetaLen[ib]; j++) {
+		std::cout << " (" << ib+helper[task].braBetaStart << ","
+			  << helper[task].SinglesFromBetaSM[ib][j] << ")";
+	      }
+	    }
+	    std::cout << " Number of operations = " << num_ops << std::endl;
+	  } else if ( helper[task].taskType == 1 ) {
+	    size_t num_ops = 0;
+	    for(size_t ia=0; ia < helper[task].SinglesFromAlphaSM.size(); ia++) {
+	      num_ops += helper[task].SinglesFromAlphaLen[ia];
+	      for(size_t j=0; j < helper[task].SinglesFromAlphaLen[ia]; j++) {
+		std::cout << " (" << ia+helper[task].braAlphaStart
+			  << "," << helper[task].SinglesFromAlphaSM[ia][j] << ")";
+	      }
+	    }
+	    std::cout << " Number of operations = " << num_ops << std::endl;
+	  }
+	}
+	MPI_Barrier(b_comm);
+      }
+      sleep(1);
+    }
+    sleep(1);
 #endif
 
     size_t braAlphaSize = 0;
@@ -506,6 +566,14 @@ namespace sbd {
     if( helper.size() != 0 ) {
       chunk_size = (helper[0].braAlphaEnd - helper[0].braAlphaStart ) / max_threads;
     }
+
+#ifdef SBD_DEBUG_CORRELATION
+    std::cout << " Correlation at (" << mpi_rank_b << "," << global_label
+	      << "): start calculation of operator application, size = "
+	      << helper.size() << std::endl;
+#endif
+
+    
 
     for(size_t task = 0; task < helper.size(); task++) {
 
@@ -588,15 +656,15 @@ namespace sbd {
 
 	  for(size_t ia = ia_start; ia < ia_end; ia++) {
 	    for(size_t ib = helper[task].braBetaStart; ib < helper[task].braBetaEnd; ib++) {
-	      size_t braIdx = (ia - helper[task].braAlphaStart)*braBetaSize
-		             + ib - helper[task].braBetaStart;
+	      size_t braIdx = ( ia - helper[task].braAlphaStart )*braBetaSize
+		              + ib - helper[task].braBetaStart;
 	      DetFromAlphaBeta(adet[ia],bdet[ib],bit_length,norb,DetI);
 	      for(size_t j1=0; j1 < helper[task].SinglesFromAlphaLen[ia-helper[task].braAlphaStart]; j1++) {
 		size_t ja = helper[task].SinglesFromAlphaSM[ia-helper[task].braAlphaStart][j1];
 		for(size_t j2=0; j2 < helper[task].SinglesFromBetaLen[ib-helper[task].braBetaStart]; j2++) {
 		  size_t jb = helper[task].SinglesFromBetaSM[ib-helper[task].braBetaStart][j2];
-		  size_t ketIdx = (ja-helper[task].ketAlphaStart)*ketBetaSize
-		                  +jb-helper[task].ketBetaStart;
+		  size_t ketIdx = ( ja - helper[task].ketAlphaStart )*ketBetaSize
+		                  + jb - helper[task].ketBetaStart;
 		  parity(DetI,bit_length,2*xc[0],2*xc[1]+1,2*xa[0],2*xa[1]+1,sgn);
 		  Wb[0][braIdx] += ElemT(sgn) * T[ketIdx];
 		}
@@ -634,7 +702,7 @@ namespace sbd {
 	      for(size_t j2=0; j2 < helper[task].SinglesFromBetaLen[ib-helper[task].braBetaStart]; j2++) {
 		size_t jb = helper[task].SinglesFromBetaSM[ib-helper[task].braBetaStart][j2];
 		size_t ketIdx = (ia-helper[task].ketAlphaStart)*ketBetaSize
-		  +jb-helper[task].ketBetaStart;
+		                +jb-helper[task].ketBetaStart;
 		parity(DetI,bit_length,2*xc[0]+1,2*xa[0]+1,sgn);
 		Wb[0][braIdx] += ElemT(sgn) * T[ketIdx];
 	      }
@@ -645,6 +713,12 @@ namespace sbd {
 
       } // end pragma omp
 
+#ifdef SBD_DEBUG_CORRELATION
+      std::cout << " Correlation at (" << mpi_rank_b << " " << global_label
+		<< "): finish operation for task " << task << std::endl;
+      sleep(1);
+#endif
+      
       if( ( helper[task].taskType == 0 && task != helper.size() - 1 ) ||
 	  ( helper[task].taskType == 2 && task != helper.size() - 1 ) ) {
 	int adetslide = helper[task].adetShift-helper[task+1].adetShift;
@@ -656,6 +730,10 @@ namespace sbd {
 	auto time_slid_end = std::chrono::high_resolution_clock::now();
 	auto time_slid_count = std::chrono::duration_cast<std::chrono::microseconds>(time_slid_end-time_slid_start).count();
 	time_slid += 1.0e-6 * time_slid_count;
+#ifdef SBD_DEBUG_CORRELATION
+	std::cout << " Correlation at (" << mpi_rank_b << " " << global_label
+		  << "): MPI_Slide is performed " << std::endl;
+#endif
       }
       
     } // end for(size_t task=0; task < helper.size(); task++)
