@@ -7,6 +7,7 @@
 
 namespace sbd {
 
+
   void GenerateSingles(const std::vector<std::vector<size_t>> & adet,
 		       const std::vector<std::vector<size_t>> & bdet,
 		       const size_t bit_length,
