@@ -751,6 +751,7 @@ namespace sbd {
   /**
      Function for adding diagonal contribution
    */
+  template <typename ElemT>
   void ZeroDiffCorrelation(const std::vector<size_t> & DetI,
 			   const ElemT WeightI,
 			   const size_t bit_length,
@@ -781,6 +782,7 @@ namespace sbd {
   /**
      Function for adding one-occupation different contribution
    */
+  template <typename ElemT>
   void OneDiffCorrelation(const std::vector<size_t> & DetI,
 			  const ElemT WeightI,
 			  const ElemT WeightJ,
@@ -880,8 +882,8 @@ namespace sbd {
     size_t nc = 0;
     size_t nd = 0;
 
-    size_t full_words = (2*L) / bit_length;
-    size_t remaining_bits = (2*L) % bit_length;
+    size_t full_words = (2*norb) / bit_length;
+    size_t remaining_bits = (2*norb) % bit_length;
 
     for(size_t i=0; i < full_words; ++i) {
       size_t diff_c = DetI[i] & ~DetJ[i];
@@ -897,7 +899,7 @@ namespace sbd {
 	}
       }
     }
-    for( remaining_bits > 0 ) {
+    if ( remaining_bits > 0 ) {
       size_t mask = (static_cast<size_t>(1) << remaining_bits) -1;
       size_t diff_c = (DetI[full_words] & ~DetJ[full_words]) & mask;
       size_t diff_d = (DetJ[full_words] & ~DetI[full_words]) & mask;
@@ -960,9 +962,9 @@ namespace sbd {
     }
 
     size_t adet_min = 0;
-    size_t adet_max = adets.size();
+    size_t adet_max = adet.size();
     size_t bdet_min = 0;
-    size_t bdet_max = bdets.size();
+    size_t bdet_max = bdet.size();
     get_mpi_range(adet_comm_size,0,adet_min,adet_max);
     get_mpi_range(bdet_comm_size,0,bdet_min,bdet_max);
     size_t max_det_size = (adet_max-adet_min)*(bdet_max-bdet_min);
@@ -1050,14 +1052,14 @@ namespace sbd {
 		+ib-helper[task].braBetaStart;
 	      if( (braIdx % mpi_size_h) != mpi_rank_h ) continue;
 	    
-	      DetFromAlphaBeta(adets[ia],bdets[ib],bit_length,norb,DetI);
+	      DetFromAlphaBeta(adet[ia],bdet[ib],bit_length,norb,DetI);
 	    
 	      // single alpha excitation
 	      for(size_t j=0; j < helper[task].SinglesFromAlphaLen[ia-helper[task].braAlphaStart]; j++) {
 		size_t ja = helper[task].SinglesFromAlphaSM[ia-helper[task].braAlphaStart][j];
 		size_t ketIdx = (ja-helper[task].ketAlphaStart)*ketBetaSize
 		                +ib-helper[task].ketBetaStart;
-		DetFromAlphaBeta(adets[ja],bdets[ib],bit_length,norb,DetJ);
+		DetFromAlphaBeta(adet[ja],bdet[ib],bit_length,norb,DetJ);
 		CorrelationTermAddition(DetI,DetJ,W[braIdx],W[ketIdx],
 					bit_length,norb,c,d,
 					onebody,twobody);
@@ -1067,7 +1069,7 @@ namespace sbd {
 		size_t ja = helper[task].DoublesFromAlphaSM[ia-helper[task].braAlphaStart][j];
 		size_t ketIdx = (ja-helper[task].ketAlphaStart)*ketBetaSize
 		               + ib-helper[task].ketBetaStart;
-		DetFromAlphaBeta(adets[ja],bdets[ib],bit_length,norb,DetJ);
+		DetFromAlphaBeta(adet[ja],bdet[ib],bit_length,norb,DetJ);
 		CorrelationTermAddition(DetI,DetJ,W[braIdx],W[ketIdx],
 					bit_length,norb,c,d,
 					onebody,twobody);
@@ -1085,14 +1087,14 @@ namespace sbd {
 		              +ib-helper[task].braBetaStart;
 	      if( (braIdx % mpi_size_h) != mpi_rank_h ) continue;
 	    
-	      DetFromAlphaBeta(adets[ia],bdets[ib],bit_length,norb,DetI);
+	      DetFromAlphaBeta(adet[ia],bdet[ib],bit_length,norb,DetI);
 	    
 	      // single beta excitation
 	      for(size_t j=0; j < helper[task].SinglesFromBetaLen[ib-helper[task].braBetaStart]; j++) {
 		size_t jb = helper[task].SinglesFromBetaSM[ib-helper[task].braBetaStart][j];
 		size_t ketIdx = (ia-helper[task].ketAlphaStart) * ketBetaSize
 		               + jb-helper[task].ketBetaStart;
-		DetFromAlphaBeta(adets[ia],bdets[jb],bit_length,norb,DetJ);
+		DetFromAlphaBeta(adet[ia],bdet[jb],bit_length,norb,DetJ);
 		CorrelationTermAddition(DetI,DetJ,W[braIdx],W[ketIdx],
 					bit_length,norb,c,d,
 					onebody,twobody);
@@ -1102,7 +1104,7 @@ namespace sbd {
 		size_t jb = helper[task].DoublesFromBetaSM[ib-helper[task].braBetaStart][j];
 		size_t ketIdx = (ia-helper[task].ketAlphaStart) * ketBetaSize
 		               + jb-helper[task].ketBetaStart;
-		DetFromAlphaBeta(adets[ia],bdets[jb],bit_length,norb,DetJ);
+		DetFromAlphaBeta(adet[ia],bdet[jb],bit_length,norb,DetJ);
 		CorrelationTermAddition(DetI,DetJ,W[braIdx],W[ketIdx],
 					bit_length,norb,c,d,
 					onebody,twobody);
@@ -1120,7 +1122,7 @@ namespace sbd {
 		              +ib-helper[task].braBetaStart;
 	      if( (braIdx % mpi_size_h) != mpi_rank_h ) continue;
 	    
-	      DetFromAlphaBeta(adets[ia],bdets[ib],bit_length,norb,DetI);
+	      DetFromAlphaBeta(adet[ia],bdet[ib],bit_length,norb,DetI);
 	    
 	      // two-particle excitation composed of single alpha and single beta
 	      for(size_t j=0; j < helper[task].SinglesFromAlphaLen[ia-helper[task].braAlphaStart]; j++) {
@@ -1129,7 +1131,7 @@ namespace sbd {
 		  size_t jb = helper[task].SinglesFromBetaSM[ib-helper[task].braBetaStart][k];
 		  size_t ketIdx = (ja-helper[task].ketAlphaStart)*ketBetaSize
 		                  +jb-helper[task].ketBetaStart;
-		  DetFromAlphaBeta(adets[ja],bdets[jb],bit_length,norb,DetJ);
+		  DetFromAlphaBeta(adet[ja],bdet[jb],bit_length,norb,DetJ);
 		  CorrelationTermAddition(DetI,DetJ,W[braIdx],W[ketIdx],
 					  bit_length,norb,c,d,
 					  onebody,twobody);
