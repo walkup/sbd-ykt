@@ -481,7 +481,7 @@ namespace sbd {
     
     if( mpi_rank_h == 0 && mpi_rank_t == 0 ) {
 
-      if( sbd::get_extension(filename) == std::string("bin") ) {
+      if( get_extension(filename) == std::string("bin") ) {
 	if( mpi_rank_b == 0 ) {
 	  
 	  std::vector<std::vector<ElemT>> Vb(bdet_comm_size,std::vector<ElemT>(W));
@@ -518,8 +518,8 @@ namespace sbd {
 	  std::vector<ElemT> V(W);
 	  MpiSend(V,0,b_comm);
 	}
-      } else if ( sbd::get_extension(filename) == std::string("dat") ||
-		  sbd::get_extension(filename) == std::string("txt") ) {
+      } else if ( get_extension(filename) == std::string("dat") ||
+		  get_extension(filename) == std::string("txt") ) {
 	
 	if( mpi_rank_b == 0 ) {
 

@@ -753,12 +753,11 @@ namespace sbd {
    */
   template <typename ElemT>
   void ZeroDiffCorrelation(const std::vector<size_t> & DetI,
-			   const ElemT WeightI,
-			   const size_t bit_length,
-			   const size_t norb,
+			   ElemT WeightI,
+			   size_t bit_length,
+			   size_t norb,
 			   std::vector<std::vector<ElemT>> & onebody,
 			   std::vector<std::vector<ElemT>> & twobody) {
-    size_t one = 1;
     std::vector<int> closed;
     int num_closed = getClosed(DetI,bit_length,2*norb,closed);
 
@@ -769,11 +768,15 @@ namespace sbd {
       for(int j=i+1; j < num_closed; j++) {
 	int oj = closed.at(j)/2;
 	int sj = closed.at(j)%2;
-	twobody[si+2*sj][oi+norb*oj+norb*norb*oj+norb*norb*norb*oi] += Conjugate(WeightI) * WeightI;
-	twobody[sj+2*si][oj+norb*oi+norb*norb*oi+norb*norb*norb*oj] += Conjugate(WeightI) * WeightI;
+	twobody[si+2*sj][oi+norb*oj+norb*norb*oj+norb*norb*norb*oi]
+	  += Conjugate(WeightI) * WeightI;
+	twobody[sj+2*si][oj+norb*oi+norb*norb*oi+norb*norb*norb*oj]
+	  += Conjugate(WeightI) * WeightI;
 	if( si == sj ) {
-	  twobody[si+2*sj][oi+norb*oj+norb*norb*oi+norb*norb*norb*oj] += -Conjugate(WeightI) * WeightI;
-	  twobody[sj+2*si][oj+norb*oi+norb*norb*oj+norb*norb*norb*oi] += -Conjugate(WeightI) * WeightI;
+	  twobody[si+2*sj][oi+norb*oj+norb*norb*oi+norb*norb*norb*oj]
+	    += -Conjugate(WeightI) * WeightI;
+	  twobody[sj+2*si][oj+norb*oi+norb*norb*oj+norb*norb*norb*oi]
+	    += -Conjugate(WeightI) * WeightI;
 	}
       }
     }
@@ -957,8 +960,8 @@ namespace sbd {
     size_t braAlphaSize = 0;
     size_t braBetaSize  = 0;
     if( helper.size() != 0 ) {
-      braAlphaSize = helper[0].braAlphaEnd-helper[0].braAlphaStart;
-      braBetaSize  = helper[0].braBetaEnd-helper[0].braBetaStart;
+      braAlphaSize = helper[0].braAlphaEnd - helper[0].braAlphaStart;
+      braBetaSize  = helper[0].braBetaEnd  - helper[0].braBetaStart;
     }
 
     size_t adet_min = 0;
@@ -969,9 +972,6 @@ namespace sbd {
     get_mpi_range(bdet_comm_size,0,bdet_min,bdet_max);
     size_t max_det_size = (adet_max-adet_min)*(bdet_max-bdet_min);
 
-    size_t num_threads = 1;
-
-    auto time_copy_start = std::chrono::high_resolution_clock::now();
     std::vector<ElemT> T;
     std::vector<ElemT> R;
     T.reserve(max_det_size);
@@ -980,226 +980,172 @@ namespace sbd {
       Mpi2dSlide(W,T,adet_comm_size,bdet_comm_size,
 		 -helper[0].adetShift,-helper[0].bdetShift,b_comm);
     }
-    auto time_copy_end = std::chrono::high_resolution_clock::now();
 
-    auto time_mult_start = std::chrono::high_resolution_clock::now();
-#pragma omp parallel
-    {
-      num_threads = omp_get_num_threads();
-      size_t thread_id = omp_get_thread_num();
-      size_t array_size = (2*norb + bit_length - 1 ) / bit_length;
+    size_t array_size = (2*norb + bit_length - 1 ) / bit_length;
+
+    if( mpi_rank_t == 0 ) {
       std::vector<size_t> DetT(array_size);
-      
-      if( mpi_rank_t == 0 ) {
-#pragma omp for
-	for(size_t i=0; i < T.size(); i++) {
-	  size_t ia = i / braBetaSize;
-	  size_t ib = i % braBetaSize;
-	  DetFromAlphaBeta(adet[ia],bdet[ib],bit_length,norb,DetT);
-	  ZeroDiffCorrelation(DetT,W[i],bit_length,norb,onebody,twobody);
+      for(size_t ia=helper[0].braAlphaStart; ia < helper[0].braAlphaEnd; ia++) {
+	for(size_t ib=helper[0].braBetaStart; ib < helper[0].braBetaEnd; ib++) {
+	  size_t i = (ia - helper[0].braAlphaStart) * braBetaSize
+	           +  ib - helper[0].braBetaStart;
+	  if( ( i % mpi_size_h ) == mpi_rank_h ) {
+	    DetFromAlphaBeta(adet[ia],bdet[ib],bit_length,norb,DetT);
+	    ZeroDiffCorrelation(DetT,W[i],bit_length,norb,onebody,twobody);
+	  }
 	}
-#ifdef SBD_DEBUG_MULT
-    std::cout << " End multiplication of diagonal term at mpi process (h,b,t) = ("
-	      << mpi_rank_h << "," << mpi_rank_b << "," << mpi_rank_t << ")" << std::endl;
-#endif
       }
     }
 
-    double time_slid = 0.0;
-    size_t chunk_size = 0;
-    if( helper.size() != 0 ) {
-      chunk_size = (helper[0].braAlphaEnd-helper[0].braAlphaStart) / num_threads;
-    }
-    
     for(size_t task=0; task < helper.size(); task++) {
 
-#ifdef SBD_DEBUG_MULT
-      std::cout << " Start multiplication for task " << task << " at (h,b,t) = ("
-		<< mpi_rank_h << "," << mpi_rank_b << "," << mpi_rank_t << "): task type = "
-		<< helper[task].taskType << ", bra-adet range = ["
-		<< helper[task].braAlphaStart << "," << helper[task].braAlphaEnd << "), bra-bdet range = ["
-		<< helper[task].braBetaStart << "," << helper[task].braBetaEnd << "), ket-adet range = ["
-		<< helper[task].ketAlphaStart << "," << helper[task].ketAlphaEnd << "), ket-bdet range = ["
-		<< helper[task].ketBetaStart << "," << helper[task].ketBetaEnd << "), ket wf =";
-      for(size_t i=0; i < std::min(static_cast<size_t>(4),T.size()); i++) {
-	std::cout << " " << T[i];
-      }
-      std::cout << std::endl;
-#endif
       size_t ketAlphaSize = helper[task].ketAlphaEnd-helper[task].ketAlphaStart;
       size_t ketBetaSize  = helper[task].ketBetaEnd-helper[task].ketBetaStart;
 #pragma omp parallel
       {
-	size_t thread_id = omp_get_thread_num();
-	size_t ia_start = (thread_id+0) * chunk_size + helper[task].braAlphaStart;
-	size_t ia_end   = (thread_id+1) * chunk_size + helper[task].braAlphaStart;
-	if( thread_id == num_threads - 1 ) {
-	  ia_end = helper[task].braAlphaEnd;
-	}
-	
-	size_t array_size = (2*norb + bit_length - 1 ) / bit_length;
-	std::vector<size_t> DetI(array_size);
-	auto DetJ = DetI;
-	std::vector<int> c(2,0);
-	std::vector<int> d(2,0);
-
-	if( helper[task].taskType == 2 ) { // beta range are same
+	size_t num_threads = omp_get_num_threads();
+	size_t chunk_size = 0;
+	if( helper.size() != 0 ) {
+	  chunk_size = (helper[0].braAlphaEnd-helper[0].braAlphaStart) / num_threads;
 	  
-	  for(size_t ia = ia_start; ia < ia_end; ia++) {
-	    for(size_t ib = helper[task].braBetaStart; ib < helper[task].braBetaEnd; ib++) {
-	      
-	      size_t braIdx = (ia-helper[task].braAlphaStart)*braBetaSize
-		+ib-helper[task].braBetaStart;
-	      if( (braIdx % mpi_size_h) != mpi_rank_h ) continue;
-	    
-	      DetFromAlphaBeta(adet[ia],bdet[ib],bit_length,norb,DetI);
-	    
-	      // single alpha excitation
-	      for(size_t j=0; j < helper[task].SinglesFromAlphaLen[ia-helper[task].braAlphaStart]; j++) {
-		size_t ja = helper[task].SinglesFromAlphaSM[ia-helper[task].braAlphaStart][j];
-		size_t ketIdx = (ja-helper[task].ketAlphaStart)*ketBetaSize
-		                +ib-helper[task].ketBetaStart;
-		DetFromAlphaBeta(adet[ja],bdet[ib],bit_length,norb,DetJ);
-		CorrelationTermAddition(DetI,DetJ,W[braIdx],W[ketIdx],
-					bit_length,norb,c,d,
-					onebody,twobody);
-	      }
-	      // double alpha excitation
-	      for(size_t j=0; j < helper[task].DoublesFromAlphaLen[ia-helper[task].braAlphaStart]; j++) {
-		size_t ja = helper[task].DoublesFromAlphaSM[ia-helper[task].braAlphaStart][j];
-		size_t ketIdx = (ja-helper[task].ketAlphaStart)*ketBetaSize
-		               + ib-helper[task].ketBetaStart;
-		DetFromAlphaBeta(adet[ja],bdet[ib],bit_length,norb,DetJ);
-		CorrelationTermAddition(DetI,DetJ,W[braIdx],W[ketIdx],
-					bit_length,norb,c,d,
-					onebody,twobody);
-	      }
-	      
-	    } // end for(size_t ib=ib_start; ib < ib_end; ib++)
-	  } // end for(size_t ia=helper[task].braAlphaStart; ia < helper[task].braAlphaEnd; ia++)
+	  size_t thread_id = omp_get_thread_num();
+	  size_t ia_start = (thread_id+0) * chunk_size + helper[task].braAlphaStart;
+	  size_t ia_end   = (thread_id+1) * chunk_size + helper[task].braAlphaStart;
+	  if( thread_id == num_threads - 1 ) {
+	    ia_end = helper[task].braAlphaEnd;
+	  }
 	  
-	} else if ( helper[task].taskType == 1 ) { // alpha range are same
-
-	  for(size_t ia = ia_start; ia < ia_end; ia++) {
-	    for(size_t ib = helper[task].braBetaStart; ib < helper[task].braBetaEnd; ib++) {
-	      
-	      size_t braIdx = (ia-helper[task].braAlphaStart)*braBetaSize
-		              +ib-helper[task].braBetaStart;
-	      if( (braIdx % mpi_size_h) != mpi_rank_h ) continue;
-	    
-	      DetFromAlphaBeta(adet[ia],bdet[ib],bit_length,norb,DetI);
-	    
-	      // single beta excitation
-	      for(size_t j=0; j < helper[task].SinglesFromBetaLen[ib-helper[task].braBetaStart]; j++) {
-		size_t jb = helper[task].SinglesFromBetaSM[ib-helper[task].braBetaStart][j];
-		size_t ketIdx = (ia-helper[task].ketAlphaStart) * ketBetaSize
-		               + jb-helper[task].ketBetaStart;
-		DetFromAlphaBeta(adet[ia],bdet[jb],bit_length,norb,DetJ);
-		CorrelationTermAddition(DetI,DetJ,W[braIdx],W[ketIdx],
-					bit_length,norb,c,d,
-					onebody,twobody);
-	      }
-	      // double beta excitation
-	      for(size_t j=0; j < helper[task].DoublesFromBetaLen[ib-helper[task].braBetaStart]; j++) {
-		size_t jb = helper[task].DoublesFromBetaSM[ib-helper[task].braBetaStart][j];
-		size_t ketIdx = (ia-helper[task].ketAlphaStart) * ketBetaSize
-		               + jb-helper[task].ketBetaStart;
-		DetFromAlphaBeta(adet[ia],bdet[jb],bit_length,norb,DetJ);
-		CorrelationTermAddition(DetI,DetJ,W[braIdx],W[ketIdx],
-					bit_length,norb,c,d,
-					onebody,twobody);
-	      }
-	    } // end for(size_t ib=ib_start; ib < ib_end; ib++)
-	  } // end for(size_t ia=helper[task].braAlphaStart; ia < helper[task].braAlphaEnd; ia++)
-
+	  size_t array_size = (2*norb + bit_length - 1 ) / bit_length;
+	  std::vector<size_t> DetI(array_size);
+	  auto DetJ = DetI;
+	  std::vector<int> c(2,0);
+	  std::vector<int> d(2,0);
 	  
-	} else {
-
-	  for(size_t ia = ia_start; ia < ia_end; ia++) {
-	    for(size_t ib = helper[task].braBetaStart; ib < helper[task].braBetaEnd; ib++) {
-	      
-	      size_t braIdx = (ia-helper[task].braAlphaStart)*braBetaSize
-		              +ib-helper[task].braBetaStart;
-	      if( (braIdx % mpi_size_h) != mpi_rank_h ) continue;
+	  if( helper[task].taskType == 2 ) { // beta range are same
 	    
-	      DetFromAlphaBeta(adet[ia],bdet[ib],bit_length,norb,DetI);
-	    
-	      // two-particle excitation composed of single alpha and single beta
-	      for(size_t j=0; j < helper[task].SinglesFromAlphaLen[ia-helper[task].braAlphaStart]; j++) {
-		size_t ja = helper[task].SinglesFromAlphaSM[ia-helper[task].braAlphaStart][j];
-		for(size_t k=0; k < helper[task].SinglesFromBetaLen[ib-helper[task].braBetaStart]; k++) {
-		  size_t jb = helper[task].SinglesFromBetaSM[ib-helper[task].braBetaStart][k];
+	    for(size_t ia = ia_start; ia < ia_end; ia++) {
+	      for(size_t ib = helper[task].braBetaStart; ib < helper[task].braBetaEnd; ib++) {
+		
+		size_t braIdx = (ia-helper[task].braAlphaStart)*braBetaSize
+		  +ib-helper[task].braBetaStart;
+		if( (braIdx % mpi_size_h) != mpi_rank_h ) continue;
+		
+		DetFromAlphaBeta(adet[ia],bdet[ib],bit_length,norb,DetI);
+		
+		// single alpha excitation
+		for(size_t j=0; j < helper[task].SinglesFromAlphaLen[ia-helper[task].braAlphaStart]; j++) {
+		  size_t ja = helper[task].SinglesFromAlphaSM[ia-helper[task].braAlphaStart][j];
 		  size_t ketIdx = (ja-helper[task].ketAlphaStart)*ketBetaSize
-		                  +jb-helper[task].ketBetaStart;
-		  DetFromAlphaBeta(adet[ja],bdet[jb],bit_length,norb,DetJ);
+		    +ib-helper[task].ketBetaStart;
+		  DetFromAlphaBeta(adet[ja],bdet[ib],bit_length,norb,DetJ);
 		  CorrelationTermAddition(DetI,DetJ,W[braIdx],W[ketIdx],
 					  bit_length,norb,c,d,
 					  onebody,twobody);
 		}
-	      }
-	      
-	    } // end for(size_t ib=ib_start; ib < ib_end; ib++)
-	  } // end for(size_t ia=helper[task].braAlphaStart; ia < helper[task].braAlphaEnd; ia++)
-	} // if ( helper[task].taskType == ? )
-      } // end pragma paralell
-      
-      if( helper[task].taskType == 0 && task != helper.size()-1 ) {
-#ifdef SBD_DEBUG_MULT
-	size_t adet_rank = mpi_rank_b / bdet_comm_size;
-	size_t bdet_rank = mpi_rank_b % bdet_comm_size;
-	size_t adet_rank_task = (adet_rank+helper[task].adetShift) % adet_comm_size;
-	size_t bdet_rank_task = (bdet_rank+helper[task].bdetShift) % bdet_comm_size;
-	size_t adet_rank_next = (adet_rank+helper[task+1].adetShift) % adet_comm_size;
-	size_t bdet_rank_next = (bdet_rank+helper[task+1].bdetShift) % bdet_comm_size;
-	std::cout << " mult: task " << task << " at mpi process (h,b,t) = ("
-		  << mpi_rank_h << "," << mpi_rank_b << "," << mpi_rank_t
-		  << "): two-dimensional slide communication from ("
-		  << adet_rank_task << "," << bdet_rank_task << ") to ("
-		  << adet_rank_next << "," << bdet_rank_next << ")" 
-		  << std::endl;
+		// double alpha excitation
+		for(size_t j=0; j < helper[task].DoublesFromAlphaLen[ia-helper[task].braAlphaStart]; j++) {
+		  size_t ja = helper[task].DoublesFromAlphaSM[ia-helper[task].braAlphaStart][j];
+		  size_t ketIdx = (ja-helper[task].ketAlphaStart)*ketBetaSize
+		    + ib-helper[task].ketBetaStart;
+		  DetFromAlphaBeta(adet[ja],bdet[ib],bit_length,norb,DetJ);
+		  CorrelationTermAddition(DetI,DetJ,W[braIdx],W[ketIdx],
+					  bit_length,norb,c,d,
+					  onebody,twobody);
+		}
+		
+	      } // end for(size_t ib=ib_start; ib < ib_end; ib++)
+	    } // end for(size_t ia=helper[task].braAlphaStart; ia < helper[task].braAlphaEnd; ia++)
+	    
+	  } else if ( helper[task].taskType == 1 ) { // alpha range are same
+	    
+	    for(size_t ia = ia_start; ia < ia_end; ia++) {
+	      for(size_t ib = helper[task].braBetaStart; ib < helper[task].braBetaEnd; ib++) {
+		
+		size_t braIdx = (ia-helper[task].braAlphaStart)*braBetaSize
+		  +ib-helper[task].braBetaStart;
+		if( (braIdx % mpi_size_h) != mpi_rank_h ) continue;
+		
+		DetFromAlphaBeta(adet[ia],bdet[ib],bit_length,norb,DetI);
+		
+		// single beta excitation
+		for(size_t j=0; j < helper[task].SinglesFromBetaLen[ib-helper[task].braBetaStart]; j++) {
+		  size_t jb = helper[task].SinglesFromBetaSM[ib-helper[task].braBetaStart][j];
+		  size_t ketIdx = (ia-helper[task].ketAlphaStart) * ketBetaSize
+		    + jb-helper[task].ketBetaStart;
+		  DetFromAlphaBeta(adet[ia],bdet[jb],bit_length,norb,DetJ);
+		  CorrelationTermAddition(DetI,DetJ,W[braIdx],W[ketIdx],
+					  bit_length,norb,c,d,
+					  onebody,twobody);
+		}
+		// double beta excitation
+		for(size_t j=0; j < helper[task].DoublesFromBetaLen[ib-helper[task].braBetaStart]; j++) {
+		  size_t jb = helper[task].DoublesFromBetaSM[ib-helper[task].braBetaStart][j];
+		  size_t ketIdx = (ia-helper[task].ketAlphaStart) * ketBetaSize
+		    + jb-helper[task].ketBetaStart;
+		  DetFromAlphaBeta(adet[ia],bdet[jb],bit_length,norb,DetJ);
+		  CorrelationTermAddition(DetI,DetJ,W[braIdx],W[ketIdx],
+					bit_length,norb,c,d,
+					  onebody,twobody);
+		}
+	      } // end for(size_t ib=ib_start; ib < ib_end; ib++)
+	    } // end for(size_t ia=helper[task].braAlphaStart; ia < helper[task].braAlphaEnd; ia++)
+	    
+	    
+	  } else {
+	    
+	    for(size_t ia = ia_start; ia < ia_end; ia++) {
+	      for(size_t ib = helper[task].braBetaStart; ib < helper[task].braBetaEnd; ib++) {
+		
+		size_t braIdx = (ia-helper[task].braAlphaStart)*braBetaSize
+		  +ib-helper[task].braBetaStart;
+		if( (braIdx % mpi_size_h) != mpi_rank_h ) continue;
+		
+		DetFromAlphaBeta(adet[ia],bdet[ib],bit_length,norb,DetI);
+		
+		// two-particle excitation composed of single alpha and single beta
+		for(size_t j=0; j < helper[task].SinglesFromAlphaLen[ia-helper[task].braAlphaStart]; j++) {
+		  size_t ja = helper[task].SinglesFromAlphaSM[ia-helper[task].braAlphaStart][j];
+		  for(size_t k=0; k < helper[task].SinglesFromBetaLen[ib-helper[task].braBetaStart]; k++) {
+		    size_t jb = helper[task].SinglesFromBetaSM[ib-helper[task].braBetaStart][k];
+		    size_t ketIdx = (ja-helper[task].ketAlphaStart)*ketBetaSize
+		      +jb-helper[task].ketBetaStart;
+		    DetFromAlphaBeta(adet[ja],bdet[jb],bit_length,norb,DetJ);
+		    CorrelationTermAddition(DetI,DetJ,W[braIdx],W[ketIdx],
+					    bit_length,norb,c,d,
+					    onebody,twobody);
+		  }
+		}
+		
+	      } // end for(size_t ib=ib_start; ib < ib_end; ib++)
+	    } // end for(size_t ia=helper[task].braAlphaStart; ia < helper[task].braAlphaEnd; ia++)
+	  } // if ( helper[task].taskType == ? )
+	} // end pragma paralell
 	
-#endif
-	int adetslide = helper[task].adetShift-helper[task+1].adetShift;
-	int bdetslide = helper[task].bdetShift-helper[task+1].bdetShift;
-	R.resize(T.size());
-	std::memcpy(R.data(),T.data(),T.size()*sizeof(ElemT));
-	auto time_slid_start = std::chrono::high_resolution_clock::now();
-	Mpi2dSlide(R,T,adet_comm_size,bdet_comm_size,adetslide,bdetslide,b_comm);
-	auto time_slid_end = std::chrono::high_resolution_clock::now();
-	auto time_slid_count = std::chrono::duration_cast<std::chrono::microseconds>(time_slid_end-time_slid_start).count();
-	time_slid += 1.0e-6 * time_slid_count;
-      }
+	if( helper[task].taskType == 0 && task != helper.size()-1 ) {
+	  int adetslide = helper[task].adetShift-helper[task+1].adetShift;
+	  int bdetslide = helper[task].bdetShift-helper[task+1].bdetShift;
+	  R.resize(T.size());
+	  std::memcpy(R.data(),T.data(),T.size()*sizeof(ElemT));
+	  Mpi2dSlide(R,T,adet_comm_size,bdet_comm_size,adetslide,bdetslide,b_comm);
+	}
+	
+      }// end #pragma omp parallel
       
     } // end for(size_t task=0; task < helper.size(); task++)
-    auto time_mult_end = std::chrono::high_resolution_clock::now();
 
-    auto time_comm_start = std::chrono::high_resolution_clock::now();
     for(int s=0; s < 2; s++) {
+      MpiAllreduce(onebody[s],MPI_SUM,b_comm);
       MpiAllreduce(onebody[s],MPI_SUM,t_comm);
       MpiAllreduce(onebody[s],MPI_SUM,h_comm);
     }
     for(int s=0; s < 4; s++) {
+      MpiAllreduce(twobody[s],MPI_SUM,b_comm);
       MpiAllreduce(twobody[s],MPI_SUM,t_comm);
       MpiAllreduce(twobody[s],MPI_SUM,h_comm);
     }
-    auto time_comm_end = std::chrono::high_resolution_clock::now();
 
-#ifdef SBD_DEBUG_MULT
-    auto time_copy_count = std::chrono::duration_cast<std::chrono::microseconds>(time_copy_end-time_copy_start).count();
-    auto time_mult_count = std::chrono::duration_cast<std::chrono::microseconds>(time_mult_end-time_mult_start).count();
-    auto time_comm_count = std::chrono::duration_cast<std::chrono::microseconds>(time_comm_end-time_comm_start).count();
-
-    double time_copy = 1.0e-6 * time_copy_count;
-    double time_mult = 1.0e-6 * time_mult_count;
-    double time_comm = 1.0e-6 * time_comm_count;
-    std::cout << " mult: time for first copy     = " << time_copy << std::endl;
-    std::cout << " mult: time for multiplication = " << time_mult << std::endl;
-    std::cout << " mult: time for 2d slide comm  = " << time_slid << std::endl;
-    std::cout << " mult: time for allreduce comm = " << time_comm << std::endl;
-#endif
-    
   }
-  
+
   
 } // end namespace sbd
 
