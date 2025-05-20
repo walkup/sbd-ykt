@@ -7,6 +7,15 @@
 
 namespace sbd {
 
+  /**
+     Function to setup the communicator for the statistical variance evaluation
+     @param[in] comm: MPI communicator
+     @param[in] adet_comm_size: communicator size for spliting alpha dets
+     @param[in] bdet_comm_size: communicator size for spliting beta dets
+     @param[out] s_comm: communicator used to perform individual sampling
+     @param[out] b_comm: communicator for distributing the wavefunction data. The size becomes adet_comm_size * bdet_comm_size.
+   */
+
   void VarianceCommunicator(MPI_Comm comm,
 			    int adet_comm_size,
 			    int bdet_comm_size,
@@ -22,6 +31,27 @@ namespace sbd {
     MPI_Comm_split(comm,s_comm_color,mpi_rank,&s_comm);
   }
 
+  /**
+     Function for evaluating the variance statistically
+     @param[in] adet: determinants for alpha spin-orbitals
+     @param[in] bdet: determinants for beta spin-orbitals
+     @param[in] norb: number of orbitals
+     @param[in] bit_length: number of bits handled by single size_t in adet and bdet
+     @param[in] adet_comm_size: communicator size for spliting alpha dets
+     @param[in] bdet_comm_size: communicator size for spliting beta dets
+     @param[in] s_comm: communicator used to perform individual sampling
+     @param[in] b_comm: communicator for distributing the wavefunction data. The size becomes adet_comm_size * bdet_comm_size.
+     @param[in] W: wavefunction data
+     @param[in] I0: constant energy shift
+     @param[in] I1: integrals corresponding to the one-body part
+     @param[in] I2: integrals for two-body part
+     @param[in] Nd: batch size
+     @param[in] Ns: number of samples.
+     @param[in] seed: unsigned int for the seed of each sampling. It should be different seed for all mpi communicator.
+     @param[in] eps: cutoff amplitude for excitation
+     @param[out] res: result
+   */
+  
   template <typename ElemT, typename RealT>
   void Variance(const std::vector<std::vector<size_t>> & adet,
 		const std::vector<std::vector<size_t>> & bdet,
@@ -296,29 +326,6 @@ namespace sbd {
       ExD.push_back(DetI);
       ExW.push_back(ElemT(0.0));
 
-      /*
-      ExD.reserve(ex_size+min_extra_dets);
-      ExW.reserve(ex_size+min_extra_dets);
-
-      for(int rank_b=0; rank_b < min_extra_dets; rank_b++) {
-	std::vector<size_t> ad(norb,0);
-	std::vector<size_t> bd(norb,0);
-	for(int i=0; i < nela; i++) {
-	  ad[i] = 1;
-	}
-	for(int i=0; i < nelb; i++) {
-	  bd[i] = 1;
-	}
-	std::shuffle(ad.begin(),ad.end(),rng);
-	std::shuffle(bd.begin(),bd.end(),rng);
-	change_bitlength(static_cast<size_t>(1),ad,bit_length);
-	change_bitlength(static_cast<size_t>(1),bd,bit_length);
-	DetFromAlphaBeta(ad,bd,bit_length,norb,DetI);
-	ExD.push_back(DetI);
-	ExW.push_back(ElemT(0.0));
-      }
-      */
-      
       std::vector<int> c(2,0);
       std::vector<int> d(2,0);
       size_t orbDiff;
@@ -639,10 +646,10 @@ namespace sbd {
       }
     }
 #endif
-    
+
   }
   
-}
+} // end namespace for sbd
 
 #endif
 
