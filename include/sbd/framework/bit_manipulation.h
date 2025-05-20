@@ -171,11 +171,11 @@ namespace sbd {
     return result;
   }
 
-/**
-Function for finding a mpi process which manages the target bit string
-@param[in] config: target configuration
-@param[in] config_begin: first element for each mpi 
-*/
+  /**
+     Function for finding a mpi process which manages the target bit string
+     @param[in] config: target configuration
+     @param[in] config_begin: first element for each mpi 
+  */
   void mpi_process_search(const std::vector<size_t> & target_config,
 			  const std::vector<std::vector<size_t>> & config_begin,
 			  const std::vector<std::vector<size_t>> & config_end,
@@ -191,13 +191,13 @@ Function for finding a mpi process which manages the target bit string
     }
   }
 
-/**
-Function for finding the state index of target bit string
-@param[in] target_config: target configuration
-@param[in] config: all configuration managed by target mpi process
-@param[in] index_begin: index of first element managed by target mpi process
-@param[in] index_end: +1 index of last element managed by target mpi process
-*/
+  /**
+     Function for finding the state index of target bit string
+     @param[in] target_config: target configuration
+     @param[in] config: all configuration managed by target mpi process
+     @param[in] index_begin: index of first element managed by target mpi process
+     @param[in] index_end: +1 index of last element managed by target mpi process
+  */
 
   void bisection_search(const std::vector<size_t> & target_config,
 			const std::vector<std::vector<size_t>> & config,
@@ -242,13 +242,13 @@ Function for finding the state index of target bit string
     }
   }
 
-/**
-Function for finding the state index of target bit string
-@param[in] target_config: target configuration
-@param[in] config: all configuration managed by target mpi process
-@param[in] index_begin: index of first element managed by target mpi process
-@param[in] index_end: +1 index of last element managed by target mpi process
-*/
+  /**
+     Function for finding the state index of target bit string
+     @param[in] target_config: target configuration
+     @param[in] config: all configuration managed by target mpi process
+     @param[in] index_begin: index of first element managed by target mpi process
+     @param[in] index_end: +1 index of last element managed by target mpi process
+  */
   void bisection_search_mpi(const std::vector<size_t> & target_config,
 			    const std::vector<std::vector<size_t>> & config,
 			    const size_t & index_begin,
@@ -300,6 +300,12 @@ Function for finding the state index of target bit string
     } // end if for mpi process
   } // end void function bisection_search
 
+  /**
+     Function for adding 1 to the bitstring
+     @param[in/out] a: bitstring
+     @param[in] bit_length: length for the bitstring managed by each size_t
+   */
+  
   void bitadvance(std::vector<size_t> & a, int bit_length) {
     size_t x;
     size_t d = (((size_t) 1) << bit_length) - 1;
@@ -311,6 +317,10 @@ Function for finding the state index of target bit string
     }
   }
 
+  /**
+     Function for sorting the array of bit strings.
+     @param[in/out] a: set of bit strings to be sorted
+   */
   void sort_bitarray(std::vector<std::vector<size_t>> & a) {
     std::sort(a.begin(),a.end(),
 	      [](const std::vector<size_t> & x,
@@ -319,6 +329,17 @@ Function for finding the state index of target bit string
     a.erase(std::unique(a.begin(),a.end()),a.end());
   }
 
+  /**
+     Function to redistribute the bit string on each mpi processes.
+     @param[in/out] config: set of bit strings to be redistributed
+     @param[in/out] config_begin: first bit string for each mpi process.
+     @param[in/out] config_end: last bit string for each mpi process.
+     @param[in/out] index_begin: first index of bit string for each mpi process.
+     @param[in/out] index_end: last index of bit string for each mpi process.
+     @param[in] total_bit_length: total bit length represented by `std::vector<size_t>`
+     @param[in] bit_length: length of bit string managed by each `size_t`
+     @param[in] comm: mpi communicator
+   */
   void mpi_redistribution(std::vector<std::vector<size_t>> & config,
 			  std::vector<std::vector<size_t>> & config_begin,
 			  std::vector<std::vector<size_t>> & config_end,
@@ -431,6 +452,17 @@ Function for finding the state index of target bit string
     MPI_Bcast(config_end[mpi_size-1].data(),config_length,SBD_MPI_SIZE_T,mpi_size-1,comm);
   }
 
+  /**
+     Function to sort the set of bit string distributed on the all mpi processes.
+     @param[in/out] config: set of bit strings to be redistributed
+     @param[in/out] config_begin: first bit string for each mpi process.
+     @param[in/out] config_end: last bit string for each mpi process.
+     @param[in/out] index_begin: first index of bit string for each mpi process.
+     @param[in/out] index_end: last index of bit string for each mpi process.
+     @param[in] total_bit_length: total bit length represented by `std::vector<size_t>`
+     @param[in] bit_length: length of bit string managed by each `size_t`
+     @param[in] comm: mpi communicator
+   */
   void mpi_sort_bitarray(std::vector<std::vector<size_t>> & config,
 			 std::vector<std::vector<size_t>> & config_begin,
 			 std::vector<std::vector<size_t>> & config_end,
@@ -822,6 +854,12 @@ Function for finding the state index of target bit string
   }
 
   
+  /**
+     Function to change the length of bit string managed by each `size_t`
+     @param[in] bit_length_a: the input length of bit string managed by each `size_t`
+     @param[in/out] b: target bit string
+     @param[in] bit_length_b: target length of bit string managed by each `size_t`
+   */
   void change_bitlength(size_t bit_length_a, std::vector<size_t> & b, size_t bit_length_b) {
     std::vector<size_t> a = b;
     size_t a_size = a.size();
@@ -854,6 +892,12 @@ Function for finding the state index of target bit string
     }
   }
 
+  /**
+     Function same with previous change_bitlengh but for set of bitstrings
+     @param[in] bit_length_a: the input length of bit string managed by each `size_t`
+     @param[in/out] b: target set of bit strings
+     @param[in] bit_length_b: target length of bit string managed by each `size_t`
+   */
   void change_bitlength(size_t bit_length_a, std::vector<std::vector<size_t>> & b, size_t bit_length_b) {
     std::vector<size_t> a = b[0];
     size_t a_size = a.size();
@@ -889,6 +933,13 @@ Function for finding the state index of target bit string
     }
   }
 
+  /**
+     Function to count the sign bit string
+     @param[in] w: input bitstring
+     @param[in] bit_length: the length of bit string managed by each `size_t` for `w`.
+     @param[in] x: position of bit. Actual position corresponds to x + bit_length * r
+     @param[in] r: position of bit.
+   */
   inline int bit_string_sign_factor(const std::vector<size_t> & w,
 				    int bit_length,
 				    size_t x,
@@ -911,6 +962,11 @@ Function for finding the state index of target bit string
   }
 
   
+  /**
+     Function to change the integer to a string filled by zero from left
+     @param[in] i: input integer
+     @param[out] s: output string
+   */
   void convert_int_to_string(int i, std::string & s) {
     std::string snum = std::to_string(i);
     if( i < 10 )
@@ -954,6 +1010,10 @@ Function for finding the state index of target bit string
       }
   }
 
+  /**
+     Function to get extension of the filename.
+     @param[in] path: filename
+   */
   inline std::string get_extension(const std::string &path) {
     std::string ext;
     size_t pos1 = path.rfind('.');
@@ -977,12 +1037,21 @@ Function for finding the state index of target bit string
     return ext;
   }
 
+  /**
+     Function to remove the extension of the filename.
+     @param[in] filename: filename
+   */
   std::string remove_extension(const std::string& filename) {
     size_t lastdot = filename.find_last_of(".");
     if (lastdot == std::string::npos) return filename;
     return filename.substr(0, lastdot); 
   }
   
+  /**
+     Function to define the name of binary file with zero-filled integer
+     @param[in] i: integer
+     @param[in] filename: filename
+   */
   std::string get_binary_file_name(int i, const std::string & filename) {
     std::string name = remove_extension(filename);
     std::string label;
@@ -991,6 +1060,11 @@ Function for finding the state index of target bit string
     return res;
   }
 
+  /**
+     Function to save the set of bitstring
+     @param[in] os: output stream
+     @param[in] config: the set of bitstrings
+   */
   void SaveConfig(std::ostream & os,
 		  std::vector<std::vector<size_t>> & config) {
     size_t size_v = config.size();
@@ -1006,6 +1080,11 @@ Function for finding the state index of target bit string
     }
   }
   
+  /**
+     Function to load the set of bitstring
+     @param[in] is: input stream
+     @param[in] config: the set of bitstrings
+   */
   void LoadConfig(std::istream & is,
 		  std::vector<std::vector<size_t>> & config) {
     size_t size_v;
@@ -1019,7 +1098,9 @@ Function for finding the state index of target bit string
     }
   }
 
-  // Hash function for sort: XOR base (while it has intersection risk, it is covered by equal)
+  /**
+     structure for Hash function for sort: XOR base (while it has intersection risk, it is covered by equal)
+   */
   struct BitVecHash {
     size_t operator()(const std::vector<size_t> & v) const {
       size_t hash = v.size();
@@ -1030,7 +1111,9 @@ Function for finding the state index of target bit string
     }
   };
   
-  // Equal function: whether bit is equal or not
+  /**
+     Equal function: whether bit is equal or not
+   */
   struct BitVecEqual {
     bool operator()(const std::vector<size_t> & a,
 		    const std::vector<size_t>& b) const {
@@ -1038,6 +1121,13 @@ Function for finding the state index of target bit string
     }
   };
   
+  /**
+     merge sequences D and W to Dn and Wn if D has same entries
+     @param[in] D: input set of bit strings
+     @param[in] W: weight for each bit string
+     @param[out] Dn: unique set of bit strings
+     @param[out] Wn: corresponding weights for each bit string
+   */
   template<typename T>
   void merge_bit_sequences(
 	 const std::vector<std::vector<size_t>> & D,
@@ -1045,26 +1135,6 @@ Function for finding the state index of target bit string
 	 std::vector<std::vector<size_t>>& Dn,
 	 std::vector<T>& Wn) {
 
-    // method 1
-    /*
-    std::unordered_map<std::vector<size_t>, T, BitVecHash, BitVecEqual> map;
-    
-    for (size_t i = 0; i < D.size(); ++i) {
-      map[D[i]] += W[i];
-    }
-    
-    Dn.clear();
-    Wn.clear();
-    Dn.reserve(map.size());
-    Wn.reserve(map.size());
-    
-    for (const auto& [bitvec, weight] : map) {
-      Dn.push_back(bitvec);
-      Wn.push_back(weight);
-    }
-    */
-
-    // method 2
     Dn = D;
     sort_bitarray(Dn);
     Wn.resize(Dn.size(),T(0.0));
