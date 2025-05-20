@@ -9,6 +9,7 @@
 #include "sbd/chemistry/tpb/correlation.h"
 #include "sbd/chemistry/tpb/rdmat.h"
 #include "sbd/chemistry/tpb/restart.h"
+#include "sbd/chemistry/tpb/sbdiag.h"
 
 /**
    Functions for variance evaluation

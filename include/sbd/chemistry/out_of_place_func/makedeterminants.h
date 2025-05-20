@@ -160,7 +160,6 @@ namespace sbd {
 		     size_t bit_length,
 		     size_t total_bit_length) {
 
-    std::cout << " Open alpha-string determinant file: " << adetfile << std::endl;
     if( sbd::get_extension(adetfile) == std::string("txt") ) {
       std::ifstream inadet(adetfile);
       if( !inadet.is_open() ) {
@@ -180,9 +179,7 @@ namespace sbd {
       adet = sbd::DecodeAlphaDets(adetfile,total_bit_length);
       sbd::change_bitlength(1,adet,bit_length);
     }
-    std::cout << " Size of adet = " << adet.size() << std::endl;
     sbd::sort_bitarray(adet);
-    std::cout << " Sorted adet size = " << adet.size() << std::endl;
   }
 
   

@@ -14,7 +14,8 @@ namespace sbd {
       int adet_comm_size = 1;
       int bdet_comm_size = 1;
       int h_comm_size = 1;
-      
+
+      int method = 0;
       int max_it = 1;
       int max_nb = 10;
       double eps = 1.0e-4;
@@ -41,6 +42,10 @@ namespace sbd {
 	}
 	if( std::string(argv[i]) == "--task_comm_size" ) {
 	  sbd_data.task_comm_size = std::atoi(argv[i+1]);
+	  i++;
+	}
+	if( std::string(argv[i]) == "--method" ) {
+	  sbd_data.method = std::atoi(argv[i+1]);
 	  i++;
 	}
 	if( std::string(argv[i]) == "--iteration" ) {
@@ -108,18 +113,18 @@ namespace sbd {
 	      std::vector<std::vector<double>> & two_p_rdm) {
 
       int mpi_master = 0;
-      int mpi_master = 0;
       int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
       int mpi_size; MPI_Comm_size(comm,&mpi_size);
       int task_comm_size = sbd_data.task_comm_size;
       int adet_comm_size = sbd_data.adet_comm_size;
       int bdet_comm_size = sbd_data.bdet_comm_size;
       int base_comm_size = adet_comm_size*bdet_comm_size;
-      int h_comm_size = mpi_size / (taask_comm_size * base_comm_size);
+      int h_comm_size = mpi_size / (task_comm_size * base_comm_size);
 
       int L;
       int N;
 
+      int method = sbd_data.method;
       int max_it = sbd_data.max_it;
       int max_nb = sbd_data.max_nb;
       double eps = sbd_data.eps;
@@ -144,7 +149,7 @@ namespace sbd {
 	 Setup helpers
        */
       std::vector<sbd::TaskHelpers> helper;
-      std::vector<sbd::vector<size_t>> sharedMemory;
+      std::vector<std::vector<size_t>> sharedMemory;
       MPI_Comm h_comm;
       MPI_Comm b_comm;
       MPI_Comm t_comm;
@@ -156,11 +161,9 @@ namespace sbd {
       sbd::MakeHelpers(adet,bdet,bit_length,L,helper,sharedMemory,
 		       h_comm,b_comm,t_comm,
 		       adet_comm_size,bdet_comm_size);
-      if( method == 2 ) {
-	sbd::RemakeHelpers(adet,bdet,bit_length,L,helper,sharedMemory,
-			   h_comm,b_comm,t_comm,
-			   adet_comm_size,bdet_comm_size);
-      }
+      sbd::RemakeHelpers(adet,bdet,bit_length,L,helper,sharedMemory,
+			 h_comm,b_comm,t_comm,
+			 adet_comm_size,bdet_comm_size);
       auto time_end_help = std::chrono::high_resolution_clock::now();
       auto elapsed_help_count = std::chrono::duration_cast<std::chrono::microseconds>(time_end_help-time_start_help).count();
       double elapsed_help = 0.000001 * elapsed_help_count;
@@ -367,6 +370,8 @@ namespace sbd {
 	double elapsed_meas = 0.000001 * elapsed_meas_count;
 	if( mpi_rank == 0 ) {
 	  std::cout << " Elapsed time for measurement " << elapsed_meas << " (sec) " << std::endl;
+
+	  /*
 	  for(size_t io=0; io < L; io++) {
 	    std::cout << " Occupation density for orbital " << io
 		      << ": " << density[2*io]+density[2*io+1]
@@ -374,6 +379,7 @@ namespace sbd {
 		      << " for alpha, " << density[2*io+1]
 		      << " for beta " << std::endl;
 	  }
+	  */
 	}
 	
       } else {
@@ -400,6 +406,7 @@ namespace sbd {
 
 	if( mpi_rank == 0 ) {
 	  std::cout << " Elapsed time for measurement " << elapsed_meas << " (sec) " << std::endl;
+	  /*
 	  for(size_t io=0; io < L; io++) {
 	    std::cout << " Occupation density for orbital " << io
 		      << ": " << density[2*io]+density[2*io+1]
@@ -407,6 +414,7 @@ namespace sbd {
 		      << " for alpha, " << density[2*io+1]
 		      << " for beta " << std::endl;
 	  }
+	  */
 	}
 	
       }
@@ -438,9 +446,9 @@ namespace sbd {
        */
 
       if( savename != std::string("") ) {
-	sbd::SaveWavefunction(savename,adet,bdet,
-			      adet_comm_size,bdet_comm_size,
-			      h_comm,b_comm,t_comm,W);
+	SaveWavefunction(savename,adet,bdet,
+			 adet_comm_size,bdet_comm_size,
+			 h_comm,b_comm,t_comm,W);
       }
 
       FreeHelpers(helper);
@@ -473,7 +481,14 @@ namespace sbd {
 	      std::vector<std::vector<double>> & one_p_rdm,
 	      std::vector<std::vector<double>> & two_p_rdm) {
 
+      int mpi_master = 0;
+      int mpi_rank; MPI_Comm_rank(comm,&mpi_rank);
+      int mpi_size; MPI_Comm_size(comm,&mpi_size);
 
+
+      size_t L;
+      size_t N;
+      
       /**
 	 Load fcifump data
        */
@@ -483,6 +498,14 @@ namespace sbd {
       }
       sbd::MpiBcast(fcidump,0,comm);
 
+      for(const auto & [key,value] : fcidump.header) {
+	if( key == std::string("NORB") ) {
+	  L = std::atoi(value.c_str());
+	}
+	if( key == std::string("NELEC") ) {
+	  N = std::atoi(value.c_str());
+	}
+      }
       /**
 	 Load dets file
        */
@@ -492,7 +515,7 @@ namespace sbd {
       std::vector<std::vector<size_t>> bdet;
 
       if( mpi_rank == 0 ) {
-	sbd::LoadAlphaDets(adetfile,adet,bit_length,L);
+	sbd::LoadAlphaDets(adetfile,adet,sbd_data.bit_length,L);
       }
 
       if( do_shuffle == 0 ) {

@@ -19,8 +19,8 @@ namespace sbd {
 
   template <typename ElemT>
   void SaveWavefunction(const std::string file,
-			std::vector<std::vector<size_t>> & adet,
-			std::vector<std::vector<size_t>> & bdet,
+			const std::vector<std::vector<size_t>> & adet,
+			const std::vector<std::vector<size_t>> & bdet,
 			size_t adet_comm_size,
 			size_t bdet_comm_size,
 			MPI_Comm h_comm,
@@ -45,6 +45,9 @@ namespace sbd {
     size_t adet_range = adet_end - adet_start;
     size_t bdet_range = bdet_end - bdet_start;
 
+    std::vector<std::vector<size_t>> adet_copy(adet);
+    std::vector<std::vector<size_t>> bdet_copy(bdet);
+
     if( mpi_rank_h == 0 && mpi_rank_t == 0 ) {
       std::string tag = to_padded_string(mpi_rank_b,6);
       std::string filename = file + tag;
@@ -53,10 +56,10 @@ namespace sbd {
       ofile.write(reinterpret_cast<char *>(&bdet_range),sizeof(size_t));
       ofile.write(reinterpret_cast<char *>(&det_length),sizeof(size_t));
       for(size_t i=adet_start; i < adet_end; i++) {
-	ofile.write(reinterpret_cast<char *>(adet[i].data()),sizeof(size_t)*det_length);
+	ofile.write(reinterpret_cast<char *>(adet_copy[i].data()),sizeof(size_t)*det_length);
       }
       for(size_t i=bdet_start; i < bdet_end; i++) {
-	ofile.write(reinterpret_cast<char *>(bdet[i].data()),sizeof(size_t)*det_length);
+	ofile.write(reinterpret_cast<char *>(bdet_copy[i].data()),sizeof(size_t)*det_length);
       }
       ofile.write(reinterpret_cast<char *>(W.data()),sizeof(ElemT)*adet_range*bdet_range);
       ofile.close();

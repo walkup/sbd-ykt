@@ -1,0 +1,18 @@
+# Path to the SBD library
+# SBD_PATH=/Users/sirakawa/Physics/Package/SBD/main
+SBD_PATH=../../
+
+# mpi c++ compiler
+CCCOM=mpicxx
+
+# flags for build: include path to openmp
+CCFLAGS= -std=c++17 -stdlib=libc++ -fopenmp -I/opt/homebrew/opt/llvm/include -O3
+
+# flags for linking: include link to lapack and blas
+SYSLIB= -L/opt/homebrew/opt/openblas/lib -llapack -lblas
+
+### Example of compilation on Fugaku
+# SBD_PATH=../../
+# CCCOM=mpiFCCpx
+# CCFLAGS= -Nclang -std=c++17 -stdlib=libc++ -Kfast,openmp -Xpreprocessor -fopenmp
+# SYSLIB= -SSL2
