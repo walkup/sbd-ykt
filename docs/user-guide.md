@@ -14,7 +14,7 @@ The necessary compiling flags are
 -llapack -lblas                                             # for linking BLAS and LAPACK
 ```
 
-## Format of data
+## Data Format
 
 ### Bitstring Representation
 
@@ -75,7 +75,39 @@ std::cout << sbd::makestring(b,bit_length,L) << std::endl;
 
 ```
 
-### FCIDump file and `sbd::FCIDump`
+### FCIDUMP format
 
+The FCIDUMP format is a standard input file format commonly used in quantum chemistry software to store the second-quantized electronic Hamiltonian in the molecular orbital basis. It typically contains one- and two-electron integrals, orbital occupation numbers, and symmetry information, expressed in a compact text format.
 
+In this library, the FCIDUMP file is parsed and represented using the following structure:
+
+```
+struct sbd::FCIDump;
+```
+The `sbd::FCIDump` structure provides a convenient and accessible representation of the Hamiltonian data, enabling furthre manipulation or integration into quantum simulations. This structure is used internally to read, store, and generate FCIDUMP files in a consistent manner.
+
+#### Loading FCIDUMP Data
+
+If you have a Hamiltonian written in the FCIDUMP format (e.g., stored in a file named `fcidump.txt`), the library provides a convenient interface to load it into memory as an `sbd::FCIDump` structure.
+
+##### Function
+- `sbd::FCIDump sbd::LoadFCIDump(const std::string & filename);`
+  Reads the FCIDUMP-formatted text file specified by `filename` and returns an `sbd::FCIDump` object containing all relevant data.
+
+##### Example
+```
+#include <string>
+#include "sbd/sbd.h"
+
+std::string fcidumpfile("fcidump.txt");
+
+// Load the FCIDUMP data into a structured object
+sbd::FCIDump fcidump = sbd::LoadFCIDump(fcidumpfile);
+```
+
+## Main functions
+
+### Diagonalization
+
+### Variance Evaluation
 
