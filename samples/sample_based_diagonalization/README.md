@@ -1,5 +1,12 @@
 # A sample program for sample-based diagonalization
 
+## Requirement
+
+- c++17
+- OpenMP
+- MPI
+- BLAS and LAPACK
+
 ## Compile and link
 
 - Open the `Configuration` file and edit the environment variables according to your system: the compiler command (CCCOM), compiler options (CCFLAGS), and linker options (SYSLIB), and the path to the sbd library (SBD_PATH).
