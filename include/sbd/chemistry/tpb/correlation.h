@@ -768,14 +768,14 @@ namespace sbd {
       for(int j=i+1; j < num_closed; j++) {
 	int oj = closed.at(j)/2;
 	int sj = closed.at(j)%2;
-	twobody[si+2*sj][oi+norb*oj+norb*norb*oj+norb*norb*norb*oi]
+	twobody[si+2*sj][oi+norb*oj+norb*norb*oi+norb*norb*norb*oj]
 	  += Conjugate(WeightI) * WeightI;
-	twobody[sj+2*si][oj+norb*oi+norb*norb*oi+norb*norb*norb*oj]
+	twobody[sj+2*si][oj+norb*oi+norb*norb*oj+norb*norb*norb*oi]
 	  += Conjugate(WeightI) * WeightI;
 	if( si == sj ) {
-	  twobody[si+2*sj][oi+norb*oj+norb*norb*oi+norb*norb*norb*oj]
+	  twobody[si+2*sj][oi+norb*oj+norb*norb*oj+norb*norb*norb*oi]
 	    += -Conjugate(WeightI) * WeightI;
-	  twobody[sj+2*si][oj+norb*oi+norb*norb*oj+norb*norb*norb*oi]
+	  twobody[sj+2*si][oj+norb*oi+norb*norb*oi+norb*norb*norb*oj]
 	    += -Conjugate(WeightI) * WeightI;
 	}
       }
@@ -810,11 +810,11 @@ namespace sbd {
 	int soj = x * bit_length + pos-1;
 	int oj = soj / 2;
 	int sj = soj % 2;
-	twobody[si+2*sj][oi+oj*norb+oj*norb*norb+oa*norb*norb*norb] += Conjugate(WeightI) * WeightJ * ElemT(sgn);
-	twobody[sj+2*si][oj+oi*norb+oa*norb*norb+oj*norb*norb*norb] += Conjugate(WeightI) * WeightJ * ElemT(sgn);
+	twobody[si+2*sj][oi+oj*norb+oa*norb*norb+oj*norb*norb*norb] += Conjugate(WeightI) * WeightJ * ElemT(sgn);
+	twobody[sj+2*si][oj+oi*norb+oj*norb*norb+oa*norb*norb*norb] += Conjugate(WeightI) * WeightJ * ElemT(sgn);
 	if( si == sj ) {
-	  twobody[si+2*sj][oi+oj*norb+oa*norb*norb+oj*norb*norb*norb] += Conjugate(WeightI) * WeightJ * ElemT(-sgn);
-	  twobody[sj+2*si][oj+oi*norb+oj*norb*norb+oa*norb*norb*norb] += Conjugate(WeightI) * WeightJ * ElemT(-sgn);
+	  twobody[si+2*sj][oi+oj*norb+oj*norb*norb+oa*norb*norb*norb] += Conjugate(WeightI) * WeightJ * ElemT(-sgn);
+	  twobody[sj+2*si][oj+oi*norb+oa*norb*norb+oj*norb*norb*norb] += Conjugate(WeightI) * WeightJ * ElemT(-sgn);
 	}
 	bits &= ~(one << (pos-1));
       }
@@ -854,17 +854,17 @@ namespace sbd {
     int sb = B % 2;
 
     if ( si == sj ) {
-      twobody[si+2*sj][oi+norb*oj+norb*norb*ob+norb*norb*norb*oa] += ElemT(sgn) * Conjugate(WeightI) * WeightJ;
-      twobody[sj+2*si][oj+norb*oi+norb*norb*oa+norb*norb*norb*ob] += ElemT(sgn) * Conjugate(WeightI) * WeightJ;
-      twobody[si+2*sj][oi+norb*oj+norb*norb*oa+norb*norb*norb*ob] += ElemT(-sgn) * Conjugate(WeightI) * WeightJ;
-      twobody[sj+2*si][oj+norb*oi+norb*norb*ob+norb*norb*norb*oa] += ElemT(-sgn) * Conjugate(WeightI) * WeightJ;
+      twobody[si+2*sj][oi+norb*oj+norb*norb*oa+norb*norb*norb*ob] += ElemT(sgn) * Conjugate(WeightI) * WeightJ;
+      twobody[sj+2*si][oj+norb*oi+norb*norb*ob+norb*norb*norb*oa] += ElemT(sgn) * Conjugate(WeightI) * WeightJ;
+      twobody[si+2*sj][oi+norb*oj+norb*norb*ob+norb*norb*norb*oa] += ElemT(-sgn) * Conjugate(WeightI) * WeightJ;
+      twobody[sj+2*si][oj+norb*oi+norb*norb*oa+norb*norb*norb*ob] += ElemT(-sgn) * Conjugate(WeightI) * WeightJ;
       
     } else if ( si == sa ) {
-      twobody[si+2*sj][oi+norb*oj+norb*norb*ob+norb*norb*norb*oa] += ElemT(sgn) * Conjugate(WeightI) * WeightJ;
-      twobody[sj+2*si][oj+norb*oi+norb*norb*oa+norb*norb*norb*ob] += ElemT(sgn) * Conjugate(WeightI) * WeightJ;
+      twobody[si+2*sj][oi+norb*oj+norb*norb*oa+norb*norb*norb*ob] += ElemT(sgn) * Conjugate(WeightI) * WeightJ;
+      twobody[sj+2*si][oj+norb*oi+norb*norb*ob+norb*norb*norb*oa] += ElemT(sgn) * Conjugate(WeightI) * WeightJ;
     } else if ( si == sb ) {
-      twobody[si+2*sj][oi+norb*oj+norb*norb*oa+norb*norb*norb*ob] += ElemT(-sgn) * Conjugate(WeightI) * WeightJ;
-      twobody[sj+2*si][oj+norb*oi+norb*norb*ob+norb*norb*norb*oa] += ElemT(-sgn) * Conjugate(WeightI) * WeightJ;
+      twobody[si+2*sj][oi+norb*oj+norb*norb*ob+norb*norb*norb*oa] += ElemT(-sgn) * Conjugate(WeightI) * WeightJ;
+      twobody[sj+2*si][oj+norb*oi+norb*norb*oa+norb*norb*norb*ob] += ElemT(-sgn) * Conjugate(WeightI) * WeightJ;
     }
   }
 

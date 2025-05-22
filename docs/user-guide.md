@@ -107,7 +107,36 @@ sbd::FCIDump fcidump = sbd::LoadFCIDump(fcidumpfile);
 
 ## Main functions
 
-### Diagonalization
+### Diagonalization for basis spanned by tensor product of sampled alpha determinants and beta determinants
+
+#### Function
+```
+void sbd::tpb::diag(const MPI_Comm & comm,
+     		    const sbd::tpb::SBD & sbd_data,
+	            const sbd::FCIDump & fcidump,
+	            const std::vector<std::vector<size_t>> & adet,
+	            const std::vector<std::vector<size_t>> & bdet,
+		    const std::string & loadname,
+	      	    const std::string & savename,
+	      	    double & energy,
+	      	    std::vector<double> & density,
+	      	    std::vector<std::vector<size_t>> & carryover_bitstrings,
+	      	    std::vector<std::vector<double>> & one_p_rdm,
+	      	    std::vector<std::vector<double>> & two_p_rdm);
+```
+
+`comm`: (Input) MPI Communicator used for the diagonalization.
+`sbd_data`: (Input) structure specialized for this diagonalization function. See below.
+`fcidump`: (Input) FCIDump data
+`adet`: (Input) a set of bitstrings for half-determinants for alpha-spin orbitals
+`bdet`: (Input) a set of bitstrings for half-determinants for beta-spin orbitals
+`loadname`: If it is not empty, try to load the initial wavefunction from the file
+`savename`: File name to save the ground state wavefunction data
+`energy`: (Output) ground state energy
+`density`: (Output) diagonal part of `one_p_rdm`, i.e., `density[2*i+s] = one_p_rdm[s][i+L*i]`.
+`carryover_bitstrings`: (Output) set of bitstring which has larger weights in the wavefunction
+`one_p_rdm`: (Output) `one_p_rdm[s][i+L*j] = < cdag(i,s) c(j,s) >` where `cdag(i,s)` and `c(i,s)` indicates the creation and annihilation operators of a spin-`s` electron on the orbital `i`.
+`two_p_rdm`: (Output) `two_p_rdm[s+2*t][i+L*j+L*L*k+L*L*L*l] = < cdag(i,s) cdag(j,t) c(l,t) c(k,s >`.
 
 ### Variance Evaluation
 
