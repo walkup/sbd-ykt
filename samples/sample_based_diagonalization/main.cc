@@ -30,6 +30,7 @@ int main(int argc, char * argv[]) {
   std::string fcidumpfile("fcidump.txt");
   std::string loadname("");
   std::string savename("");
+  std::string carryoverfile("");
   
   for(int i=0; i < argc; i++) {
     if( std::string(argv[i]) == "--adetfile" ) {
@@ -46,6 +47,10 @@ int main(int argc, char * argv[]) {
     }
     if( std::string(argv[i]) == "--savename" ) {
       savename = std::string(argv[i+1]);
+      i++;
+    }
+    if( std::string(argv[i]) == "--carryoverfile" ) {
+      carryoverfile = std::string(argv[i+1]);
       i++;
     }
   }
@@ -151,6 +156,13 @@ int main(int argc, char * argv[]) {
       std::cout << " ... " << sbd::makestring(cobits[cobits.size()-1],sbd_data.bit_length,L);
     }
     std::cout << std::endl;
+    if( carryoverfile != std::string("") ) {
+      std::ofstream ofs_co(carryoverfile);
+      for(size_t i=0; i < cobits.size(); i++) {
+	ofs_co << sbd::makestring(cobits[i],sbd_data.bit_length,L) << std::endl;
+      }
+      ofs_co.close();
+    }
     if( one_p_rdm.size() != 0 ) {
       auto time_start_dump = std::chrono::high_resolution_clock::now();
       std::ofstream ofs_one("1pRDM.txt");
