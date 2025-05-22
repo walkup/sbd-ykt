@@ -188,16 +188,16 @@ int main(int argc, char * argv[]) {
 	    for(int ja=0; ja < L; ja++) {
 	      ofs_two << io << " " << jo << " "
 		      << ia << " " << ja << " 0 0 "
-		      << two_p_rdm[0][io+L*jo+L*L*ja+L*L*L*ia] << std::endl;
+		      << two_p_rdm[0][io+L*jo+L*L*ia+L*L*L*ja] << std::endl;
 	      ofs_two << io << " " << jo << " "
 		      << ia << " " << ja << " 1 0 "
-		      << two_p_rdm[1][io+L*jo+L*L*ja+L*L*L*ia] << std::endl;
+		      << two_p_rdm[1][io+L*jo+L*L*ia+L*L*L*ja] << std::endl;
 	      ofs_two << io << " " << jo << " "
 		      << ia << " " << ja << " 0 1 "
-		      << two_p_rdm[2][io+L*jo+L*L*ja+L*L*L*ia] << std::endl;
+		      << two_p_rdm[2][io+L*jo+L*L*ia+L*L*L*ja] << std::endl;
 	      ofs_two << io << " " << jo << " "
 		      << ia << " " << ja << " 1 1 "
-		      << two_p_rdm[3][io+L*jo+L*L*ja+L*L*L*ia] << std::endl;
+		      << two_p_rdm[3][io+L*jo+L*L*ia+L*L*L*ja] << std::endl;
 	    }
 	  }
 	}
