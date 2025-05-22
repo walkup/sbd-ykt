@@ -31,13 +31,13 @@ To store this bitstring in the library:
 
 #### Example 1: 8-bit Bitstring
 Suppose you want to represent the 8-bit string `01001100`, and you choose `bit_length = 4`, Then, `std::vector<size_t> b` would contain
-- `b.size() = ( 8 + 4 - 1 ) / 4 = 2`,
-- `b[0]` stores the lower 4 bits: `1100` -> `b[0]` = 1 * 2^3 + 1 * 2^2 + 0 * 2^1 + 0 * 2^0 = 12.
-- `b[1]` stores the upper 4 bits: `0100` -> `b[1]` = 0 * 2^3 + 1 * 2^2 + 0 * 2^1 + 0 * 2^0 = 4.
+- `b.size()` \f$  = ( 8 + 4 - 1 ) / 4 = 2 \f$,
+- `b[0]` stores the lower 4 bits: `1100` -> `b[0]` \f$ = 1 \times 2^3 + 1 \times 2^2 + 0 \times 2^1 + 0 \times 2^0 = 12 \f$.
+- `b[1]` stores the upper 4 bits: `0100` -> `b[1]` \f$ = 0 \times 2^3 + 1 \times 2^2 + 0 \times 2^1 + 0 \times 2^0 = 4 \f$.
 
 #### Example 2: Bitstring Length Not Divisible by `bit_length`
 If the bitstring length `L` is not divisible by `bit_length`, the final `size_t` element will contain fewer than `bit_length` bits. For example, with `L=10` and `bit_length = 4`:
-- `b.size() = (10 + 4 - 1 ) / 4 = 3`
+- `b.size()` \f$ = (10 + 4 - 1 ) / 4 = 3 \f$.
 - `b[0]` and `b[1]` store 4 bits each.
 - `b[2]` stores only the remanining 2 bits, aligned to the lower bits of the word.
 - The unused upper bits of `b[2]` are automatically zero-padded.
@@ -112,31 +112,31 @@ sbd::FCIDump fcidump = sbd::LoadFCIDump(fcidumpfile);
 #### Function
 ```
 void sbd::tpb::diag(const MPI_Comm & comm,
-     		    const sbd::tpb::SBD & sbd_data,
-	            const sbd::FCIDump & fcidump,
-	            const std::vector<std::vector<size_t>> & adet,
-	            const std::vector<std::vector<size_t>> & bdet,
-		    const std::string & loadname,
-	      	    const std::string & savename,
-	      	    double & energy,
-	      	    std::vector<double> & density,
-	      	    std::vector<std::vector<size_t>> & carryover_bitstrings,
-	      	    std::vector<std::vector<double>> & one_p_rdm,
-	      	    std::vector<std::vector<double>> & two_p_rdm);
+                    const sbd::tpb::SBD & sbd_data,
+                    const sbd::FCIDump & fcidump,
+                    const std::vector<std::vector<size_t>> & adet,
+                    const std::vector<std::vector<size_t>> & bdet,
+                    const std::string & loadname,
+                    const std::string & savename,
+                    double & energy,
+                    std::vector<double> & density,
+                    std::vector<std::vector<size_t>> & carryover_bitstrings,
+                    std::vector<std::vector<double>> & one_p_rdm,
+                    std::vector<std::vector<double>> & two_p_rdm);
 ```
 
-`comm`: (Input) MPI Communicator used for the diagonalization.
-`sbd_data`: (Input) structure specialized for this diagonalization function. See below.
-`fcidump`: (Input) FCIDump data
-`adet`: (Input) a set of bitstrings for half-determinants for alpha-spin orbitals
-`bdet`: (Input) a set of bitstrings for half-determinants for beta-spin orbitals
-`loadname`: If it is not empty, try to load the initial wavefunction from the file
-`savename`: File name to save the ground state wavefunction data
-`energy`: (Output) ground state energy
-`density`: (Output) diagonal part of `one_p_rdm`, i.e., `density[2*i+s] = one_p_rdm[s][i+L*i]`.
-`carryover_bitstrings`: (Output) set of bitstring which has larger weights in the wavefunction
-`one_p_rdm`: (Output) `one_p_rdm[s][i+L*j] = < cdag(i,s) c(j,s) >` where `cdag(i,s)` and `c(i,s)` indicates the creation and annihilation operators of a spin-`s` electron on the orbital `i`.
-`two_p_rdm`: (Output) `two_p_rdm[s+2*t][i+L*j+L*L*k+L*L*L*l] = < cdag(i,s) cdag(j,t) c(l,t) c(k,s >`.
+* `comm`: (Input) MPI Communicator used for the diagonalization.
+* `sbd_data`: (Input) structure specialized for this diagonalization function. See below.
+* `fcidump`: (Input) FCIDump data
+* `adet`: (Input) a set of bitstrings for half-determinants for alpha-spin orbitals
+* `bdet`: (Input) a set of bitstrings for half-determinants for beta-spin orbitals
+* `loadname`: If it is not empty, try to load the initial wavefunction from the file
+* `savename`: File name to save the ground state wavefunction data
+* `energy`: (Output) ground state energy
+* `density`: (Output) diagonal part of `one_p_rdm`, i.e., `density[2*i+s] = one_p_rdm[s][i+L*i]`.
+* `carryover_bitstrings`: (Output) set of bitstring which has larger weights in the wavefunction
+* `one_p_rdm`: (Output) `one_p_rdm[s][i+L*j]\f$ = \langle c^{\dagger}_{i,s} c_{j,s} \rangle \f$ where \f$ c^{\dagger}_{i,s} \f$ and \f$ c_{j,s} \f$ indicates the creation and annihilation operators of a spin-\f$s\f$ electron on the orbitals \f$i\f$ and \f$ j \f$.
+* `two_p_rdm`: (Output) `two_p_rdm[s+2*t][i+L*j+L*L*k+L*L*L*l]` \f$= \langle c^{\dagger}_{i s} c^{\dagger}_{jt} c_{l,t} c_{k,s} \rangle \f$.
 
 ### Variance Evaluation
 
