@@ -853,19 +853,16 @@ namespace sbd {
     int ob = B / 2;
     int sb = B % 2;
 
-    if ( si == sj ) {
+    if( si == sa ) {
       twobody[si+2*sj][oi+norb*oj+norb*norb*oa+norb*norb*norb*ob] += ElemT(sgn) * Conjugate(WeightI) * WeightJ;
       twobody[sj+2*si][oj+norb*oi+norb*norb*ob+norb*norb*norb*oa] += ElemT(sgn) * Conjugate(WeightI) * WeightJ;
-      twobody[si+2*sj][oi+norb*oj+norb*norb*ob+norb*norb*norb*oa] += ElemT(-sgn) * Conjugate(WeightI) * WeightJ;
-      twobody[sj+2*si][oj+norb*oi+norb*norb*oa+norb*norb*norb*ob] += ElemT(-sgn) * Conjugate(WeightI) * WeightJ;
-      
-    } else if ( si == sa ) {
-      twobody[si+2*sj][oi+norb*oj+norb*norb*oa+norb*norb*norb*ob] += ElemT(sgn) * Conjugate(WeightI) * WeightJ;
-      twobody[sj+2*si][oj+norb*oi+norb*norb*ob+norb*norb*norb*oa] += ElemT(sgn) * Conjugate(WeightI) * WeightJ;
-    } else if ( si == sb ) {
+    }
+
+    if( si == sb ) {
       twobody[si+2*sj][oi+norb*oj+norb*norb*ob+norb*norb*norb*oa] += ElemT(-sgn) * Conjugate(WeightI) * WeightJ;
       twobody[sj+2*si][oj+norb*oi+norb*norb*oa+norb*norb*norb*ob] += ElemT(-sgn) * Conjugate(WeightI) * WeightJ;
     }
+
   }
 
   /**
