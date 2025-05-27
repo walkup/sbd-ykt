@@ -163,23 +163,30 @@ int main(int argc, char * argv[]) {
       }
       ofs_co.close();
     }
+    
     if( one_p_rdm.size() != 0 ) {
+
+      double onebody = 0.0;
+      double twobody = 0.0;
+      double I0;
+      sbd::oneInt<double> I1;
+      sbd::twoInt<double> I2;
+      sbd::SetupIntegrals(fcidump,L,N,I0,I1,I2);
+      
       auto time_start_dump = std::chrono::high_resolution_clock::now();
       std::ofstream ofs_one("1pRDM.txt");
       ofs_one.precision(16);
       for(int io=0; io < L; io++) {
 	for(int jo=0; jo < L; jo++) {
-	  ofs_one << io << " " << jo << " 0 " << one_p_rdm[0][io+L*jo] << std::endl;
-	  ofs_one << io << " " << jo << " 1 " << one_p_rdm[1][io+L*jo] << std::endl;
+	  ofs_one << io << " " << jo << " " << one_p_rdm[0][io+L*jo]+one_p_rdm[1][io+L*jo] << std::endl;
+	  onebody += I1.Value(2*io,2*jo) * (one_p_rdm[0][io+L*jo] + one_p_rdm[1][io+L*jo]);
 	}
       }
       auto time_end_dump = std::chrono::high_resolution_clock::now();
       auto elapsed_dump_count = std::chrono::duration_cast<std::chrono::microseconds>(time_end_dump-time_start_dump).count();
       double elapsed_dump = 0.000001 * elapsed_dump_count;
       std::cout << " Elapse time for dumping one-particle rdm = " << elapsed_dump << std::endl;
-    }
-    if( two_p_rdm.size() != 0 ) {
-      auto time_start_dump = std::chrono::high_resolution_clock::now();
+      time_start_dump = std::chrono::high_resolution_clock::now();
       std::ofstream ofs_two("2pRDM.txt");
       ofs_two.precision(16);
       for(int io=0; io < L; io++) {
@@ -187,25 +194,27 @@ int main(int argc, char * argv[]) {
 	  for(int ia=0; ia < L; ia++) {
 	    for(int ja=0; ja < L; ja++) {
 	      ofs_two << io << " " << jo << " "
-		      << ia << " " << ja << " 0 0 "
-		      << two_p_rdm[0][io+L*jo+L*L*ia+L*L*L*ja] << std::endl;
-	      ofs_two << io << " " << jo << " "
-		      << ia << " " << ja << " 1 0 "
-		      << two_p_rdm[1][io+L*jo+L*L*ia+L*L*L*ja] << std::endl;
-	      ofs_two << io << " " << jo << " "
-		      << ia << " " << ja << " 0 1 "
-		      << two_p_rdm[2][io+L*jo+L*L*ia+L*L*L*ja] << std::endl;
-	      ofs_two << io << " " << jo << " "
-		      << ia << " " << ja << " 1 1 "
-		      << two_p_rdm[3][io+L*jo+L*L*ia+L*L*L*ja] << std::endl;
+		      << ia << " " << ja << " "
+		      << two_p_rdm[0][io+L*jo+L*L*(ia+L*ja)] + two_p_rdm[1][io+L*jo+L*L*(ia+L*ja)]
+		       + two_p_rdm[2][io+L*jo+L*L*(ia+L*ja)] + two_p_rdm[3][io+L*jo+L*L*(ia+L*ja)]
+		      << std::endl;
+	      twobody += 0.5 * I2.Value(2*io,2*ia,2*jo,2*ja) * two_p_rdm[0][io+L*jo+L*L*ia+L*L*L*ja];
+	      twobody += 0.5 * I2.Value(2*io,2*ia,2*jo,2*ja) * two_p_rdm[1][io+L*jo+L*L*ia+L*L*L*ja];
+	      twobody += 0.5 * I2.Value(2*io,2*ia,2*jo,2*ja) * two_p_rdm[2][io+L*jo+L*L*ia+L*L*L*ja];
+	      twobody += 0.5 * I2.Value(2*io,2*ia,2*jo,2*ja) * two_p_rdm[3][io+L*jo+L*L*ia+L*L*L*ja];
 	    }
 	  }
 	}
       }
-      auto time_end_dump = std::chrono::high_resolution_clock::now();
-      auto elapsed_dump_count = std::chrono::duration_cast<std::chrono::microseconds>(time_end_dump-time_start_dump).count();
-      double elapsed_dump = 0.000001 * elapsed_dump_count;
+      
+      time_end_dump = std::chrono::high_resolution_clock::now();
+      elapsed_dump_count = std::chrono::duration_cast<std::chrono::microseconds>(time_end_dump-time_start_dump).count();
+      elapsed_dump = 0.000001 * elapsed_dump_count;
       std::cout << " Elapse time for dumping two-particle rdm = " << elapsed_dump << std::endl;
+      std::cout << " One-Body energy = " << onebody << std::endl;
+      std::cout << " Two-Body energy = " << twobody << std::endl;
+      std::cout << " One-Body + Two-Body energy = " << onebody + twobody << std::endl;
+      
     }
   }
 
