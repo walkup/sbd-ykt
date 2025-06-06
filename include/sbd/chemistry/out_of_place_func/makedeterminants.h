@@ -5,6 +5,8 @@
 #ifndef SBD_CHEMISTRY_OUT_OF_PLACE_FUNC_MAKEDETERMINANTS_H
 #define SBD_CHEMISTRY_OUT_OF_PLACE_FUNC_MAKEDETERMINANTS_H
 
+#include <deque>
+
 namespace sbd {
 
   void SetupDeterminants(const std::vector<std::vector<size_t>> & AlphaDet,
