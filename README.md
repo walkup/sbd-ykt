@@ -18,10 +18,10 @@ This is a library for diagonalizing systems composed of selected basis. The libr
 
 ## How to Compile the Sample Codes
 
-- The sample code for parallelized sample-based diagonalization is located in sample/sample-based-diagonalization.
+- The sample code for parallelized selected basis diagonalization is located in `sample/selected_basis_diagonalization`.
 - Edit the configuration file to suit your environment and build it with the make command.
 - For more information and options for the executable, see README.md in the same directory.
 
 ## Licence
 
-[Apach License 2.0](https://github.com/t-sirakawa/sbd/blob/main/LICENSE.txt)
+[Apach License 2.0](https://github.com/r-ccs-cms/sbd/blob/main/LICENSE.txt)
