@@ -11,11 +11,4 @@
 #include "sbd/chemistry/tpb/restart.h"
 #include "sbd/chemistry/tpb/sbdiag.h"
 
-/**
-   Functions for variance evaluation
- */
-#include "sbd/chemistry/tpb/sampler.h"
-#include "sbd/chemistry/tpb/extend.h"
-#include "sbd/chemistry/tpb/variance.h"
-
 #endif

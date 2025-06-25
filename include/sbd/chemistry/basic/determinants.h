@@ -1,9 +1,9 @@
 /**
-@file sbd/chemistry/determinants.h
+@file sbd/chemistry/basic/determinants.h
 @brief Functions to handle the bit-string basis
 */
-#ifndef SBD_CHEMISTRY_DETERMINANTS_H
-#define SBD_CHEMISTRY_DETERMINANTS_H
+#ifndef SBD_CHEMISTRY_BASIC_DETERMINANTS_H
+#define SBD_CHEMISTRY_BASIC_DETERMINANTS_H
 
 namespace sbd {
 

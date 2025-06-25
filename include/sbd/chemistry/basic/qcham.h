@@ -1,9 +1,9 @@
 /**
-@file sbd/chemistry/qcham.h
+@file sbd/chemistry/basic/qcham.h
 @brief Function to make Hamiltonian
 */
-#ifndef SBD_CHEMISTRY_QCHAM_H
-#define SBD_CHEMISTRY_QCHAM_H
+#ifndef SBD_CHEMISTRY_BASIC_QCHAM_H
+#define SBD_CHEMISTRY_BASIC_QCHAM_H
 
 namespace sbd {
 

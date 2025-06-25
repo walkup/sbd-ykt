@@ -1,9 +1,9 @@
 /**
-@file sbd/chemistry/helpers.h
+@file sbd/chemistry/basic/helpers.h
 @brief Helper arrays to construct the Hamiltonian
 */
-#ifndef SBD_CHEMISTRY_HELPERS_H
-#define SBD_CHEMISTRY_HELPERS_H
+#ifndef SBD_CHEMISTRY_BASIC_HELPERS_H
+#define SBD_CHEMISTRY_BASIC_HELPERS_H
 
 #include <cstring>
 

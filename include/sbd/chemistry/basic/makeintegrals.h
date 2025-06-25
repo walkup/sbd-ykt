@@ -1,9 +1,9 @@
 /**
-@file sbd/chemistry/out_of_place_func/makeintegrals.h
+@file sbd/chemistry/basic/makeintegrals.h
 @brief Setup oneInt and twoInt from fcidump format
 */
-#ifndef SBD_CHEMISTRY_OUT_OF_PLACE_FUNC_MAKEINTEGRALS_H
-#define SBD_CHEMISTRY_OUT_OF_PLACE_FUNC_MAKEINTEGRALS_H
+#ifndef SBD_CHEMISTRY_BASIC_MAKEINTEGRALS_H
+#define SBD_CHEMISTRY_BASIC_MAKEINTEGRALS_H
 
 namespace sbd {
 

@@ -1,9 +1,9 @@
 /**
-@file sbd/chemistry/integrals.h
+@file sbd/chemistry/basic/integrals.h
 @brief Functions to handle integrals
 */
-#ifndef SBD_CHEMISTRY_INTEGRALS_H
-#define SBD_CHEMISTRY_INTEGRALS_H
+#ifndef SBD_CHEMISTRY_BASIC_INTEGRALS_H
+#define SBD_CHEMISTRY_BASIC_INTEGRALS_H
 
 namespace sbd {
 

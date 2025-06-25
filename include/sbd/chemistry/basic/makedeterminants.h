@@ -1,9 +1,9 @@
 /**
-@file sbd/chemistry/out_of_place_func/makedeterminants.h
+@file sbd/chemistry/basic/makedeterminants.h
 @brief Setup the set of determinants from 
 */
-#ifndef SBD_CHEMISTRY_OUT_OF_PLACE_FUNC_MAKEDETERMINANTS_H
-#define SBD_CHEMISTRY_OUT_OF_PLACE_FUNC_MAKEDETERMINANTS_H
+#ifndef SBD_CHEMISTRY_BASIC_MAKEDETERMINANTS_H
+#define SBD_CHEMISTRY_BASIC_MAKEDETERMINANTS_H
 
 #include <deque>
 
