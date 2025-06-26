@@ -68,19 +68,19 @@ namespace sbd {
       }
     }
 
-    std::vector<size_t> k_start(thread_id,0);
-    std::vector<size_t> k_end(len[0]);
+    std::vector<size_t> k_start(num_threads,0);
+    std::vector<size_t> k_end(num_threads,0);
     for(size_t task=0; task < tasktype.size(); task++) {
 #pragma omp parallel
       {
+	k_end[thread_id] = k_start[thread_id] + len[task][thread_id];
 	for(size_t k=k_start[thread_id]; k < k_end[thread_id]; k++) {
 	  Wb[ih[thread_id][k]] += hij[thread_id][k] * T[jh[thread_id][k]];
 	}
 	k_start[thread_id] = k_end[thread_id];
-	if( task != tasktype.size()-1 ) {
-	  k_end[thread_id] = len[task+1][thread_id]+k_start[thread_id];
-	}
       }
+
+      
 #pragma omp barrier
       if( tasktype[task] == 0 && task != tasktype.size()-1 ) {
 	int adetslide = adetshift[task]-adetshift[task+1];

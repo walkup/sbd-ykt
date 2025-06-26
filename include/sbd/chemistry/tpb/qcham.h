@@ -157,18 +157,22 @@ namespace sbd {
 
     size_t * begin_int = sharedInt.data();
     size_t counter_int = 0;
-    ElemT * begin_ElemT = sharedElemT.data();
-    size_t counter_ElemT = 0;
-
-    for(size_t task=0; task < helper.size(); task++) {
-      for(size_t thread=0; thread < num_threads; thread++) {
-	ih[thread] = begin_int + counter_int;
-	counter_int += len[task][thread];
-	jh[thread] = begin_int + counter_int;
+    for(size_t thread=0; thread < num_threads; thread++) {
+      ih[thread] = begin_int + counter_int;
+      for(size_t task=0; task < helper.size(); task++) {
 	counter_int += len[task][thread];
       }
-      for(size_t thread=0; thread < num_threads; thread++) {
-	hij[thread] = begin_ElemT + counter_ElemT;
+      jh[thread] = begin_int + counter_int;
+      for(size_t task=0; task < helper.size(); task++) {
+	counter_int += len[task][thread];
+      }
+    }
+    
+    ElemT * begin_ElemT = sharedElemT.data();
+    size_t counter_ElemT = 0;
+    for(size_t thread=0; thread < num_threads; thread++) {
+      hij[thread] = begin_ElemT + counter_ElemT;
+      for(size_t task=0; task < helper.size(); task++) {
 	counter_ElemT += len[task][thread];
       }
     }
@@ -195,8 +199,6 @@ namespace sbd {
       std::vector<int> c(2,0);
       std::vector<int> d(2,0);
 
-      
-      
       size_t address = 0;
       // alpha-beta excitation
 
@@ -221,7 +223,8 @@ namespace sbd {
 		size_t ja = helper[task].SinglesFromAlphaSM[ia-helper[task].braAlphaStart][j];
 		for(size_t k=0; k < helper[task].SinglesFromBetaLen[ib-helper[task].braBetaStart]; k++) {
 		  size_t jb = helper[task].SinglesFromBetaSM[ib-helper[task].braBetaStart][k];
-		  size_t ketIdx = (ja-helper[task].ketAlphaStart)*ketBetaSize+jb-helper[task].ketBetaStart;
+		  size_t ketIdx = (ja-helper[task].ketAlphaStart)*ketBetaSize
+		                  +jb-helper[task].ketBetaStart;
 		  DetFromAlphaBeta(adets[ja],bdets[jb],bit_length,norbs,DetJ);
 		  size_t orbDiff;
 		  ElemT eij = Hij(DetI,DetJ,bit_length,norbs,c,d,I0,I1,I2,orbDiff);
@@ -238,7 +241,8 @@ namespace sbd {
 	      // single alpha excitation
 	      for(size_t j=0; j < helper[task].SinglesFromAlphaLen[ia-helper[task].braAlphaStart]; j++) {
 		size_t ja = helper[task].SinglesFromAlphaSM[ia-helper[task].braAlphaStart][j];
-		size_t ketIdx = (ja-helper[task].ketAlphaStart)*ketBetaSize+ib-helper[task].ketBetaStart;
+		size_t ketIdx = (ja-helper[task].ketAlphaStart)*ketBetaSize
+		                +ib-helper[task].ketBetaStart;
 		DetFromAlphaBeta(adets[ja],bdets[ib],bit_length,norbs,DetJ);
 		size_t orbDiff;
 		ElemT eij = Hij(DetI,DetJ,
@@ -251,7 +255,8 @@ namespace sbd {
 	      // double alpha excitation
 	      for(size_t j=0; j < helper[task].DoublesFromAlphaLen[ia-helper[task].braAlphaStart]; j++) {
 		size_t ja = helper[task].DoublesFromAlphaSM[ia-helper[task].braAlphaStart][j];
-		size_t ketIdx = (ja-helper[task].ketAlphaStart)*ketBetaSize + ib-helper[task].ketBetaStart;
+		size_t ketIdx = (ja-helper[task].ketAlphaStart)*ketBetaSize
+		               + ib-helper[task].ketBetaStart;
 		DetFromAlphaBeta(adets[ja],bdets[ib],bit_length,norbs,DetJ);
 		size_t orbDiff;
 		ElemT eij = Hij(DetI,DetJ,bit_length,norbs,c,d,I0,I1,I2,orbDiff);
@@ -266,7 +271,8 @@ namespace sbd {
 	      // single beta excitation
 	      for(size_t j=0; j < helper[task].SinglesFromBetaLen[ib-helper[task].braBetaStart]; j++) {
 		size_t jb = helper[task].SinglesFromBetaSM[ib-helper[task].braBetaStart][j];
-		size_t ketIdx = (ia-helper[task].ketAlphaStart) * ketBetaSize + jb - helper[task].ketBetaStart;
+		size_t ketIdx = (ia-helper[task].ketAlphaStart) * ketBetaSize
+		               + jb - helper[task].ketBetaStart;
 		DetFromAlphaBeta(adets[ia],bdets[jb],bit_length,norbs,DetJ);
 		size_t orbDiff;
 		ElemT eij = Hij(DetI,DetJ,bit_length,norbs,c,d,I0,I1,I2,orbDiff);
@@ -278,7 +284,8 @@ namespace sbd {
 	      // double beta excitation
 	      for(size_t j=0; j < helper[task].DoublesFromBetaLen[ib-helper[task].braBetaStart]; j++) {
 		size_t jb = helper[task].DoublesFromBetaSM[ib-helper[task].braBetaStart][j];
-		size_t ketIdx = (ia-helper[task].ketAlphaStart) * ketBetaSize + jb-helper[task].ketBetaStart;
+		size_t ketIdx = (ia-helper[task].ketAlphaStart) * ketBetaSize
+		               + jb-helper[task].ketBetaStart;
 		DetFromAlphaBeta(adets[ia],bdets[jb],bit_length,norbs,DetJ);
 		size_t orbDiff;
 		ElemT eij = Hij(DetI,DetJ,bit_length,norbs,c,d,I0,I1,I2,orbDiff);
@@ -352,5 +359,5 @@ namespace sbd {
 } // end namespace sbd
 
 
-#endif // SBD_CHEMISTRY_TWHAM_H
+#endif // SBD_CHEMISTRY_TPB_QCHAM_H
 
