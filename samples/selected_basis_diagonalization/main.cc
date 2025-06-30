@@ -118,10 +118,9 @@ int main(int argc, char * argv[]) {
     sbd::LoadAlphaDets(adetfile,adet,sbd_data.bit_length,L);
   }
 
-  if( sbd_data.do_shuffle == 0 ) {
-    sbd::MpiBcast(adet,0,comm);
-    bdet = adet;
-  } else {
+  sbd::MpiBcast(adet,0,comm);
+  bdet = adet;
+  if( sbd_data.do_shuffle != 0 ) {
     if( mpi_rank == 0 ) {
       unsigned int taxi = 1729;
       unsigned int magic = 137;
