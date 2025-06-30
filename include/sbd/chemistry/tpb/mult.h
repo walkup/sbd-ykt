@@ -12,9 +12,9 @@ namespace sbd {
   // current mult
   template <typename ElemT>
   void mult(const std::vector<ElemT> & hii,
-	    const std::vector<size_t*> & ih,
-	    const std::vector<size_t*> & jh,
-	    const std::vector<ElemT*> & hij,
+	    const std::vector<std::vector<size_t*>> & ih,
+	    const std::vector<std::vector<size_t*>> & jh,
+	    const std::vector<std::vector<ElemT*>> & hij,
 	    const std::vector<std::vector<size_t>> & len,
 	    const std::vector<size_t> & tasktype,
 	    const std::vector<size_t> & adetshift,
@@ -68,16 +68,27 @@ namespace sbd {
       }
     }
 
-    std::vector<size_t> k_start(num_threads,0);
-    std::vector<size_t> k_end(num_threads,0);
+    // std::vector<size_t> k_start(num_threads,0);
+    // std::vector<size_t> k_end(num_threads,0);
     for(size_t task=0; task < tasktype.size(); task++) {
+
+#ifdef SBD_DEBUG_MULT
+      std::cout << "(" << mpi_rank_h << "," << mpi_rank_b
+		<< "," << mpi_rank_t << "): size of task " << task
+		<< " =";
+      for(int tid=0; tid < num_threads; tid++) {
+	std::cout << " (" << 0 << "," << len[task][tid] << ")";
+      }
+#endif
+      
 #pragma omp parallel
       {
-	k_end[thread_id] = k_start[thread_id] + len[task][thread_id];
-	for(size_t k=k_start[thread_id]; k < k_end[thread_id]; k++) {
-	  Wb[ih[thread_id][k]] += hij[thread_id][k] * T[jh[thread_id][k]];
+	// k_end[thread_id] = k_start[thread_id] + len[task][thread_id];
+	// for(size_t k=k_start[thread_id]; k < k_end[thread_id]; k++) {
+	for(size_t k=0; k < len[task][thread_id]; k++) {
+	  Wb[ih[task][thread_id][k]] += hij[task][thread_id][k] * T[jh[task][thread_id][k]];
 	}
-	k_start[thread_id] = k_end[thread_id];
+	// k_start[thread_id] = k_end[thread_id];
       }
 
       
@@ -101,12 +112,14 @@ namespace sbd {
     auto time_mult_count = std::chrono::duration_cast<std::chrono::microseconds>(time_mult_end-time_mult_start).count();
     auto time_comm_count = std::chrono::duration_cast<std::chrono::microseconds>(time_comm_end-time_comm_start).count();
 
+#ifdef SBD_DEBUG_MULT
     double time_copy = 1.0e-6 * time_copy_count;
     double time_mult = 1.0e-6 * time_mult_count;
     double time_comm = 1.0e-6 * time_comm_count;
     std::cout << " mult: time for first copy     = " << time_copy << std::endl;
     std::cout << " mult: time for multiplication = " << time_mult << std::endl;
     std::cout << " mult: time for allreduce comm = " << time_comm << std::endl;
+#endif
   }
 
   

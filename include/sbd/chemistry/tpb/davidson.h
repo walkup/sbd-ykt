@@ -163,9 +163,9 @@ x = 0    1    2    3
   
   template <typename ElemT, typename RealT>
   void Davidson(const std::vector<ElemT> & hii,
-		const std::vector<size_t*> & ih,
-		const std::vector<size_t*> & jh,
-		const std::vector<ElemT*> & hij,
+		const std::vector<std::vector<size_t*>> & ih,
+		const std::vector<std::vector<size_t*>> & jh,
+		const std::vector<std::vector<ElemT*>> & hij,
 		const std::vector<std::vector<size_t>> & len,
 		const std::vector<size_t> & tasktype,
 		const std::vector<size_t> & adetshift,

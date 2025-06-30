@@ -268,9 +268,9 @@ namespace sbd {
 	*/
 
 	std::vector<double> hii;
-	std::vector<size_t*> ih;
-	std::vector<size_t*> jh;
-	std::vector<double*> hij;
+	std::vector<std::vector<size_t*>> ih;
+	std::vector<std::vector<size_t*>> jh;
+	std::vector<std::vector<double*>> hij;
 	std::vector<std::vector<size_t>> len;
 	std::vector<size_t> tasktype;
 	std::vector<size_t> adetshift;

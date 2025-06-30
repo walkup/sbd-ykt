@@ -17,9 +17,9 @@ namespace sbd {
 		 oneInt<ElemT> & I1,
 		 twoInt<ElemT> & I2,
 		 std::vector<ElemT> & hii,
-		 std::vector<size_t*> & ih,
-		 std::vector<size_t*> & jh,
-		 std::vector<ElemT*> & hij,
+		 std::vector<std::vector<size_t*>> & ih,
+		 std::vector<std::vector<size_t*>> & jh,
+		 std::vector<std::vector<ElemT*>> & hij,
 		 std::vector<std::vector<size_t>> & len,
 		 std::vector<size_t> & tasktype,
 		 std::vector<size_t> & adetshift,
@@ -98,10 +98,7 @@ namespace sbd {
     adetshift.resize(helper.size());
     bdetshift.resize(helper.size());
     len.resize(helper.size(),std::vector<size_t>(num_threads));
-    ih.resize(num_threads);
-    jh.resize(num_threads);
-    hij.resize(num_threads);
-
+    
     size_t chunk_size = (braAlphaEnd-braAlphaStart) / num_threads;
 
     // size evaluation
@@ -114,6 +111,7 @@ namespace sbd {
 	ia_end = braAlphaEnd;
       }
       for(size_t task = 0; task < helper.size(); task++) {
+	len[task][thread_id] = 0;
 	for(size_t ia = ia_start; ia < ia_end; ia++) {
 	  for(size_t ib = helper[task].braBetaStart; ib < helper[task].braBetaEnd; ib++) {
 	    size_t braIdx = (ia-helper[task].braAlphaStart)*braBetaSize
@@ -124,13 +122,13 @@ namespace sbd {
 	      len[task][thread_id] += helper[task].SinglesFromAlphaLen[ia-helper[task].braAlphaStart]
 		                    * helper[task].SinglesFromBetaLen[ib-helper[task].braBetaStart];
 	    }
-	    else if ( helper[task].taskType == 1 ) {
+	    else if ( helper[task].taskType == 2 ) {
 	      // single alpha excitation
 	      len[task][thread_id] += helper[task].SinglesFromAlphaLen[ia-helper[task].braAlphaStart];
 	      // double alpha excitation
 	      len[task][thread_id] += helper[task].DoublesFromAlphaLen[ia-helper[task].braAlphaStart];
 	    }
-	    else if( helper[task].taskType == 2 ) {
+	    else if( helper[task].taskType == 1 ) {
 	      // single beta excitation
 	      len[task][thread_id] += helper[task].SinglesFromBetaLen[ib-helper[task].braBetaStart];
 	      // double beta excitation
@@ -157,22 +155,25 @@ namespace sbd {
 
     size_t * begin_int = sharedInt.data();
     size_t counter_int = 0;
-    for(size_t thread=0; thread < num_threads; thread++) {
-      ih[thread] = begin_int + counter_int;
-      for(size_t task=0; task < helper.size(); task++) {
+
+    ih.resize(helper.size(),std::vector<size_t*>(num_threads));
+    jh.resize(helper.size(),std::vector<size_t*>(num_threads));
+    hij.resize(helper.size(),std::vector<ElemT*>(num_threads));
+
+    for(size_t task=0; task < helper.size(); task++) {
+      for(size_t thread=0; thread < num_threads; thread++) {
+	ih[task][thread] = begin_int + counter_int;
 	counter_int += len[task][thread];
-      }
-      jh[thread] = begin_int + counter_int;
-      for(size_t task=0; task < helper.size(); task++) {
+	jh[task][thread] = begin_int + counter_int;
 	counter_int += len[task][thread];
       }
     }
     
     ElemT * begin_ElemT = sharedElemT.data();
     size_t counter_ElemT = 0;
-    for(size_t thread=0; thread < num_threads; thread++) {
-      hij[thread] = begin_ElemT + counter_ElemT;
-      for(size_t task=0; task < helper.size(); task++) {
+    for(size_t task=0; task < helper.size(); task++) {
+      for(size_t thread=0; thread < num_threads; thread++) {
+	hij[task][thread] = begin_ElemT + counter_ElemT;
 	counter_ElemT += len[task][thread];
       }
     }
@@ -199,13 +200,13 @@ namespace sbd {
       std::vector<int> c(2,0);
       std::vector<int> d(2,0);
 
-      size_t address = 0;
       // alpha-beta excitation
 
       for(size_t task = 0; task < helper.size(); task++) {
 
 	size_t ketAlphaSize = helper[task].ketAlphaEnd-helper[task].ketAlphaStart;
 	size_t ketBetaSize  = helper[task].ketBetaEnd-helper[task].ketBetaStart;
+	size_t address = 0;
 	
 	for(size_t ia = ia_start; ia < ia_end; ia++) {
 	  for(size_t ib = helper[task].braBetaStart; ib < helper[task].braBetaEnd; ib++) {
@@ -228,15 +229,15 @@ namespace sbd {
 		  DetFromAlphaBeta(adets[ja],bdets[jb],bit_length,norbs,DetJ);
 		  size_t orbDiff;
 		  ElemT eij = Hij(DetI,DetJ,bit_length,norbs,c,d,I0,I1,I2,orbDiff);
-		  ih[thread_id][address] = braIdx;
-		  jh[thread_id][address] = ketIdx;
-		  hij[thread_id][address] = eij;
+		  ih[task][thread_id][address] = braIdx;
+		  jh[task][thread_id][address] = ketIdx;
+		  hij[task][thread_id][address] = eij;
 		  address++;
 		}
 	      }
 	    }
 	    
-	    if( helper[task].taskType == 1 ) {
+	    if( helper[task].taskType == 2 ) {
 	    
 	      // single alpha excitation
 	      for(size_t j=0; j < helper[task].SinglesFromAlphaLen[ia-helper[task].braAlphaStart]; j++) {
@@ -247,9 +248,9 @@ namespace sbd {
 		size_t orbDiff;
 		ElemT eij = Hij(DetI,DetJ,
 				bit_length,norbs,c,d,I0,I1,I2,orbDiff);
-		ih[thread_id][address] = braIdx;
-		jh[thread_id][address] = ketIdx;
-		hij[thread_id][address] = eij;
+		ih[task][thread_id][address] = braIdx;
+		jh[task][thread_id][address] = ketIdx;
+		hij[task][thread_id][address] = eij;
 		address++;
 	      }
 	      // double alpha excitation
@@ -260,14 +261,14 @@ namespace sbd {
 		DetFromAlphaBeta(adets[ja],bdets[ib],bit_length,norbs,DetJ);
 		size_t orbDiff;
 		ElemT eij = Hij(DetI,DetJ,bit_length,norbs,c,d,I0,I1,I2,orbDiff);
-		ih[thread_id][address] = braIdx;
-		jh[thread_id][address] = ketIdx;
-		hij[thread_id][address] = eij;
+		ih[task][thread_id][address] = braIdx;
+		jh[task][thread_id][address] = ketIdx;
+		hij[task][thread_id][address] = eij;
 		address++;
 	      }
 	    }
 	    
-	    if( helper[task].taskType == 2 ) {
+	    if( helper[task].taskType == 1 ) {
 	      // single beta excitation
 	      for(size_t j=0; j < helper[task].SinglesFromBetaLen[ib-helper[task].braBetaStart]; j++) {
 		size_t jb = helper[task].SinglesFromBetaSM[ib-helper[task].braBetaStart][j];
@@ -276,9 +277,9 @@ namespace sbd {
 		DetFromAlphaBeta(adets[ia],bdets[jb],bit_length,norbs,DetJ);
 		size_t orbDiff;
 		ElemT eij = Hij(DetI,DetJ,bit_length,norbs,c,d,I0,I1,I2,orbDiff);
-		ih[thread_id][address] = braIdx;
-		jh[thread_id][address] = ketIdx;
-		hij[thread_id][address] = eij;
+		ih[task][thread_id][address] = braIdx;
+		jh[task][thread_id][address] = ketIdx;
+		hij[task][thread_id][address] = eij;
 		address++;
 	      }
 	      // double beta excitation
@@ -289,14 +290,23 @@ namespace sbd {
 		DetFromAlphaBeta(adets[ia],bdets[jb],bit_length,norbs,DetJ);
 		size_t orbDiff;
 		ElemT eij = Hij(DetI,DetJ,bit_length,norbs,c,d,I0,I1,I2,orbDiff);
-		ih[thread_id][address] = braIdx;
-		jh[thread_id][address] = ketIdx;
-		hij[thread_id][address] = eij;
+		ih[task][thread_id][address] = braIdx;
+		jh[task][thread_id][address] = ketIdx;
+		hij[task][thread_id][address] = eij;
 		address++;
 	      }
 	    }
 	  } // end for(size_t ib=ib_start; ib < ib_end; ib++)
 	} // end for(size_t ia=helper[task].braAlphaStart; ia < helper[task].braAlphaEnd; ia++)
+
+#ifdef SBD_DEBUG_QCHAM
+	std::cout << "(" << mpi_rank_h << "," << mpi_rank_x << "," << mpi_rank_y
+		  << "): size check: address = " << address << ", len[task][thread] = "
+		  << len[task][thread_id] << " for task " << task
+		  << "(" << tasktype[task] << ") and thread "
+		  << thread_id << std::endl;
+#endif
+	
       } // end for(size_t task=0; task < helper.size(); task++)
     } // end pragma paralell
   } // end function
