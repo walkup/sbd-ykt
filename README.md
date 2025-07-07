@@ -1,4 +1,4 @@
-# Libary for selected basis diagonalization v1.0.0
+# Libary for selected basis diagonalization
 
 This is a header-only library for diagonalizing quantum systems in a selected basis, with a focus on handling wavefunction vectors that are too large to fit in the memory of a single node.
 The library leverages MPI-based parallelization to distribute the wavefunction across multiple nodes.
