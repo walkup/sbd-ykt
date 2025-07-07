@@ -122,13 +122,13 @@ private:
 #endif /* ifndef SBD_FOO_H */
 ```
 
-### Build the document
-```sh
-> make doc/build    # generate document to build_doxy/ folder
+### Note on Build System and External Libraries
 
-> make doc/watch    # Watch the modification of the files and rebuild the document at real time (need fswatch installed)
-```
+This code is built using a minimal `Makefile` system with no external dependencies,
+designed for portability and ease of use on environments like Fugaku where cross-compilation and external libraries can cause issues.
 
+If you prefer to use CMake or integrate external libraries, feel free to fork this repository and modify it as needed.
+However, the original author does not provide support for such modifications.
 
 ## For testing
 ### Write the test
