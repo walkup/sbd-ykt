@@ -36,6 +36,11 @@ You can generate the documentation by running:
 doxygen ./doc/Doxyfile
 ```
 
+## Note
+
+The code in this repository is part of ongoing research and is related to a paper that has not yet been published.
+Early access is granted to facilitate collaboration with IBM Quantum Research. Please refrain from citing or redistributing without consent.
+
 ## Licence
 
 [Apach License 2.0](https://github.com/r-ccs-cms/sbd/blob/main/LICENSE.txt)
