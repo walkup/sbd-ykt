@@ -15,3 +15,9 @@ SYSLIB= -L/opt/homebrew/opt/openblas/lib -llapack -lblas
 # CCCOM=mpiFCCpx
 # CCFLAGS= -Nclang -std=c++17 -stdlib=libc++ -Kfast,openmp -Xpreprocessor -fopenmp
 # SYSLIB= -SSL2
+#
+### Trad-mode for Fugaku
+# SBD_PATH=../../
+# CCCOM=mpiFCCpx
+# CCFLAGS= -std=c++17 -Kfast,openmp -DSBD_TRADMODE
+# SYSLIB= -SSL2
