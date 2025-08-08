@@ -6,7 +6,7 @@ Sample usage examples are provided in the `/samples` directory.
 
 ## Author
 
-- Tomonori Shirakawa
+- Tomonori Shirakawa, RIKEN Center for Computational Science
 
 ## Version
 
