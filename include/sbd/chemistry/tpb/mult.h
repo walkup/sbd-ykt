@@ -401,6 +401,10 @@ namespace sbd {
 	    MPI_Comm h_comm,
 	    MPI_Comm b_comm,
 	    MPI_Comm t_comm) {
+
+#ifdef SBD_DEBUG_TUNING
+    std::cout << " multiplication by Robert is called " << std::endl;
+#endif
     
     int mpi_rank_h = 0;
     int mpi_size_h = 1;
@@ -426,7 +430,7 @@ namespace sbd {
     get_mpi_range(bdet_comm_size,0,bdet_min,bdet_max);
     size_t max_det_size = (adet_max-adet_min)*(bdet_max-bdet_min);
 
-    size_t num_threads = 1;
+    int num_threads = 1;
 
     auto time_copy_start = std::chrono::high_resolution_clock::now();
     std::vector<ElemT> T;
@@ -440,10 +444,10 @@ namespace sbd {
     auto time_copy_end = std::chrono::high_resolution_clock::now();
 
     auto time_mult_start = std::chrono::high_resolution_clock::now();
+    num_threads = omp_get_max_threads();
 #pragma omp parallel
     {
-      num_threads = omp_get_num_threads();
-      size_t thread_id = omp_get_thread_num();
+      int thread_id = omp_get_thread_num();
       
       if( mpi_rank_t == 0 ) {
 #pragma omp for
@@ -483,11 +487,8 @@ namespace sbd {
 #pragma omp parallel
       {
 	size_t thread_id = omp_get_thread_num();
-	size_t ia_start = (thread_id+0) * chunk_size + helper[task].braAlphaStart;
-	size_t ia_end   = (thread_id+1) * chunk_size + helper[task].braAlphaStart;
-	if( thread_id == num_threads - 1 ) {
-	  ia_end = helper[task].braAlphaEnd;
-	}
+	size_t ia_start = thread_id + helper[task].braAlphaStart;
+	size_t ia_end   = helper[task].braAlphaEnd;
 	
 	auto DetI = DetFromAlphaBeta(adets[0],bdets[0],bit_length,norbs);
 	auto DetJ = DetI;
@@ -496,7 +497,7 @@ namespace sbd {
 
 	if( helper[task].taskType == 2 ) { // beta range are same
 	  
-	  for(size_t ia = ia_start; ia < ia_end; ia++) {
+	  for(size_t ia = ia_start; ia < ia_end; ia+=num_threads) {
 	    for(size_t ib = helper[task].braBetaStart; ib < helper[task].braBetaEnd; ib++) {
 	      
 	      size_t braIdx = (ia-helper[task].braAlphaStart)*braBetaSize
@@ -532,7 +533,7 @@ namespace sbd {
 	  
 	} else if ( helper[task].taskType == 1 ) { // alpha range are same
 
-	  for(size_t ia = ia_start; ia < ia_end; ia++) {
+	  for(size_t ia = ia_start; ia < ia_end; ia+=num_threads) {
 	    for(size_t ib = helper[task].braBetaStart; ib < helper[task].braBetaEnd; ib++) {
 	      
 	      size_t braIdx = (ia-helper[task].braAlphaStart)*braBetaSize
@@ -567,7 +568,7 @@ namespace sbd {
 	  
 	} else {
 
-	  for(size_t ia = ia_start; ia < ia_end; ia++) {
+	  for(size_t ia = ia_start; ia < ia_end; ia+=num_threads) {
 	    for(size_t ib = helper[task].braBetaStart; ib < helper[task].braBetaEnd; ib++) {
 	      
 	      size_t braIdx = (ia-helper[task].braAlphaStart)*braBetaSize
