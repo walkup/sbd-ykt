@@ -315,9 +315,8 @@ Initialization of basis
     }
     
     void IndexSearch(const std::vector<size_t> & v, size_t & index, bool & exist) {
-      config_.size();
       size_t index_begin=0;
-      size_t index_end=config_.size();
+      size_t index_end=v.size();
       bisection_search(v,config_,index_begin,index_end,index,exist);
       index += index_begin_[mpi_rank_];
     }
