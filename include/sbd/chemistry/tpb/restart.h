@@ -661,8 +661,9 @@ namespace sbd {
 
   template <typename ElemT>
   void SaveMatrixFormWF(const std::string filename,
-			std::vector<std::vector<size_t>> & adet,
-			std::vector<std::vector<size_t>> & bdet,
+			size_t bit_length, size_t norb,
+			const std::vector<std::vector<size_t>> & adet,
+			const std::vector<std::vector<size_t>> & bdet,
 			size_t adet_comm_size,
 			size_t bdet_comm_size,
 			MPI_Comm h_comm,
@@ -756,7 +757,10 @@ namespace sbd {
 		  size_t idx = ( ia - adet_start[rank_adet] )
 		             * ( bdet_end[rank_bdet]-bdet_start[rank_bdet] )
 		             + ib - bdet_start[rank_bdet];
-		  ofile << Vb[rank_bdet][idx] << " # " << ia << " " << ib << std::endl;
+		  ofile << Vb[rank_bdet][idx] << " # " << ia << ": "
+			<< makestring(adet[ia],bit_length,norb) << " "
+			<< ib << ": " << makestring(bdet[ib],bit_length,norb)
+			<< std::endl;
 		}
 	      }
 	    }

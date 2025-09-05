@@ -27,6 +27,9 @@ namespace sbd {
       double threshold = 0.01;
       
       size_t bit_length = 20;
+
+      std::string dump_matrix_form_wf;
+      
     };
 
     SBD generate_sbd_data(int argc, char *argv[]) {
@@ -78,6 +81,10 @@ namespace sbd {
 	}
 	if( std::string(argv[i]) == "--bit_length" ) {
 	  sbd_data.bit_length = std::atoi(argv[i+1]);
+	  i++;
+	}
+	if( std::string(argv[i]) == "--dump_matrix_form_wf" ) {
+	  sbd_data.dump_matrix_form_wf = std::string(argv[i+1]);
 	  i++;
 	}
       }
@@ -447,6 +454,16 @@ namespace sbd {
 
       if( savename != std::string("") ) {
 	SaveWavefunction(savename,adet,bdet,
+			 adet_comm_size,bdet_comm_size,
+			 h_comm,b_comm,t_comm,W);
+      }
+
+      /**
+	 Save wavefunction in matrix form
+       */
+      if( sbd_data.dump_matrix_form_wf != std::string("") ) {
+	SaveMatrixFormWF(sbd_data.dump_matrix_form_wf,
+			 bit_length,L,adet,bdet,
 			 adet_comm_size,bdet_comm_size,
 			 h_comm,b_comm,t_comm,W);
       }
