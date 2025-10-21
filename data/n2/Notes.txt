@@ -1,5 +1,0 @@
-The fcidump.txt file is from pyscf for the N2 molecule with basis 6-31g with
-spin=0 and a standard restricted Hartree-Fock run.  The alphadets.txt file is
-from pyscf using their FCI solver, and then filtering out only the bit-strings
-that have coefficients with absolute value > 1.0e-4.  That results in a subset
-with 1387 alpha bit-strings for a total subspace dimension of 1923769. 
